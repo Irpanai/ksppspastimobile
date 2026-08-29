@@ -1,0 +1,10 @@
+- [x] Create `lib/shared/widgets/premium_header.dart`
+- [x] Refactor `transaction_history_screen.dart` to use `PremiumHeader`
+- [x] Update `gadai_screen.dart`
+- [x] Update `sijaka_portfolio_screen.dart`
+- [x] Update `sijaka_submission_screen.dart`
+- [x] Update `shu_report_screen.dart`
+- [x] Update `simpanan_screen.dart`
+- [x] Update `katalog_produk_screen.dart`
+- [x] Update `profile_screen.dart`
+- [x] Update `qris_payment_screen.dart`
