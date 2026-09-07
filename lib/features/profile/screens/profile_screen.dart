@@ -86,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 1.45, // More rectangular layout like the reference
+                      childAspectRatio: 1.15, // Fixed overflow
                       children: [
                         _buildGridCard(
                           context,

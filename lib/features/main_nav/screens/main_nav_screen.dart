@@ -80,7 +80,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                       ),
                     ),
                     // Ruang kosong untuk tombol QRIS di tengah
-                    const SizedBox(width: 86),
+                    const SizedBox(width: 76),
                     // Kanan
                     Expanded(
                       child: Row(
@@ -114,8 +114,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
                   );
                 },
                 child: Container(
-                  height: 86, // Ukuran raksasa melebihi height navbar (65)
-                  width: 86,
+                  height: 76, // Ukuran disesuaikan
+                  width: 76,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary, // Tema Hijau
                     shape: BoxShape.circle,
@@ -128,7 +128,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 40),
+                  child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 32),
                 ),
               ),
             ],
@@ -158,7 +158,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
             child: Icon(
               isSelected ? item['activeIcon'] : item['icon'],
               color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF94A3B8), // Sleek grey
-              size: 24, 
+              size: 26, 
             ),
           ),
           const SizedBox(height: 6),

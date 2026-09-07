@@ -207,6 +207,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                 ],
               ),
               child: ListView.separated(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: group['items'].length,
