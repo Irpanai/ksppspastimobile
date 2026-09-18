@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -13,8 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
 
   // Login Controllers
-  final _loginIdController = TextEditingController();
-  final _loginPinController = TextEditingController();
+  final _loginEmailController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
   bool _loginObscure = true;
 
   // Register Controllers
@@ -26,8 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _loginIdController.dispose();
-    _loginPinController.dispose();
+    _loginEmailController.dispose();
+    _loginPasswordController.dispose();
     _regNameController.dispose();
     _regNikController.dispose();
     _regPhoneController.dispose();
@@ -35,11 +37,56 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainNavScreen()),
-    );
+  Future<void> _submitLogin() async {
+    final email = _loginEmailController.text.trim();
+    final password = _loginPasswordController.text;
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan masukkan email Anda.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan masukkan password akun Anda.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.login(email, password);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Selamat datang, ${authProvider.user?.name ?? 'Nasabah'}!'),
+          backgroundColor: const Color(0xFF388E3C),
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainNavScreen()),
+      );
+    } else {
+      final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
@@ -70,8 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Theme.of(context).colorScheme.primary, // Using true green
-                      Theme.of(context).colorScheme.secondary, // Using deep green
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
                     ],
                   ),
                 ),
@@ -113,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _isLogin ? 'Silakan masuk untuk melanjutkan.' : 'Lengkapi data Anda untuk mendaftar.',
+                          _isLogin ? 'Silakan masuk dengan akun nasabah Anda.' : 'Lengkapi data Anda untuk mendaftar.',
                           style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
                         ),
                         const SizedBox(height: 24),
@@ -209,28 +256,33 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginForm() {
+    final authProvider = context.watch<AuthProvider>();
+    final isLoading = authProvider.isLoading;
+
     return Column(
       key: const ValueKey('login'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel('ID Anggota'),
+        _buildLabel('Email Nasabah'),
         const SizedBox(height: 8),
         _buildTextField(
-          controller: _loginIdController,
-          hint: 'Masukkan ID Anggota',
-          icon: Icons.person_outline_rounded,
-          keyboardType: TextInputType.number,
+          controller: _loginEmailController,
+          hint: 'nasabah@ksppspasti.com',
+          icon: Icons.email_outlined,
+          keyboardType: TextInputType.emailAddress,
+          enabled: !isLoading,
         ),
         const SizedBox(height: 24),
 
-        _buildLabel('PIN Transaksi'),
+        _buildLabel('Password'),
         const SizedBox(height: 8),
         _buildTextField(
-          controller: _loginPinController,
-          hint: '••••••',
+          controller: _loginPasswordController,
+          hint: '••••••••',
           icon: Icons.lock_outline_rounded,
-          keyboardType: TextInputType.number,
+          keyboardType: TextInputType.visiblePassword,
           isObscure: _loginObscure,
+          enabled: !isLoading,
           suffixIcon: IconButton(
             icon: Icon(_loginObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: const Color(0xFF94A3B8)),
             onPressed: () => setState(() => _loginObscure = !_loginObscure),
@@ -246,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text('Lupa PIN?', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+            child: Text('Lupa Password?', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(height: 16),
@@ -261,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                onPressed: _submit,
+                onPressed: isLoading ? null : _submitLogin,
                 icon: Icon(Icons.fingerprint_rounded, color: Theme.of(context).colorScheme.primary, size: 30),
               ),
             ),
@@ -270,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: SizedBox(
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: isLoading ? null : _submitLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
@@ -278,7 +330,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     elevation: 4,
                     shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
                   ),
-                  child: const Text('Masuk Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Text('Masuk Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ),
@@ -322,13 +383,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 20),
         
-        _buildLabel('Buat PIN Transaksi (6 Digit)'),
+        _buildLabel('Password Akun'),
         const SizedBox(height: 8),
         _buildTextField(
           controller: _regPasswordController,
-          hint: '••••••',
+          hint: '••••••••',
           icon: Icons.lock_outline_rounded,
-          keyboardType: TextInputType.number,
           isObscure: _regObscure,
           suffixIcon: IconButton(
             icon: Icon(_regObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: const Color(0xFF94A3B8)),
@@ -342,10 +402,9 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 60,
           child: ElevatedButton(
             onPressed: () {
-              // Automatically switch to login on success
               setState(() => _isLogin = true);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Pendaftaran berhasil! Silakan login.')),
+                const SnackBar(content: Text('Pendaftaran berhasil diajukan! Silakan login.')),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -375,11 +434,12 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icon,
     TextInputType? keyboardType,
     bool isObscure = false,
+    bool enabled = true,
     Widget? suffixIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: enabled ? const Color(0xFFF8FAFC) : const Color(0xFFE2E8F0).withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
@@ -392,12 +452,17 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextField(
         controller: controller,
+        enabled: enabled,
         obscureText: isObscure,
         keyboardType: keyboardType,
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: const Color(0xFF94A3B8), fontWeight: FontWeight.normal, letterSpacing: isObscure ? 4 : 0),
+          hintStyle: TextStyle(
+            color: const Color(0xFF94A3B8),
+            fontWeight: FontWeight.normal,
+            letterSpacing: isObscure ? 2 : 0,
+          ),
           prefixIcon: Icon(icon, color: const Color(0xFF94A3B8)),
           suffixIcon: suffixIcon,
           border: InputBorder.none,

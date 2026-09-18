@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
@@ -9,6 +11,15 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.user;
+
+    final userName = user?.name ?? 'Nasabah KSPPS';
+    final userEmail = user?.email ?? 'email@ksppspasti.com';
+    final noAnggota = user?.noAnggota ?? (user?.anggota?.noAnggota ?? 'PASTI-0000');
+    final statusKeanggotaan = user?.statusKeanggotaan ?? (user?.anggota?.status ?? 'Aktif');
+    final cabang = user?.cabang ?? (user?.anggota?.cabang ?? 'Pusat');
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
@@ -43,8 +54,10 @@ class ProfileScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: Colors.white,
                       border: Border.all(color: Colors.white, width: 4),
-                      image: const DecorationImage(
-                        image: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                      image: DecorationImage(
+                        image: user?.profilePhotoUrl != null && user!.profilePhotoUrl!.isNotEmpty
+                            ? NetworkImage(user.profilePhotoUrl!)
+                            : const NetworkImage('https://i.pravatar.cc/150?img=11') as ImageProvider,
                         fit: BoxFit.cover,
                       ),
                       boxShadow: [
@@ -53,14 +66,14 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Budi Santoso',
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  Text(
+                    userName,
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'budisantoso@email.com',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  Text(
+                    userEmail,
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -70,9 +83,9 @@ class ProfileScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white.withOpacity(0.4)),
                     ),
-                    child: const Text(
-                      'Anggota Penuh • ID: 10293847',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    child: Text(
+                      'Anggota ${statusKeanggotaan.toUpperCase()} • ID: $noAnggota • $cabang',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -311,12 +324,16 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await context.read<AuthProvider>().logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
