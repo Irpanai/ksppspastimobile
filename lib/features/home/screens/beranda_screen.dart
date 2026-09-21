@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../product/screens/katalog_produk_screen.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/ppob_menu.dart';
@@ -73,8 +72,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     const PromoCarousel(),
                     const SizedBox(height: 32),
                     const SijakaPortfolioCard(),
-                    const SizedBox(height: 24),
-                    _buildKatalogProdukButton(context),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -110,79 +107,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
             onPressed: () => context.read<DashboardProvider>().fetchDashboard(refresh: true),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildKatalogProdukButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const KatalogProdukScreen()),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.storefront_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Katalog Produk & Layanan',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Simpanan, Pembiayaan & Ziswaf',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

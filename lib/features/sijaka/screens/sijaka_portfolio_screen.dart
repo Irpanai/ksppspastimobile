@@ -66,42 +66,42 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                       saldoBagiHasil: sijakaProvider.totalSaldoBagiHasil,
                     ),
                     const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SijakaSubmissionScreen()));
-                            },
-                            icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                            label: const Text('Ajukan Baru'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const ShuReportScreen()));
-                            },
-                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                            label: const Text('Laporan SHU'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Theme.of(context).colorScheme.primary,
-                              side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Row(
+                    //   children: [
+                    //     Expanded(
+                    //       child: ElevatedButton.icon(
+                    //         onPressed: () {
+                    //           Navigator.push(context, MaterialPageRoute(builder: (_) => const SijakaSubmissionScreen()));
+                    //         },
+                    //         icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    //         label: const Text('Ajukan Baru'),
+                    //         style: ElevatedButton.styleFrom(
+                    //           backgroundColor: Theme.of(context).colorScheme.primary,
+                    //           foregroundColor: Colors.white,
+                    //           padding: const EdgeInsets.symmetric(vertical: 14),
+                    //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    //           elevation: 0,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //     const SizedBox(width: 12),
+                    //     Expanded(
+                    //       child: OutlinedButton.icon(
+                    //         onPressed: () {
+                    //           Navigator.push(context, MaterialPageRoute(builder: (_) => const ShuReportScreen()));
+                    //         },
+                    //         icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    //         label: const Text('Laporan SHU'),
+                    //         style: OutlinedButton.styleFrom(
+                    //           foregroundColor: Theme.of(context).colorScheme.primary,
+                    //           side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                    //           padding: const EdgeInsets.symmetric(vertical: 14),
+                    //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
                     const SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -282,7 +282,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                 ),
                 const SizedBox(height: 2),
                 const Text(
-                  'Dapat diambil tunai kapan saja',
+                  'Dapat dicairkan',
                   style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ],
