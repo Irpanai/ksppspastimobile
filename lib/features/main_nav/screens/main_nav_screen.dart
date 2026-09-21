@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../home/screens/beranda_screen.dart';
 import '../../savings/screens/simpanan_screen.dart';
-import '../../gadai/screens/gadai_screen.dart';
+import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../../qris/screens/qris_scanner_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
@@ -18,14 +18,14 @@ class _MainNavScreenState extends State<MainNavScreen> {
   final List<Widget> _screens = [
     const BerandaScreen(),
     const SimpananScreen(),
-    const GadaiScreen(),
+    const SijakaPortfolioScreen(),
     const ProfileScreen(),
   ];
 
   final List<Map<String, dynamic>> _navItems = [
     {'icon': Icons.home_outlined, 'activeIcon': Icons.home, 'label': 'Beranda'},
     {'icon': Icons.account_balance_wallet_outlined, 'activeIcon': Icons.account_balance_wallet, 'label': 'Simpanan'},
-    {'icon': Icons.handshake_outlined, 'activeIcon': Icons.handshake, 'label': 'Gadai'},
+    {'icon': Icons.pie_chart_outline, 'activeIcon': Icons.pie_chart, 'label': 'Sijaka'},
     {'icon': Icons.person_outline, 'activeIcon': Icons.person, 'label': 'Profil'},
   ];
 

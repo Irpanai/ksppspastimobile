@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../history/screens/transaction_history_screen.dart';
-import '../../sijaka/screens/sijaka_portfolio_screen.dart';
+import '../../gadai/screens/gadai_screen.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -125,13 +125,13 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         _buildGridCard(
                           context,
-                          title: 'Portofolio Sijaka',
-                          subtitle: 'Simpanan berjangka',
-                          icon: Icons.pie_chart_outline,
+                          title: 'Transaksi Gadai',
+                          subtitle: 'Pinjaman & agunan',
+                          icon: Icons.handshake_outlined,
                           iconColor: const Color(0xFFD97706), // Orange
                           iconBgColor: const Color(0xFFFFFBEB),
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen()));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const GadaiScreen()));
                           },
                         ),
                         _buildGridCard(
