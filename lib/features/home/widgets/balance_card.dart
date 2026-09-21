@@ -4,8 +4,22 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../main.dart';
 import '../providers/dashboard_provider.dart';
 
-class BalanceCard extends StatelessWidget {
+class BalanceCard extends StatefulWidget {
   const BalanceCard({super.key});
+
+  @override
+  State<BalanceCard> createState() => _BalanceCardState();
+}
+
+class _BalanceCardState extends State<BalanceCard> {
+  final PageController _pageController = PageController(viewportFraction: 1.0);
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,74 +29,103 @@ class BalanceCard extends StatelessWidget {
 
     final totalSimpanan = ringkasan?.totalSimpanan ?? 0;
     final pokokDanWajib = ringkasan?.saldoPokokDanWajib ?? 0;
-    final pokok = ringkasan?.saldoPokok ?? 0;
-    final wajib = ringkasan?.saldoWajib ?? 0;
     final sukarela = ringkasan?.saldoSukarela ?? 0;
     final sijaka = ringkasan?.saldoSijaka ?? 0;
     final bagiHasil = ringkasan?.saldoBagihasilSijaka ?? 0;
     final bilyetAktif = statistiks?.jumlahBilyetSijakaAktif ?? 0;
 
-    return SizedBox(
-      height: 190, // Set fixed height for the horizontal cards
-      child: ListView(
-        physics: const BouncingScrollPhysics(),
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        clipBehavior: Clip.none,
-        children: [
-          _buildGreenCard(
-            context,
-            totalSimpanan: totalSimpanan,
-            bagiHasil: bagiHasil,
+    return Column(
+      children: [
+        SizedBox(
+          height: 190,
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (int page) {
+              setState(() {
+                _currentPage = page;
+              });
+            },
+            physics: const BouncingScrollPhysics(),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: _buildGreenCard(
+                  context,
+                  title: 'Total Akumulasi Simpanan',
+                  balance: totalSimpanan,
+                  extraInfo: '+ Bagi Hasil: ${AppCurrency.format(bagiHasil)}',
+                  icon: Icons.account_balance_rounded,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: _buildGreenCard(
+                  context,
+                  title: 'Total Simpanan Anggota',
+                  balance: pokokDanWajib + sukarela,
+                  extraInfo: 'Pokok, Wajib & Sukarela',
+                  icon: Icons.savings_rounded,
+                  colorOverride: const [Color(0xFF14532D), Color(0xFF166534)], // Dark Green
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: _buildGreenCard(
+                  context,
+                  title: 'Simpanan Berjangka (Sijaka)',
+                  balance: sijaka,
+                  extraInfo: '$bilyetAktif Bilyet Aktif',
+                  icon: Icons.auto_graph_rounded,
+                  colorOverride: const [Color(0xFF047857), Color(0xFF10B981)], // Emerald/Teal Green
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          _buildWhiteCard(
-            context,
-            title: 'Simpanan Pokok & Wajib',
-            balance: AppCurrency.format(pokokDanWajib),
-            subtitle: 'P: ${AppCurrency.format(pokok)} • W: ${AppCurrency.format(wajib)}',
-            icon: Icons.account_balance_wallet_outlined,
-          ),
-          const SizedBox(width: 16),
-          _buildWhiteCard(
-            context,
-            title: 'Simpanan Sukarela',
-            balance: AppCurrency.format(sukarela),
-            subtitle: 'Simpanan Transaksional',
-            icon: Icons.savings_outlined,
-          ),
-          const SizedBox(width: 16),
-          _buildWhiteCard(
-            context,
-            title: 'Simpanan Berjangka',
-            balance: AppCurrency.format(sijaka),
-            subtitle: '$bilyetAktif Bilyet Aktif',
-            icon: Icons.auto_graph_rounded,
-          ),
-          const SizedBox(width: 16),
-          _buildWhiteCard(
-            context,
-            title: 'Bagi Hasil Sijaka',
-            balance: AppCurrency.format(bagiHasil),
-            subtitle: 'Akumulasi Bagi Hasil',
-            icon: Icons.monetization_on_outlined,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            return GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0), // increased margin for easier tapping
+                height: 8.0,
+                width: _currentPage == index ? 24.0 : 8.0,
+                decoration: BoxDecoration(
+                  color: _currentPage == index ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 
   Widget _buildGreenCard(
     BuildContext context, {
-    required num totalSimpanan,
-    required num bagiHasil,
+    required String title,
+    required num balance,
+    required String extraInfo,
+    required IconData icon,
+    List<Color>? colorOverride,
   }) {
     final isVisible = context.select<AppState, bool>((state) => state.isBalanceVisible);
-    final Color color1 = Theme.of(context).colorScheme.secondary; // Dark Green
-    final Color color2 = Theme.of(context).colorScheme.primary; // Vibrant Green
+    
+    final Color color1 = colorOverride != null ? colorOverride[0] : Theme.of(context).colorScheme.secondary;
+    final Color color2 = colorOverride != null ? colorOverride[1] : Theme.of(context).colorScheme.primary;
 
     return Container(
-      width: MediaQuery.of(context).size.width * 0.82,
+      width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
@@ -144,12 +187,12 @@ class BalanceCard extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 16),
+                            child: Icon(icon, color: Colors.white, size: 16),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Total Akumulasi Simpanan',
-                            style: TextStyle(
+                          Text(
+                            title,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -179,7 +222,7 @@ class BalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isVisible ? AppCurrency.format(totalSimpanan) : 'Rp ••••••••',
+                    isVisible ? AppCurrency.format(balance) : 'Rp ••••••••',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 30,
@@ -193,17 +236,17 @@ class BalanceCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.trending_up_rounded, color: Colors.white, size: 14),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.info_outline_rounded, color: Colors.white, size: 14),
+                            const SizedBox(width: 6),
                             Text(
-                              '+ Bagi Hasil: ${AppCurrency.format(bagiHasil)}',
+                              extraInfo,
                               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -212,111 +255,6 @@ class BalanceCard extends StatelessWidget {
                       const Spacer(),
                       const Icon(Icons.verified_user_rounded, color: Colors.white30, size: 24),
                     ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWhiteCard(
-    BuildContext context, {
-    required String title,
-    required String balance,
-    required String subtitle,
-    required IconData icon,
-  }) {
-    final isVisible = context.select<AppState, bool>((state) => state.isBalanceVisible);
-
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.72,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            // Subtle background icon for modern look
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Icon(
-                icon,
-                size: 120,
-                color: Colors.grey.shade50,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(icon, color: const Color(0xFF475569), size: 16),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            color: Color(0xFF475569),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'Saldo Simpanan',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, letterSpacing: 0.5),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isVisible ? balance : 'Rp ••••••••',
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

@@ -22,32 +22,58 @@ class GadaiScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   // Summary Card
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      color: const Color(0xFF2E7D32), // Solid green matching the app palette
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8)),
+                        BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8)),
                       ],
                     ),
-                    child: Row(
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            shape: BoxShape.circle,
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.account_balance_wallet_rounded, size: 36, color: Colors.white),
+                            ),
                           ),
-                          child: Icon(Icons.account_balance_wallet_rounded, color: Colors.orange.shade700, size: 32),
                         ),
-                        const SizedBox(width: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Total Pinjaman Gadai', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
-                            const SizedBox(height: 4),
-                            const Text('Rp 11.500.000', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            const Text(
+                              'Total Pinjaman Gadai',
+                              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Rp 11.500.000',
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text('2 Barang Aktif', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ],
@@ -56,11 +82,11 @@ class GadaiScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text('Gadai Aktif', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    child: Text('Gadai Aktif', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
                   ),
                   const SizedBox(height: 16),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.0),
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
                     child: GadaiTransactionCard(
                       itemName: 'Logam Mulia Antam 5g',
                       loanAmount: 'Rp 4.500.000',
@@ -70,9 +96,9 @@ class GadaiScreen extends StatelessWidget {
                       colorTheme: Colors.orange,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: GadaiTransactionCard(
                       itemName: 'BPKB Motor Honda Beat',
                       loanAmount: 'Rp 7.000.000',
@@ -85,11 +111,11 @@ class GadaiScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text('Riwayat Selesai', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    child: Text('Riwayat Selesai', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
                   ),
                   const SizedBox(height: 16),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.0),
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
                     child: GadaiTransactionCard(
                       itemName: 'Laptop ASUS ROG',
                       loanAmount: 'Rp 5.000.000',

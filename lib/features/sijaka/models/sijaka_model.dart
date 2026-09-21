@@ -17,6 +17,7 @@ class BilyetSijakaItem {
   final String tglJatuhTempo;
   final String metodePenyerahanBagihasil;
   final String status;
+  final String? noRekeningPencairan;
 
   BilyetSijakaItem({
     required this.id,
@@ -34,6 +35,7 @@ class BilyetSijakaItem {
     required this.tglJatuhTempo,
     required this.metodePenyerahanBagihasil,
     required this.status,
+    this.noRekeningPencairan,
   });
 
   bool get isActive => status.toLowerCase() == 'aktif';
@@ -74,6 +76,7 @@ class BilyetSijakaItem {
       tglJatuhTempo: json['tgl_jatuh_tempo']?.toString() ?? '',
       metodePenyerahanBagihasil: json['metode_penyerahan_bagihasil']?.toString() ?? 'Setiap Bulan',
       status: json['status']?.toString() ?? 'aktif',
+      noRekeningPencairan: json['rekening_pencairan']?.toString() ?? json['no_rekening_bank_pencairan']?.toString(),
     );
   }
 }

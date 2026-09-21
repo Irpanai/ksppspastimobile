@@ -24,6 +24,18 @@ class SijakaProvider extends ChangeNotifier {
     return _bilyetList.where((item) => item.isActive).length;
   }
 
+  num get totalEstimasiBagiHasil {
+    return _bilyetList
+        .where((item) => item.isActive)
+        .fold(0, (sum, item) => sum + (item.nominalModal * item.persenNisbahBulanan / 100));
+  }
+
+  num get totalSaldoBagiHasil {
+    return _bilyetList
+        .where((item) => item.isActive)
+        .fold(0, (sum, item) => sum + item.saldoBagihasil);
+  }
+
   Future<void> fetchBilyetList({bool refresh = false}) async {
     if (_bilyetList.isNotEmpty && !refresh && !_isLoading) {
       return;

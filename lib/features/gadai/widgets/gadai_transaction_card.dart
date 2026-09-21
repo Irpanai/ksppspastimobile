@@ -23,15 +23,16 @@ class GadaiTransactionCard extends StatelessWidget {
     final bool isActive = status == 'Aktif';
     
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: const Color(0xFF64748B).withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -42,12 +43,12 @@ class GadaiTransactionCard extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isActive ? colorTheme.withOpacity(0.1) : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
+                    color: isActive ? colorTheme.withValues(alpha: 0.1) : const Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(iconData, size: 28, color: isActive ? colorTheme : Colors.grey.shade600),
+                  child: Icon(iconData, size: 24, color: isActive ? colorTheme : const Color(0xFF94A3B8)),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -56,12 +57,12 @@ class GadaiTransactionCard extends StatelessWidget {
                     children: [
                       Text(
                         itemName,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Pinjaman: $loanAmount',
-                        style: TextStyle(fontSize: 14, color: isActive ? Colors.red.shade600 : Colors.grey.shade600, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 13, color: isActive ? const Color(0xFFDC2626) : const Color(0xFF64748B), fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -69,57 +70,52 @@ class GadaiTransactionCard extends StatelessWidget {
               ],
             ),
           ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), thickness: 1.5),
           if (isActive) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                )
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.access_time_rounded, size: 16, color: Colors.orange.shade700),
+                      const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFF59E0B)),
                       const SizedBox(width: 6),
-                      Text('Jatuh Tempo: $dueDate', style: TextStyle(fontSize: 13, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
+                      Text('Jatuh Tempo: $dueDate', style: const TextStyle(fontSize: 12, color: Color(0xFFD97706), fontWeight: FontWeight.w600)),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      minimumSize: const Size(80, 36),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                  SizedBox(
+                    height: 36,
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981), // Emerald green
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      child: const Text('Bayar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     ),
-                    child: const Text('Bayar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   ),
                 ],
               ),
             ),
           ] else ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                )
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline_rounded, size: 18, color: Colors.green.shade700),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check, size: 12, color: Colors.white),
+                  ),
                   const SizedBox(width: 8),
-                  Text('Gadai Selesai / Ditebus', style: TextStyle(fontSize: 13, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
+                  const Text('Gadai Selesai / Ditebus', style: TextStyle(fontSize: 12, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
