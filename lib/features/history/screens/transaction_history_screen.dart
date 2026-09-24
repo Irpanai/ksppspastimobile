@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../savings/models/simpanan_riwayat_model.dart';
+import '../providers/history_provider.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
-  const TransactionHistoryScreen({Key? key}) : super(key: key);
+  const TransactionHistoryScreen({super.key});
 
   @override
   State<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
@@ -10,85 +15,293 @@ class TransactionHistoryScreen extends StatefulWidget {
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  final List<Map<String, dynamic>> _dummyTransactions = [
-    {
-      'date': 'Hari Ini',
-      'items': [
-        {
-          'title': 'Setoran Simpanan Sukarela',
-          'type': 'in',
-          'amount': 250000,
-          'time': '14:30',
-          'desc': 'Transfer dari Bank Syariah Indonesia',
-        },
-        {
-          'title': 'Pembayaran PPOB - PLN',
-          'type': 'out',
-          'amount': 52500,
-          'time': '09:15',
-          'desc': 'Token Listrik Prabayar',
-        },
-      ]
-    },
-    {
-      'date': 'Kemarin',
-      'items': [
-        {
-          'title': 'Pencairan Pembiayaan',
-          'type': 'in',
-          'amount': 5000000,
-          'time': '16:00',
-          'desc': 'Pencairan Multijasa ke Rek. Utama',
-        },
-        {
-          'title': 'Setoran Simpanan Pokok',
-          'type': 'in',
-          'amount': 100000,
-          'time': '10:00',
-          'desc': 'Potongan otomatis bulanan',
-        },
-      ]
-    },
-    {
-      'date': '24 Agustus 2026',
-      'items': [
-        {
-          'title': 'Transfer ke Anggota',
-          'type': 'out',
-          'amount': 1500000,
-          'time': '11:45',
-          'desc': 'Transfer ke Bpk. Ahmad',
-        },
-      ]
-    },
-  ];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HistoryProvider>().fetchMutasi();
+    });
+
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final provider = context.read<HistoryProvider>();
+    switch (_tabController.index) {
+      case 0:
+        provider.setTipe(null); // Semua
+        break;
+      case 1:
+        provider.setTipe('masuk'); // Masuk
+        break;
+      case 2:
+        provider.setTipe('keluar'); // Keluar
+        break;
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final provider = context.read<HistoryProvider>();
+      if (provider.hasMore && !provider.isLoadingMore) {
+        provider.loadMore();
+      }
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleRefresh() async {
+    await context.read<HistoryProvider>().fetchMutasi(refresh: true);
+  }
+
+  void _showFilterModal(BuildContext context) {
+    final provider = context.read<HistoryProvider>();
+    String? tempJenis = provider.selectedJenis;
+    DateTime? tempStart = provider.startDate;
+    DateTime? tempEnd = provider.endDate;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter Mutasi Rekening',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                      if (tempJenis != null || tempStart != null || tempEnd != null)
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempJenis = null;
+                              tempStart = null;
+                              tempEnd = null;
+                            });
+                          },
+                          child: const Text('Reset', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Jenis Simpanan',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChip('Semua Jenis', tempJenis == null, () {
+                        setModalState(() => tempJenis = null);
+                      }),
+                      _buildFilterChip('Simpanan Pokok', tempJenis == 'pokok', () {
+                        setModalState(() => tempJenis = 'pokok');
+                      }),
+                      _buildFilterChip('Simpanan Wajib', tempJenis == 'wajib', () {
+                        setModalState(() => tempJenis = 'wajib');
+                      }),
+                      _buildFilterChip('Simpanan Sukarela', tempJenis == 'sukarela', () {
+                        setModalState(() => tempJenis = 'sukarela');
+                      }),
+                      _buildFilterChip('Sijaka (Berjangka)', tempJenis == 'sijaka', () {
+                        setModalState(() => tempJenis = 'sijaka');
+                      }),
+                      _buildFilterChip('Bagi Hasil Sijaka', tempJenis == 'sijaka_bagihasil', () {
+                        setModalState(() => tempJenis = 'sijaka_bagihasil');
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Rentang Tanggal Transaksi',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        initialDateRange: tempStart != null && tempEnd != null
+                            ? DateTimeRange(start: tempStart!, end: tempEnd!)
+                            : null,
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.light(
+                                primary: Theme.of(context).colorScheme.primary,
+                                onPrimary: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          tempStart = picked.start;
+                          tempEnd = picked.end;
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_month_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              tempStart != null && tempEnd != null
+                                  ? '${DateFormat('d MMM yyyy', 'id_ID').format(tempStart!)} - ${DateFormat('d MMM yyyy', 'id_ID').format(tempEnd!)}'
+                                  : 'Pilih Rentang Tanggal',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: tempStart != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          if (tempStart != null)
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  tempStart = null;
+                                  tempEnd = null;
+                                });
+                              },
+                              child: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        provider.setJenis(tempJenis);
+                        provider.setDateRange(tempStart, tempEnd);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Terapkan Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? Colors.white : const Color(0xFF475569),
+      ),
+      backgroundColor: const Color(0xFFF1F5F9),
+      selectedColor: Theme.of(context).colorScheme.primary,
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final historyProvider = context.watch<HistoryProvider>();
+    final groupedData = historyProvider.groupedByDate;
+    final isLoading = historyProvider.isLoading;
+    final isLoadingMore = historyProvider.isLoadingMore;
+    final error = historyProvider.errorMessage;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          // Custom Beautiful Header
+          // Header with TabBar
           PremiumHeader(
             title: 'Mutasi Rekening',
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.filter_list_rounded,
+                  color: historyProvider.hasActiveFilter
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => _showFilterModal(context),
+              ),
+            ],
             bottomWidget: Container(
               height: 48,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: TabBar(
@@ -96,11 +309,17 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                 indicator: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Colors.white.withOpacity(0.8),
+                unselectedLabelColor: Colors.white.withValues(alpha: 0.8),
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 dividerColor: Colors.transparent,
                 tabs: const [
@@ -111,16 +330,21 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
               ),
             ),
           ),
-          
-          // Transaction List Content
+
+          // Horizontal Quick Filter Badges
+          _buildQuickFilterRow(context, historyProvider),
+
+          // Content List
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTransactionList('all'),
-                _buildTransactionList('in'),
-                _buildTransactionList('out'),
-              ],
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: Theme.of(context).colorScheme.primary,
+              child: _buildBodyContent(
+                isLoading: isLoading,
+                isLoadingMore: isLoadingMore,
+                error: error,
+                groupedData: groupedData,
+              ),
             ),
           ),
         ],
@@ -128,66 +352,222 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
     );
   }
 
-  Widget _buildTransactionList(String filterType) {
-    List<Map<String, dynamic>> filteredData = [];
-    for (var group in _dummyTransactions) {
-      var filteredItems = (group['items'] as List).where((item) {
-        if (filterType == 'all') return true;
-        return item['type'] == filterType;
-      }).toList();
+  Widget _buildQuickFilterRow(BuildContext context, HistoryProvider provider) {
+    final jenis = provider.selectedJenis;
+    final start = provider.startDate;
+    final end = provider.endDate;
 
-      if (filteredItems.isNotEmpty) {
-        filteredData.add({
-          'date': group['date'],
-          'items': filteredItems,
-        });
-      }
-    }
-
-    if (filteredData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      color: Colors.white,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: Icon(Icons.history_rounded, size: 48, color: Colors.grey.shade400),
+            InkWell(
+              onTap: () => _showFilterModal(context),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: provider.hasActiveFilter
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: provider.hasActiveFilter
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.tune_rounded,
+                      size: 14,
+                      color: provider.hasActiveFilter
+                          ? Theme.of(context).colorScheme.primary
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Filter',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: provider.hasActiveFilter
+                            ? Theme.of(context).colorScheme.primary
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Belum ada transaksi',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.bold),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Semua',
+              isSelected: jenis == null,
+              onTap: () => provider.setJenis(null),
             ),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Pokok',
+              isSelected: jenis == 'pokok',
+              onTap: () => provider.setJenis('pokok'),
+            ),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Wajib',
+              isSelected: jenis == 'wajib',
+              onTap: () => provider.setJenis('wajib'),
+            ),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Sukarela',
+              isSelected: jenis == 'sukarela',
+              onTap: () => provider.setJenis('sukarela'),
+            ),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Sijaka',
+              isSelected: jenis == 'sijaka',
+              onTap: () => provider.setJenis('sijaka'),
+            ),
+            const SizedBox(width: 8),
+            _buildQuickChip(
+              context,
+              label: 'Bagi Hasil',
+              isSelected: jenis == 'sijaka_bagihasil',
+              onTap: () => provider.setJenis('sijaka_bagihasil'),
+            ),
+            if (start != null && end != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '${DateFormat('d MMM', 'id_ID').format(start)} - ${DateFormat('d MMM', 'id_ID').format(end)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    InkWell(
+                      onTap: () => provider.setDateRange(null, null),
+                      child: Icon(Icons.close, size: 14, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  Widget _buildQuickChip(
+    BuildContext context, {
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBodyContent({
+    required bool isLoading,
+    required bool isLoadingMore,
+    required String? error,
+    required Map<String, List<MutasiSimpananItem>> groupedData,
+  }) {
+    if (isLoading && groupedData.isEmpty) {
+      return _buildLoadingSkeleton();
     }
 
+    if (error != null && groupedData.isEmpty) {
+      return _buildErrorState(error);
+    }
+
+    if (groupedData.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    final dateKeys = groupedData.keys.toList();
+
     return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      itemCount: filteredData.length,
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      itemCount: dateKeys.length + (isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
-        final group = filteredData[index];
+        if (index == dateKeys.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+          );
+        }
+
+        final dateKey = dateKeys[index];
+        final items = groupedData[dateKey] ?? [];
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(bottom: 12, top: 16),
+              padding: const EdgeInsets.only(bottom: 10, top: 14),
               child: Row(
                 children: [
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    group['date'],
+                    dateKey,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                       color: Color(0xFF64748B),
                     ),
                   ),
@@ -198,9 +578,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -210,56 +591,63 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: group['items'].length,
+                itemCount: items.length,
                 separatorBuilder: (context, idx) => const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                 itemBuilder: (context, idx) {
-                  final item = group['items'][idx];
-                  final isIn = item['type'] == 'in';
+                  final item = items[idx];
+                  final isMasuk = item.isMasuk;
+
                   return InkWell(
                     onTap: () => _showTransactionDetail(context, item),
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: isIn ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
-                              borderRadius: BorderRadius.circular(16),
+                              color: isMasuk ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: Icon(
-                              isIn ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                              color: isIn ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                              isMasuk ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                              color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
                               size: 20,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item['title'],
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B)),
+                                  item.keterangan,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Text(
-                                  '${item['time']} • ${item['desc']}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                  '${_formatJenisLabel(item.jenis)} • ${item.formattedDate}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Text(
-                            '${isIn ? '+' : '-'}Rp ${item['amount'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            item.formattedNominal,
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
-                              fontSize: 14,
-                              color: isIn ? const Color(0xFF16A34A) : const Color(0xFF1E293B),
+                              fontSize: 13,
+                              color: isMasuk ? const Color(0xFF059669) : const Color(0xFF1E293B),
                             ),
                           ),
                         ],
@@ -275,8 +663,115 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
     );
   }
 
-  void _showTransactionDetail(BuildContext context, Map<String, dynamic> item) {
-    final isIn = item['type'] == 'in';
+  Widget _buildLoadingSkeleton() {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 14, width: 140, color: const Color(0xFFF1F5F9)),
+                    const SizedBox(height: 6),
+                    Container(height: 10, width: 90, color: const Color(0xFFF1F5F9)),
+                  ],
+                ),
+              ),
+              Container(height: 16, width: 70, color: const Color(0xFFF1F5F9)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _handleRefresh,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.receipt_long_rounded, size: 48, color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Belum Ada Mutasi Transaksi',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tidak ditemukan catatan mutasi simpanan sesuai filter yang dipilih.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTransactionDetail(BuildContext context, MutasiSimpananItem item) {
+    final isMasuk = item.isMasuk;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -287,69 +782,90 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 48, height: 6, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(3))),
-              const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isIn ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isIn ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                  color: isIn ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Transaksi Berhasil', style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              Text(
-                'Rp ${item['amount'].toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 36, color: Color(0xFF1E293B), letterSpacing: -1),
-              ),
-              const SizedBox(height: 32),
-              
-              // Structured Details
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFF1F5F9))
-                ),
-                child: Column(
-                  children: [
-                    _buildDetailRow('Jenis Transaksi', item['title']),
-                    _buildDetailRow('Keterangan', item['desc']),
-                    _buildDetailRow('Waktu', '${item['time']} WIB'),
-                    _buildDetailRow('No. Referensi', 'INT-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}', isLast: true),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.share_outlined, size: 20),
-                  label: const Text('Bagikan Resi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
+          padding: const EdgeInsets.all(28),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isMasuk ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isMasuk ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                    color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isMasuk ? 'Setoran / Mutasi Masuk' : 'Penarikan / Mutasi Keluar',
+                  style: TextStyle(
+                    color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  item.formattedNominal,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 32,
+                    color: isMasuk ? const Color(0xFF059669) : const Color(0xFF1E293B),
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Structured Details
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildDetailRow('ID Transaksi', '#${item.id}'),
+                      _buildDetailRow('Jenis Simpanan', _formatJenisLabel(item.jenis)),
+                      _buildDetailRow('Keterangan', item.keterangan),
+                      if (item.bulan != null && item.tahun != null)
+                        _buildDetailRow('Periode', 'Bulan ${item.bulan} / ${item.tahun}'),
+                      _buildDetailRow('Waktu Transaksi', '${item.formattedDate} WIB', isLast: true),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Tutup', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -358,7 +874,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
 
   Widget _buildDetailRow(String label, String value, {bool isLast = false}) {
     return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -375,5 +891,22 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
         ],
       ),
     );
+  }
+
+  String _formatJenisLabel(String jenis) {
+    switch (jenis.toLowerCase()) {
+      case 'pokok':
+        return 'Simpanan Pokok';
+      case 'wajib':
+        return 'Simpanan Wajib';
+      case 'sukarela':
+        return 'Simpanan Sukarela';
+      case 'sijaka':
+        return 'Simpanan Sijaka';
+      case 'sijaka_bagihasil':
+        return 'Bagi Hasil Sijaka';
+      default:
+        return 'Simpanan ${jenis.toUpperCase()}';
+    }
   }
 }

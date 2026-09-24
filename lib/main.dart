@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/services/storage_service.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/history/providers/history_provider.dart';
 import 'features/home/providers/dashboard_provider.dart';
 import 'features/main_nav/screens/main_nav_screen.dart';
 import 'features/savings/providers/savings_provider.dart';
@@ -24,6 +25,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => SavingsProvider()),
         ChangeNotifierProvider(create: (_) => SijakaProvider()),
+        ChangeNotifierProvider(create: (_) => HistoryProvider()),
       ],
       child: const DigitalCoopApp(),
     ),
