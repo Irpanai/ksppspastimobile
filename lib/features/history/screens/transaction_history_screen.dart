@@ -291,7 +291,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                 icon: Icon(
                   Icons.filter_list_rounded,
                   color: historyProvider.hasActiveFilter
-                      ? Theme.of(context).colorScheme.primary
+                      ? Colors.amber // Bright color to contrast with the green header
                       : Colors.white,
                   size: 20,
                 ),
@@ -357,123 +357,37 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
     final start = provider.startDate;
     final end = provider.endDate;
 
+    if (jenis == null && start == null && end == null) {
+      return const SizedBox.shrink(); // Hide if no filters are active
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      color: Colors.white,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            InkWell(
-              onTap: () => _showFilterModal(context),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: provider.hasActiveFilter
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: provider.hasActiveFilter
-                        ? Theme.of(context).colorScheme.primary
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.tune_rounded,
-                      size: 14,
-                      color: provider.hasActiveFilter
-                          ? Theme.of(context).colorScheme.primary
-                          : const Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Filter',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: provider.hasActiveFilter
-                            ? Theme.of(context).colorScheme.primary
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
+            const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 8),
+            const Text('Filter Aktif:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+            const SizedBox(width: 12),
+            if (jenis != null) ...[
+              _buildRemovableChip(
+                context,
+                label: _formatJenisLabel(jenis),
+                onRemove: () => provider.setJenis(null),
               ),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Semua',
-              isSelected: jenis == null,
-              onTap: () => provider.setJenis(null),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Pokok',
-              isSelected: jenis == 'pokok',
-              onTap: () => provider.setJenis('pokok'),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Wajib',
-              isSelected: jenis == 'wajib',
-              onTap: () => provider.setJenis('wajib'),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Sukarela',
-              isSelected: jenis == 'sukarela',
-              onTap: () => provider.setJenis('sukarela'),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Sijaka',
-              isSelected: jenis == 'sijaka',
-              onTap: () => provider.setJenis('sijaka'),
-            ),
-            const SizedBox(width: 8),
-            _buildQuickChip(
-              context,
-              label: 'Bagi Hasil',
-              isSelected: jenis == 'sijaka_bagihasil',
-              onTap: () => provider.setJenis('sijaka_bagihasil'),
-            ),
-            if (start != null && end != null) ...[
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '${DateFormat('d MMM', 'id_ID').format(start)} - ${DateFormat('d MMM', 'id_ID').format(end)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () => provider.setDateRange(null, null),
-                      child: Icon(Icons.close, size: 14, color: Theme.of(context).colorScheme.primary),
-                    ),
-                  ],
-                ),
+            ],
+            if (start != null && end != null) ...[
+              _buildRemovableChip(
+                context,
+                label: '${DateFormat('d MMM yyyy', 'id_ID').format(start)} - ${DateFormat('d MMM yyyy', 'id_ID').format(end)}',
+                onRemove: () => provider.setDateRange(null, null),
               ),
+              const SizedBox(width: 8),
             ],
           ],
         ),
@@ -481,32 +395,45 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
     );
   }
 
-  Widget _buildQuickChip(
-    BuildContext context, {
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFFE2E8F0),
+  Widget _buildRemovableChip(BuildContext context, {required String label, required VoidCallback onRemove}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
       ),
     );
   }

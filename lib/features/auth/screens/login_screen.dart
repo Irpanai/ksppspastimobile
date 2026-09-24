@@ -40,12 +40,20 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submitLogin() async {
     final email = _loginEmailController.text.trim();
     final password = _loginPasswordController.text;
-
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan masukkan email Anda.'),
-          backgroundColor: Colors.redAccent,
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Silakan masukkan email Anda.', style: TextStyle(fontWeight: FontWeight.w500))),
+            ],
+          ),
+          backgroundColor: const Color(0xFFF59E0B), // Amber for warning
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
         ),
       );
       return;
@@ -53,9 +61,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan masukkan password akun Anda.'),
-          backgroundColor: Colors.redAccent,
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Silakan masukkan password akun Anda.', style: TextStyle(fontWeight: FontWeight.w500))),
+            ],
+          ),
+          backgroundColor: const Color(0xFFF59E0B), // Amber for warning
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
         ),
       );
       return;
@@ -67,22 +84,77 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Selamat datang, ${authProvider.user?.name ?? 'Nasabah'}!'),
-          backgroundColor: const Color(0xFF388E3C),
-        ),
+      // Tampilkan popup sukses di tengah
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Login Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Selamat datang kembali,\n${authProvider.user?.name ?? 'Nasabah'}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavScreen()),
-      );
+
+      // Simpan referensi Navigator karena widget akan di-unmount oleh AuthWrapper
+      final nav = Navigator.of(context, rootNavigator: true);
+
+      // Tunggu sebentar agar animasi popup terlihat
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // Tutup dialog secara eksplisit menggunakan referensi Navigator
+      nav.pop();
+      
+      // Catatan: Tidak perlu Navigator.pushAndRemoveUntil ke MainNavScreen di sini
+      // karena AuthWrapper di main.dart otomatis mengubah route ke MainNavScreen 
+      // ketika AuthStatus berubah menjadi authenticated.
     } else {
       final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMsg),
-          backgroundColor: Colors.redAccent,
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+                child: const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(errorMsg, style: const TextStyle(fontWeight: FontWeight.w500))),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444), // Red for error
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
           duration: const Duration(seconds: 4),
         ),
       );

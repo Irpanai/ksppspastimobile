@@ -40,8 +40,20 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
         children: [
-          const PremiumHeader(
+          PremiumHeader(
             title: 'Portofolio Sijaka',
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.filter_list_rounded,
+                  color: sijakaProvider.hasActiveFilter
+                      ? Colors.amber
+                      : Colors.white,
+                  size: 20,
+                ),
+                onPressed: () => _showFilterModal(context),
+              ),
+            ],
           ),
           Expanded(
             child: RefreshIndicator(
@@ -65,7 +77,8 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                       estimasiBagiHasil: sijakaProvider.totalEstimasiBagiHasil,
                       saldoBagiHasil: sijakaProvider.totalSaldoBagiHasil,
                     ),
-                    const SizedBox(height: 20),
+                    _buildQuickFilterRow(context, sijakaProvider),
+                    const SizedBox(height: 12),
                     // Row(
                     //   children: [
                     //     Expanded(
@@ -588,6 +601,200 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _BilyetDetailBottomSheet(bilyetId: initialBilyet.id, initialBilyet: initialBilyet),
+    );
+  }
+
+  void _showFilterModal(BuildContext context) {
+    final provider = context.read<SijakaProvider>();
+    String? tempStatus = provider.selectedStatus;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter Bilyet',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                      if (tempStatus != null)
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempStatus = null;
+                            });
+                          },
+                          child: const Text('Reset', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Status Bilyet',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChip('Semua Status', tempStatus == null, () {
+                        setModalState(() => tempStatus = null);
+                      }),
+                      _buildFilterChip('Aktif', tempStatus == 'aktif', () {
+                        setModalState(() => tempStatus = 'aktif');
+                      }),
+                      _buildFilterChip('Lunas', tempStatus == 'lunas', () {
+                        setModalState(() => tempStatus = 'lunas');
+                      }),
+                      _buildFilterChip('Cair', tempStatus == 'cair', () {
+                        setModalState(() => tempStatus = 'cair');
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        provider.setStatus(tempStatus);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Terapkan Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? Colors.white : const Color(0xFF475569),
+      ),
+      backgroundColor: const Color(0xFFF1F5F9),
+      selectedColor: Theme.of(context).colorScheme.primary,
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    );
+  }
+
+  Widget _buildQuickFilterRow(BuildContext context, SijakaProvider provider) {
+    final status = provider.selectedStatus;
+
+    if (status == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 8),
+            const Text('Filter Aktif:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+            const SizedBox(width: 12),
+            _buildRemovableChip(
+              context,
+              label: 'Status: ${status.toUpperCase()}',
+              onRemove: () => provider.setStatus(null),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRemovableChip(BuildContext context, {required String label, required VoidCallback onRemove}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

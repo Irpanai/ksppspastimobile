@@ -9,10 +9,22 @@ class SijakaProvider extends ChangeNotifier {
   List<BilyetSijakaItem> _bilyetList = [];
   bool _isLoading = false;
   String? _errorMessage;
+  String? _selectedStatus;
 
-  List<BilyetSijakaItem> get bilyetList => _bilyetList;
+  List<BilyetSijakaItem> get bilyetList {
+    if (_selectedStatus == null) return _bilyetList;
+    return _bilyetList.where((item) => item.status.toLowerCase() == _selectedStatus!.toLowerCase()).toList();
+  }
+  
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get selectedStatus => _selectedStatus;
+  bool get hasActiveFilter => _selectedStatus != null;
+
+  void setStatus(String? status) {
+    _selectedStatus = status;
+    notifyListeners();
+  }
 
   num get totalModalAktif {
     return _bilyetList
@@ -73,6 +85,7 @@ class SijakaProvider extends ChangeNotifier {
     _bilyetList = [];
     _isLoading = false;
     _errorMessage = null;
+    _selectedStatus = null;
     notifyListeners();
   }
 }
