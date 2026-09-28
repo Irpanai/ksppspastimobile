@@ -4,6 +4,7 @@ import 'package:digital_coop/main.dart';
 import 'package:digital_coop/features/auth/providers/auth_provider.dart';
 import 'package:digital_coop/features/history/providers/history_provider.dart';
 import 'package:digital_coop/features/home/providers/dashboard_provider.dart';
+import 'package:digital_coop/features/profile/providers/profile_provider.dart';
 import 'package:digital_coop/features/savings/providers/savings_provider.dart';
 import 'package:digital_coop/features/sijaka/providers/sijaka_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,7 @@ void main() {
     final savingsProvider = SavingsProvider();
     final sijakaProvider = SijakaProvider();
     final historyProvider = HistoryProvider();
+    final profileProvider = ProfileProvider();
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -30,6 +32,7 @@ void main() {
           ChangeNotifierProvider<SavingsProvider>.value(value: savingsProvider),
           ChangeNotifierProvider<SijakaProvider>.value(value: sijakaProvider),
           ChangeNotifierProvider<HistoryProvider>.value(value: historyProvider),
+          ChangeNotifierProvider<ProfileProvider>.value(value: profileProvider),
         ],
         child: const DigitalCoopApp(),
       ),

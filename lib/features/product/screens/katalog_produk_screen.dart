@@ -97,7 +97,7 @@ class KatalogProdukScreen extends StatelessWidget {
             if (item['title'] == 'Sijaka') {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen()),
+                MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
               );
             }
           },

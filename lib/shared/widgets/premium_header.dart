@@ -3,19 +3,24 @@ import 'package:flutter/material.dart';
 class PremiumHeader extends StatelessWidget {
   final String title;
   final Widget? bottomWidget;
-  final bool showBackButton;
+  final bool? showBackButton;
+  final VoidCallback? onBackPressed;
   final List<Widget>? actions;
 
   const PremiumHeader({
     Key? key,
     required this.title,
     this.bottomWidget,
-    this.showBackButton = true,
+    this.showBackButton,
+    this.onBackPressed,
     this.actions,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
+    final shouldShowBack = showBackButton ?? canPop;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -45,7 +50,7 @@ class PremiumHeader extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              if (showBackButton)
+              if (shouldShowBack)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
@@ -55,7 +60,13 @@ class PremiumHeader extends StatelessWidget {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        if (onBackPressed != null) {
+                          onBackPressed!();
+                        } else if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
                   ),
                 ),

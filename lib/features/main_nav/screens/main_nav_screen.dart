@@ -18,7 +18,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
   final List<Widget> _screens = [
     const BerandaScreen(),
     const SimpananScreen(),
-    const SijakaPortfolioScreen(),
+    const SijakaPortfolioScreen(showBackButton: false),
     const ProfileScreen(),
   ];
 

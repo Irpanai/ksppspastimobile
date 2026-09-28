@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
@@ -123,7 +124,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? '';
     final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? 'Pusat';
 
-    final photoUrl = authUser?.profilePhotoUrl;
+    final photoUrl = authUser?.fullProfilePhotoUrl ?? ApiConstants.resolveImageUrl(authUser?.profilePhotoUrl);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
@@ -132,14 +133,27 @@ class _BerandaScreenState extends State<BerandaScreen> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                backgroundImage: photoUrl != null && photoUrl.isNotEmpty
-                    ? NetworkImage(photoUrl)
-                    : const NetworkImage('https://i.pravatar.cc/150?img=11') as ImageProvider,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: photoUrl != null && photoUrl.isNotEmpty
+                      ? Image.network(
+                          photoUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildInitials(displayName),
+                        )
+                      : _buildInitials(displayName),
+                ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -194,6 +208,25 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInitials(String name) {
+    final initials = name.trim().isNotEmpty
+        ? name.trim().split(RegExp(r'\s+')).map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+        : 'N';
+    return Container(
+      color: Colors.white.withValues(alpha: 0.25),
+      child: Center(
+        child: Text(
+          initials.isNotEmpty ? initials : 'N',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }

@@ -90,6 +90,68 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Register new member
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String password,
+    String? passwordConfirmation,
+    required String nik,
+    required String noHp,
+    String? alamat,
+    String? tempatLahir,
+    String? tanggalLahir,
+    String? jenisKelamin,
+    String? agama,
+    String? pekerjaan,
+    String? provinsi,
+    String? kabupatenKota,
+    String? kecamatan,
+    String? kelurahan,
+    String? cabang,
+  }) async {
+    _status = AuthStatus.authenticating;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final loginData = await _authService.register(
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+        nik: nik.trim(),
+        noHp: noHp.trim(),
+        alamat: alamat?.trim(),
+        tempatLahir: tempatLahir?.trim(),
+        tanggalLahir: tanggalLahir?.trim(),
+        jenisKelamin: jenisKelamin,
+        agama: agama,
+        pekerjaan: pekerjaan?.trim(),
+        provinsi: provinsi?.trim(),
+        kabupatenKota: kabupatenKota?.trim(),
+        kecamatan: kecamatan?.trim(),
+        kelurahan: kelurahan?.trim(),
+        cabang: cabang?.trim(),
+      );
+      _token = loginData.token;
+      _user = loginData.user;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Gagal melakukan registrasi: ${e.toString()}';
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Fetch updated profile info from /auth/me
   Future<void> fetchProfile() async {
     try {
@@ -103,10 +165,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Logout and clear state
   Future<void> logout() async {
-    _status = AuthStatus.authenticating;
-    notifyListeners();
-
-    await _authService.logout();
+    try {
+      await _authService.logout();
+    } catch (_) {}
     _token = null;
     _user = null;
     _status = AuthStatus.unauthenticated;
