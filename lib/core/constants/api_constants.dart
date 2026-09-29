@@ -69,4 +69,9 @@ class ApiConstants {
   static const String memberProfile = '/member/profile';
   static const String updateProfile = '/member/profile';
   static const String changePassword = '/member/profile/password';
+
+  // Payment Gateway Endpoints
+  static const String snapToken = '/payment/snap-token';
+  static String paymentStatus(String orderId) => '/payment/status/$orderId';
+  static const String paymentHistory = '/payment/history';
 }

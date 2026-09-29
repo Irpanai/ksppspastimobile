@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/screens/login_screen.dart';
 import '../../gadai/screens/gadai_screen.dart';
 import '../../history/providers/history_provider.dart';
 import '../../history/screens/transaction_history_screen.dart';

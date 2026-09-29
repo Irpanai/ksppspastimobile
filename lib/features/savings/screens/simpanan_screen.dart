@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
+import '../../payment/screens/top_up_screen.dart';
 import '../models/simpanan_riwayat_model.dart';
 import '../providers/savings_provider.dart';
 
@@ -271,14 +272,59 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.savings_rounded, color: Colors.white, size: 28),
-          )
+          Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.savings_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TopUpScreen(initialType: widget.jenis),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_card_rounded, size: 14, color: widget.gradientColors[0]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Setor',
+                        style: TextStyle(
+                          color: widget.gradientColors[0],
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

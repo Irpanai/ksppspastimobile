@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../models/member_profile_model.dart';
 import '../providers/profile_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {

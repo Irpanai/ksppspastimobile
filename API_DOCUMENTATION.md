@@ -537,6 +537,17 @@ Endpoint publik yang dipanggil secara otomatis oleh server Midtrans saat terjadi
 
 ---
 
+### 6.2.1 Redirect Finish Callback (Halaman Selesai Pembayaran)
+
+Endpoint publik yang dibuka secara otomatis saat nasabah selesai melakukan transaksi di Snap Midtrans. Mengembalikan halaman status interaktif atau JSON.
+
+- **Method**: `GET`
+- **URL Path**: `/payment/finish`
+- **Auth Required**: Tidak (Public Browser Redirect)
+- **Query Params**: `order_id`, `status_code`, `transaction_status`
+
+---
+
 ### 6.3 Cek Live Status Pembayaran
 
 Melakukan sinkronisasi dan pengecekan status live pesanan pembayaran ke server Midtrans.
