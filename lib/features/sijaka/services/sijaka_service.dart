@@ -41,4 +41,30 @@ class SijakaService {
       message: response.message.isNotEmpty ? response.message : 'Gagal memuat detail Bilyet Sijaka',
     );
   }
+
+  Future<List<SijakaProdukItem>> getProdukList() async {
+    final response = await ApiClient.get<List<SijakaProdukItem>>(
+      ApiConstants.sijakaProduk,
+      withAuth: true,
+      fromJsonT: (data) {
+        if (data is List) {
+          return data
+              .map((e) => SijakaProdukItem.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
+      },
+    );
+
+    if (response.data != null) {
+      return response.data!;
+    }
+
+    throw ApiException(
+      message: response.message.isNotEmpty
+          ? response.message
+          : 'Gagal memuat daftar produk Sijaka',
+    );
+  }
 }
+

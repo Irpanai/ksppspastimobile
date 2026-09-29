@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
+import '../../sijaka/providers/sijaka_provider.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
 
@@ -130,6 +131,7 @@ class _MidtransWebViewScreenState extends State<MidtransWebViewScreen> {
           context.read<SavingsProvider>().fetchRiwayat('sukarela', refresh: true);
           context.read<SavingsProvider>().fetchRiwayat('wajib', refresh: true);
           context.read<SavingsProvider>().fetchRiwayat('pokok', refresh: true);
+          context.read<SijakaProvider>().fetchBilyetList(refresh: true);
         } catch (_) {}
 
         _showStatusResultDialog(status);

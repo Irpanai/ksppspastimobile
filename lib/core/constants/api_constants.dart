@@ -65,6 +65,7 @@ class ApiConstants {
   static const String dashboard = '/member/dashboard';
   static const String simpananRiwayat = '/member/simpanan/riwayat';
   static const String sijaka = '/member/sijaka';
+  static const String sijakaProduk = '/member/sijaka/produk';
   static String sijakaDetail(int id) => '/member/sijaka/$id';
   static const String memberProfile = '/member/profile';
   static const String updateProfile = '/member/profile';
