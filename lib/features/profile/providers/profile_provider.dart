@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../models/member_profile_model.dart';
@@ -98,6 +100,31 @@ class ProfileProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       _errorMessage = 'Gagal mengubah password: ${e.toString()}';
+      _isUpdating = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 7.4 Upload Photo
+  Future<bool> uploadPhoto(File imageFile) async {
+    _isUpdating = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedProfile = await _profileService.uploadPhoto(imageFile);
+      _profileData = updatedProfile;
+      _isUpdating = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _isUpdating = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Gagal mengunggah foto profil: ${e.toString()}';
       _isUpdating = false;
       notifyListeners();
       return false;

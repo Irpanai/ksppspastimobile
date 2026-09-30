@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
@@ -178,14 +179,36 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                     'Riwayat Mutasi ${widget.title}',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                   ),
-                  if (items.isNotEmpty)
-                    Text(
-                      '${items.length} Transaksi',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
+                  Row(
+                    children: [
+                      if (items.isNotEmpty)
+                        Text(
+                          '${items.length} Transaksi',
+                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => _showFilterModal(context),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: savingsProvider.hasActiveFilter(widget.jenis) ? widget.gradientColors[0].withOpacity(0.1) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.filter_list_rounded,
+                            size: 16,
+                            color: savingsProvider.hasActiveFilter(widget.jenis) ? widget.gradientColors[0] : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
+            _buildQuickFilterRow(context, savingsProvider),
             const SizedBox(height: 16),
             // Error, Loading, Empty, or List
             if (isLoading && items.isEmpty)
@@ -204,7 +227,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                   ),
                 ),
             ],
-            const SizedBox(height: 32),
+            const SizedBox(height: 120),
           ],
         ),
       ),
@@ -280,7 +303,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                   color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.savings_rounded, color: Colors.white, size: 28),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(height: 12),
               InkWell(
@@ -530,12 +553,14 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
   }
 
   void _showTransactionDetail(BuildContext context, MutasiSimpananItem item) {
+    final isMasuk = item.isMasuk;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(28),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -556,43 +581,60 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: item.isMasuk ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                  color: isMasuk ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  item.isMasuk ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                  color: item.isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                  isMasuk ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                  color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
                   size: 36,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                item.formattedNominal,
+                isMasuk ? 'Setoran / Masuk' : 'Penarikan / Keluar',
                 style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: item.isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                  color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
-                item.keterangan,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                item.formattedNominal,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: isMasuk ? const Color(0xFF059669) : const Color(0xFF1E293B),
+                  letterSpacing: -1,
+                ),
               ),
               const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 12),
-              _buildDetailRow('ID Transaksi', '#${item.id}'),
-              _buildDetailRow('Jenis Simpanan', 'Simpanan ${item.jenis.toUpperCase()}'),
-              _buildDetailRow('Tipe Transaksi', item.isMasuk ? 'Setoran / Masuk' : 'Penarikan / Keluar'),
-              if (item.bulan != null && item.tahun != null)
-                _buildDetailRow('Periode', 'Bulan ${item.bulan} / ${item.tahun}'),
-              _buildDetailRow('Tanggal & Waktu', item.formattedDate),
+              
+              // Structured Details
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildDetailRow('ID Transaksi', '#${item.id}'),
+                    _buildDetailRow('Jenis Simpanan', 'Simpanan ${item.jenis.toUpperCase()}'),
+                    _buildDetailRow('Keterangan', item.keterangan),
+                    if (item.bulan != null && item.tahun != null)
+                      _buildDetailRow('Periode', 'Bulan ${item.bulan} / ${item.tahun}'),
+                    _buildDetailRow('Waktu Transaksi', '${item.formattedDate} WIB'),
+                  ],
+                ),
+              ),
+              
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -603,6 +645,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
                   ),
                   child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
@@ -624,6 +667,286 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 13)),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickFilterRow(BuildContext context, SavingsProvider provider) {
+    final tipe = provider.getTipe(widget.jenis);
+    final start = provider.getStartDate(widget.jenis);
+    final end = provider.getEndDate(widget.jenis);
+
+    if (tipe == null && start == null && end == null) {
+      return const SizedBox.shrink(); // Hide if no filters are active
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(left: 24, right: 24, top: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 8),
+            const Text('Filter Aktif:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+            const SizedBox(width: 12),
+            if (tipe != null) ...[
+              _buildRemovableChip(
+                context,
+                label: tipe == 'masuk' ? 'Masuk' : 'Keluar',
+                onRemove: () => provider.setFilter(widget.jenis, tipe: null, start: start, end: end),
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (start != null && end != null) ...[
+              _buildRemovableChip(
+                context,
+                label: '${DateFormat('d MMM yyyy', 'id_ID').format(start)} - ${DateFormat('d MMM yyyy', 'id_ID').format(end)}',
+                onRemove: () => provider.setFilter(widget.jenis, tipe: tipe, start: null, end: null),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRemovableChip(BuildContext context, {required String label, required VoidCallback onRemove}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close_rounded, size: 14, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterModal(BuildContext context) {
+    final provider = context.read<SavingsProvider>();
+    String? tempTipe = provider.getTipe(widget.jenis);
+    DateTime? tempStart = provider.getStartDate(widget.jenis);
+    DateTime? tempEnd = provider.getEndDate(widget.jenis);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter Mutasi',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                      if (tempTipe != null || tempStart != null || tempEnd != null)
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempTipe = null;
+                              tempStart = null;
+                              tempEnd = null;
+                            });
+                          },
+                          child: const Text('Reset', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Tipe Transaksi',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChip('Semua', tempTipe == null, () {
+                        setModalState(() => tempTipe = null);
+                      }),
+                      _buildFilterChip('Masuk', tempTipe == 'masuk', () {
+                        setModalState(() => tempTipe = 'masuk');
+                      }),
+                      _buildFilterChip('Keluar', tempTipe == 'keluar', () {
+                        setModalState(() => tempTipe = 'keluar');
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Rentang Tanggal',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        initialDateRange: tempStart != null && tempEnd != null
+                            ? DateTimeRange(start: tempStart!, end: tempEnd!)
+                            : null,
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.light(
+                                primary: widget.gradientColors[0],
+                                onPrimary: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          tempStart = picked.start;
+                          tempEnd = picked.end;
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_month_outlined, color: widget.gradientColors[0], size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              tempStart != null && tempEnd != null
+                                  ? '${DateFormat('d MMM yyyy', 'id_ID').format(tempStart!)} - ${DateFormat('d MMM yyyy', 'id_ID').format(tempEnd!)}'
+                                  : 'Pilih Rentang Tanggal',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: tempStart != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          if (tempStart != null)
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  tempStart = null;
+                                  tempEnd = null;
+                                });
+                              },
+                              child: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        provider.setFilter(widget.jenis, tipe: tempTipe, start: tempStart, end: tempEnd);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.gradientColors[0],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Terapkan Filter', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? Colors.white : const Color(0xFF475569),
+      ),
+      backgroundColor: const Color(0xFFF1F5F9),
+      selectedColor: widget.gradientColors[0],
+      checkmarkColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
     );
   }
 }

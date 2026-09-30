@@ -383,19 +383,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Row(
           children: [
-            Container(
-              height: 60,
-              width: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: IconButton(
-                onPressed: isLoading ? null : _submitLogin,
-                icon: Icon(Icons.fingerprint_rounded, color: Theme.of(context).colorScheme.primary, size: 30),
-              ),
-            ),
-            const SizedBox(width: 16),
             Expanded(
               child: SizedBox(
                 height: 60,

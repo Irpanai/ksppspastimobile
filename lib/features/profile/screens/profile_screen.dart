@@ -10,7 +10,14 @@ import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../providers/profile_provider.dart';
+import 'bank_account_screen.dart';
+import 'ahli_waris_screen.dart';
+import 'personal_data_screen.dart';
+import 'address_data_screen.dart';
 import 'edit_profile_screen.dart';
+import 'help_center_screen.dart';
+import 'terms_conditions_screen.dart';
+import 'about_app_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -221,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     const SizedBox(height: 32),
 
-                    // Pengaturan Keamanan & Bantuan
+                    // Pengaturan Data Pribadi & Keuangan
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
@@ -229,7 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(left: 4, bottom: 10),
-                            child: Text('Keamanan & Akun', style: TextStyle(color: Color(0xFF1E293B), fontSize: 15, fontWeight: FontWeight.bold)),
+                            child: Text('Data Pribadi & Keuangan', style: TextStyle(color: Color(0xFF1E293B), fontSize: 15, fontWeight: FontWeight.bold)),
                           ),
                           Container(
                             decoration: BoxDecoration(
@@ -240,19 +247,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: Column(
                               children: [
-                                _buildMenuRow(Icons.password_rounded, 'Ganti PIN Transaksi'),
-                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
-                                _buildMenuRow(Icons.fingerprint_rounded, 'Login Biometrik', trailing: Switch(value: true, activeColor: Theme.of(context).colorScheme.primary, onChanged: (v){})),
+                                _buildMenuRow(
+                                  Icons.assignment_ind_outlined, 
+                                  'Data Pribadi (KYC)', 
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalDataScreen())),
+                                ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
-                                  Icons.verified_user_outlined,
-                                  'Verifikasi Identitas (KYC)',
-                                  trailing: const Text('Terverifikasi', style: TextStyle(color: Color(0xFF16A34A), fontSize: 12, fontWeight: FontWeight.bold)),
+                                  Icons.home_work_outlined, 
+                                  'Alamat & Domisili', 
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressDataScreen())),
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.account_balance_rounded, 
+                                  'Rekening Bank', 
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankAccountScreen())),
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.family_restroom_rounded, 
+                                  'Ahli Waris',
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AhliWarisScreen())),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(height: 24),
+
+
 
                           const Padding(
                             padding: EdgeInsets.only(left: 4, bottom: 10),
@@ -267,11 +290,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: Column(
                               children: [
-                                _buildMenuRow(Icons.help_outline_rounded, 'Pusat Bantuan'),
+                                _buildMenuRow(
+                                  Icons.help_outline_rounded,
+                                  'Pusat Bantuan',
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen())),
+                                ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
-                                _buildMenuRow(Icons.description_outlined, 'Syarat & Ketentuan'),
+                                _buildMenuRow(
+                                  Icons.description_outlined,
+                                  'Syarat & Ketentuan',
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsConditionsScreen())),
+                                ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
-                                _buildMenuRow(Icons.info_outline_rounded, 'Tentang Aplikasi', trailing: const Text('v1.0.0', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12))),
+                                _buildMenuRow(
+                                  Icons.info_outline_rounded,
+                                  'Tentang Aplikasi',
+                                  trailing: const Text('v1.0.0', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppScreen())),
+                                ),
                               ],
                             ),
                           ),
@@ -377,13 +413,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuRow(IconData icon, String title, {Widget? trailing}) {
+  Widget _buildMenuRow(IconData icon, String title, {Widget? trailing, VoidCallback? onTap}) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Icon(icon, color: const Color(0xFF64748B), size: 22),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Color(0xFF334155))),
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
-      onTap: () {},
+      onTap: onTap ?? () {},
     );
   }
 

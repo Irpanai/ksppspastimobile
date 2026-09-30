@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../models/member_profile_model.dart';
@@ -59,5 +61,24 @@ class ProfileService {
         message: response.message.isNotEmpty ? response.message : 'Gagal mengubah password',
       );
     }
+  }
+
+  /// 7.4 Upload Foto Profil
+  Future<MemberProfileModel> uploadPhoto(File imageFile) async {
+    final response = await ApiClient.postMultipart<MemberProfileModel>(
+      '${ApiConstants.memberProfile}/photo', // Sesuaikan endpoint API jika berbeda (misal POST /member/profile/photo)
+      file: imageFile,
+      fileField: 'photo', // Sesuaikan dengan key payload yang diterima API backend Anda
+      withAuth: true,
+      fromJsonT: (data) => MemberProfileModel.fromJson(data as Map<String, dynamic>),
+    );
+
+    if (response.data != null) {
+      return response.data!;
+    }
+
+    throw ApiException(
+      message: response.message.isNotEmpty ? response.message : 'Gagal mengunggah foto profil',
+    );
   }
 }

@@ -61,7 +61,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
               color: Theme.of(context).colorScheme.primary,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -192,7 +192,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0), // Reduced from 24
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -200,103 +200,118 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                   'TOTAL BILYET SIJAKA AKTIF',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 10, // Reduced from 12
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2), // Reduced from 4
                 Row(
                   children: [
                     Text(
                       '$totalAktif',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20, // Reduced from 22
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     const Text(
                       'Bilyet',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 16, // Reduced from 18
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12), // Reduced from 16
                 Divider(
                   color: Colors.white.withValues(alpha: 0.2),
                   thickness: 1,
                   height: 1,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12), // Reduced from 16
                 
                 // Total Modal Sijaka
                 const Text(
                   'Total Modal Sijaka (Terkunci)',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
+                  style: TextStyle(color: Colors.white, fontSize: 11), // Reduced from 13
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   AppCurrency.format(totalModal),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 20, // Reduced from 24
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 2),
                 const Text(
                   'Akumulasi modal seluruh bilyet aktif',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: Colors.white, fontSize: 10), // Reduced from 12
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16), // Reduced from 20
                 
-                // Estimasi Bagi Hasil
-                const Text(
-                  'Estimasi Bagi Hasil Bulanan',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppCurrency.format(estimasiBagiHasil),
-                  style: const TextStyle(
-                    color: Color(0xFFFBBF24), // Yellow text
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Cair tiap bulan ke kantong hasil',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Saldo Kantong
-                const Text(
-                  'Saldo Kantong Bagi Hasil',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppCurrency.format(saldoBagiHasil),
-                  style: const TextStyle(
-                    color: Color(0xFFFBBF24), // Yellow text
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Dapat dicairkan',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Estimasi Bagi Hasil',
+                            style: TextStyle(color: Colors.white, fontSize: 11), // Reduced from 13
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppCurrency.format(estimasiBagiHasil),
+                            style: const TextStyle(
+                              color: Color(0xFFFBBF24), // Yellow text
+                              fontSize: 16, // Reduced from 22
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Per bulan',
+                            style: TextStyle(color: Colors.white, fontSize: 10), // Reduced from 12
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.2)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Saldo Kantong',
+                            style: TextStyle(color: Colors.white, fontSize: 11), // Reduced from 13
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppCurrency.format(saldoBagiHasil),
+                            style: const TextStyle(
+                              color: Color(0xFFFBBF24), // Yellow text
+                              fontSize: 16, // Reduced from 22
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Dapat dicairkan',
+                            style: TextStyle(color: Colors.white, fontSize: 10), // Reduced from 12
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -308,12 +323,17 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
 
   Widget _buildBilyetCard(BuildContext context, {required BilyetSijakaItem bilyet}) {
     final isActive = bilyet.isActive;
+    
+    final int bulanBerjalan = bilyet.calculatedBulanBerjalan;
+    final int tenor = bilyet.tenorBulan > 0 ? bilyet.tenorBulan : 1;
+    final double progress = (bulanBerjalan / tenor).clamp(0.0, 1.0);
+    final String progressPercent = '${(progress * 100).toInt()}%';
 
     return Container(
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : const Color(0xFFF8FAFC),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isActive ? const Color(0xFFE2E8F0) : Colors.transparent, width: 1),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: isActive
             ? [
                 BoxShadow(
@@ -414,7 +434,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -438,14 +458,85 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                
+                // Progress Tenor Block
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'PROGRESS TENOR',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                        Text(
+                          progressPercent,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$bulanBerjalan dari $tenor Bulan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isActive ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFF1F5F9), height: 1),
+                const SizedBox(height: 16),
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Icons.monetization_on_rounded, size: 20, color: Color(0xFF10B981)),
-                        SizedBox(width: 8),
-                        Text(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text(
+                            'Rp',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
                           'Saldo Bagi Hasil',
                           style: TextStyle(
                             fontSize: 13,
@@ -915,6 +1006,65 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                     ),
                     const SizedBox(height: 32),
                     
+                    // Progress Tenor Block
+                    Builder(builder: (context) {
+                      final int bulanBerjalan = bilyet.calculatedBulanBerjalan;
+                      final int tenor = bilyet.tenorBulan > 0 ? bilyet.tenorBulan : 1;
+                      final double progress = (bulanBerjalan / tenor).clamp(0.0, 1.0);
+                      final String progressPercent = '${(progress * 100).toInt()}%';
+                      final isActive = bilyet.isActive;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'PROGRESS TENOR',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
+                              Text(
+                                progressPercent,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$bulanBerjalan dari $tenor Bulan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: isActive ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      );
+                    }),
+                    
                     const Text('Informasi Akad Bilyet', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF0F172A))),
                     const SizedBox(height: 16),
                     Container(
@@ -1035,7 +1185,23 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                                     color: Color(0xFFF1F5F9),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.monetization_on_rounded, size: 18, color: Color(0xFF10B981)),
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text(
+                                      'Rp',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(

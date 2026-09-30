@@ -71,13 +71,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
       _updateWajibAmount();
     } else if (init == 'pokok') {
       _selectedType = 'simpanan_pokok';
-      _amountController.text = _pokokNominal.toString();
+      _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
     } else if (init == 'sijaka') {
       _selectedType = 'pembukaan_sijaka';
-      _amountController.text = '1000000';
+      _amountController.text = AppCurrency.format(1000000).replaceAll('Rp ', '');
     } else {
       _selectedType = 'simpanan_sukarela';
-      _amountController.text = '100000';
+      _amountController.text = AppCurrency.format(100000).replaceAll('Rp ', '');
     }
   }
 
@@ -109,7 +109,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
   void _updateWajibAmount() {
     final total = _calculateTotalWajib();
-    _amountController.text = total.toString();
+    _amountController.text = AppCurrency.format(total).replaceAll('Rp ', '');
   }
 
   void _onTypeChanged(String type, bool isPokokPaid) {
@@ -121,11 +121,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
     setState(() {
       _selectedType = type;
       if (type == 'simpanan_sukarela') {
-        _amountController.text = '100000';
+        _amountController.text = AppCurrency.format(100000).replaceAll('Rp ', '');
       } else if (type == 'simpanan_wajib') {
         _updateWajibAmount();
       } else if (type == 'simpanan_pokok') {
-        _amountController.text = _pokokNominal.toString();
+        _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
       }
     });
   }
@@ -493,18 +493,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : (isSuccessBadge
-                          ? const Color(0xFFDCFCE7)
-                          : (isHighlight ? const Color(0xFFFEF3C7) : const Color(0xFFF1F5F9))),
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isSuccessBadge ? Icons.check_circle_outline_rounded : icon,
                   color: isSelected
                       ? Colors.white
-                      : (isSuccessBadge
-                          ? const Color(0xFF16A34A)
-                          : (isHighlight ? const Color(0xFFD97706) : const Color(0xFF64748B))),
+                      : const Color(0xFF64748B),
                   size: 20,
                 ),
               ),
@@ -733,6 +729,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               child: DropdownButton<int>(
                                 value: _wajibStartMonth,
                                 isExpanded: true,
+                                dropdownColor: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
                                 icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
                                 items: _months.map((m) {
                                   return DropdownMenuItem<int>(
@@ -773,6 +771,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               child: DropdownButton<int>(
                                 value: _wajibEndMonth,
                                 isExpanded: true,
+                                dropdownColor: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
                                 icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
                                 items: _months.where((m) => (m['id'] as int) >= _wajibStartMonth).map((m) {
                                   return DropdownMenuItem<int>(
@@ -808,6 +808,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                     child: DropdownButton<int>(
                       value: _wajibStartMonth,
                       isExpanded: true,
+                      dropdownColor: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
                       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
                       items: _months.map((m) {
                         return DropdownMenuItem<int>(
@@ -961,86 +963,81 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   Widget _buildNominalInputCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Nominal Setoran Sukarela',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nominal Setoran Sukarela',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.4), width: 1.5),
-            ),
-            child: Row(
-              children: [
-                const Text(
-                  'Rp',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF166534),
+          child: Row(
+            children: [
+              const Text(
+                'Rp',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyInputFormatter(),
+                    LengthLimitingTextInputFormatter(14),
+                  ],
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.5,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '0',
+                    hintStyle: TextStyle(color: Color(0xFF94A3B8)),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              if (_amountController.text.isNotEmpty)
+                InkWell(
+                  onTap: () {
+                    _amountController.clear();
+                    setState(() {});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F5F9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded, color: Color(0xFF64748B), size: 16),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(11),
-                    ],
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E293B),
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '0',
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                if (_amountController.text.isNotEmpty)
-                  InkWell(
-                    onTap: () {
-                      _amountController.clear();
-                      setState(() {});
-                    },
-                    child: const Icon(Icons.cancel, color: Color(0xFF94A3B8), size: 20),
-                  ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            '*Minimum transaksi Rp 1.000',
-            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          '*Minimum transaksi Rp 1.000',
+          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+      ],
     );
   }
 
@@ -1052,7 +1049,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
         final isSelected = _parsedAmount == nom;
         return InkWell(
           onTap: () {
-            _amountController.text = nom.toString();
+            _amountController.text = AppCurrency.format(nom).replaceAll('Rp ', '');
             setState(() {});
           },
           borderRadius: BorderRadius.circular(12),
@@ -1156,7 +1153,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Investasi amanah dengan bagi hasil kompetitif setiap bulan. Pilihan tenor 1, 6, dan 12.',
+            'Investasi amanah dengan bagi hasil kompetitif setiap bulan. Pilihan tenor 1, 3, 6, dan 12 bulan.',
             style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 20),

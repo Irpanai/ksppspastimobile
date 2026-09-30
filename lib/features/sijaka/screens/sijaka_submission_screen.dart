@@ -22,6 +22,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   final TextEditingController _nominalController = TextEditingController();
   final TextEditingController _ahliWarisNamaController = TextEditingController();
   final TextEditingController _ahliWarisHubunganCustomController = TextEditingController();
+  final TextEditingController _bankController = TextEditingController();
+  final TextEditingController _noRekController = TextEditingController();
+  final TextEditingController _atasNamaController = TextEditingController();
+  final TextEditingController _ktpController = TextEditingController();
+  final TextEditingController _hpController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _alamatController = TextEditingController();
 
   SijakaProdukItem? _selectedProduct;
   String _selectedMetodeBagiHasil = 'Setiap Bulan';
@@ -59,6 +66,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     _nominalController.dispose();
     _ahliWarisNamaController.dispose();
     _ahliWarisHubunganCustomController.dispose();
+    _bankController.dispose();
+    _noRekController.dispose();
+    _atasNamaController.dispose();
+    _ktpController.dispose();
+    _hpController.dispose();
+    _emailController.dispose();
+    _alamatController.dispose();
     super.dispose();
   }
 
@@ -221,14 +235,16 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                         _buildHeroBanner(),
                         const SizedBox(height: 24),
                         _buildProductSelectionSection(produkList),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
+                        _buildSimulationSection(),
+                        const SizedBox(height: 24),
                         _buildNominalInputSection(),
                         const SizedBox(height: 20),
                         _buildMetodeBagiHasilSection(),
                         const SizedBox(height: 20),
+                        _buildPencairanSection(),
+                        const SizedBox(height: 20),
                         _buildAhliWarisSection(),
-                        const SizedBox(height: 24),
-                        _buildSimulationSection(),
                         const SizedBox(height: 24),
                         _buildTermsAndConditions(),
                         const SizedBox(height: 24),
@@ -741,113 +757,157 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     );
   }
 
+  Widget _buildPencairanSection() {
+    return _buildSectionCard(
+      title: 'Informasi Rekening Pencairan',
+      subtitle: 'Tujuan transfer pencairan Sijaka (Bagi hasil & Pokok)',
+      icon: Icons.account_balance_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSijakaTextField('Nama Bank', _bankController, hint: 'Contoh: BCA / Mandiri / BSI'),
+          const SizedBox(height: 14),
+          _buildSijakaTextField('Nomor Rekening', _noRekController, hint: 'Contoh: 1234567890', isNumber: true),
+          const SizedBox(height: 14),
+          _buildSijakaTextField('Atas Nama (Pemilik Rekening)', _atasNamaController, hint: 'Sesuai buku tabungan'),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAhliWarisSection() {
     return _buildSectionCard(
-      title: 'Informasi Ahli Waris (Opsional)',
+      title: 'Informasi Ahli Waris',
       subtitle: 'Data penerima manfaat jika terjadi hal-hal tak terduga',
       icon: Icons.family_restroom_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nama Lengkap Ahli Waris',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _ahliWarisNamaController,
-            textCapitalization: TextCapitalization.words,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
-            decoration: InputDecoration(
-              hintText: 'Contoh: Siti Aisyah',
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: Color(0xFF166534), width: 1.5),
-              ),
-            ),
-          ),
+          _buildSijakaTextField('Nama Lengkap Ahli Waris', _ahliWarisNamaController, hint: 'Contoh: Siti Aisyah'),
           const SizedBox(height: 14),
-          const Text(
-            'Hubungan dengan Anggota',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedHubungan,
-                isExpanded: true,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF64748B)),
-                items: _hubunganOptions.map((opt) {
-                  return DropdownMenuItem(
-                    value: opt,
-                    child: Text(opt,
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF1E293B))),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedHubungan = val);
-                  }
-                },
-              ),
-            ),
+          _buildSijakaDropdownField(
+            label: 'Hubungan Ahli Waris',
+            value: _selectedHubungan,
+            items: _hubunganOptions,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _selectedHubungan = val);
+              }
+            },
           ),
           if (_selectedHubungan == 'Keluarga Lainnya') ...[
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _ahliWarisHubunganCustomController,
-              decoration: InputDecoration(
-                hintText: 'Sebutkan hubungan (misal: Paman/Bibi)',
-                hintStyle:
-                    TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-              ),
-            ),
+            const SizedBox(height: 14),
+            _buildSijakaTextField('Sebutkan hubungan', _ahliWarisHubunganCustomController, hint: 'Misal: Paman/Bibi'),
           ],
+          const SizedBox(height: 14),
+          _buildSijakaTextField('No. KTP / Passport (Opsional)', _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true),
+          const SizedBox(height: 14),
+          _buildSijakaTextField('No. HP Ahli Waris', _hpController, hint: 'Contoh: 08123456789', isNumber: true),
+          const SizedBox(height: 14),
+          _buildSijakaTextField('Alamat Email (Opsional)', _emailController, hint: 'Email aktif ahli waris'),
+          const SizedBox(height: 14),
+          _buildSijakaTextField('Alamat Tinggal', _alamatController, hint: 'Alamat lengkap', maxLines: 3),
         ],
       ),
+    );
+  }
+
+  Widget _buildSijakaTextField(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    bool isNumber = false,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
+          textCapitalization: maxLines > 1 ? TextCapitalization.sentences : TextCapitalization.words,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF166534), width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSijakaDropdownField({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: items.contains(value) ? value : items.first,
+              isExpanded: true,
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+              items: items.map((opt) {
+                return DropdownMenuItem(
+                  value: opt,
+                  child: Text(opt, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
+                );
+              }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -73,7 +73,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     const PromoCarousel(),
                     const SizedBox(height: 32),
                     const SijakaPortfolioCard(),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),

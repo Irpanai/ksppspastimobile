@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
@@ -21,18 +23,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _nikController;
-  late TextEditingController _tempatLahirController;
-  late TextEditingController _tanggalLahirController;
-  late TextEditingController _pekerjaanController;
-  late TextEditingController _alamatController;
-  late TextEditingController _provinsiController;
-  late TextEditingController _kabupatenKotaController;
-  late TextEditingController _kecamatanController;
-  late TextEditingController _kelurahanController;
-
   String? _selectedJenisKelamin;
   String? _selectedAgama;
-  DateTime? _selectedTanggalLahir;
+
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -45,23 +40,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController = TextEditingController(text: profileProvider.profileData?.user.email ?? authUser?.email ?? '');
     _phoneController = TextEditingController(text: anggota?.noHp ?? anggota?.noTelpon ?? authUser?.anggota?.noHp ?? '');
     _nikController = TextEditingController(text: anggota?.nik ?? anggota?.noKtp ?? authUser?.anggota?.nik ?? '');
-    _tempatLahirController = TextEditingController(text: anggota?.tempatLahir ?? '');
-    _tanggalLahirController = TextEditingController(text: anggota?.tanggalLahir ?? '');
-    _pekerjaanController = TextEditingController(text: anggota?.pekerjaan ?? '');
-    _alamatController = TextEditingController(text: anggota?.alamat ?? authUser?.anggota?.alamat ?? '');
-    _provinsiController = TextEditingController(text: anggota?.provinsi ?? '');
-    _kabupatenKotaController = TextEditingController(text: anggota?.kabupatenKota ?? '');
-    _kecamatanController = TextEditingController(text: anggota?.kecamatan ?? '');
-    _kelurahanController = TextEditingController(text: anggota?.kelurahan ?? '');
-
     _selectedJenisKelamin = anggota?.jenisKelamin ?? 'Laki-laki';
     _selectedAgama = anggota?.agama ?? 'Islam';
-
-    if (anggota?.tanggalLahir != null && anggota!.tanggalLahir!.isNotEmpty) {
-      try {
-        _selectedTanggalLahir = DateTime.parse(anggota.tanggalLahir!);
-      } catch (_) {}
-    }
   }
 
   @override
@@ -70,44 +50,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _nikController.dispose();
-    _tempatLahirController.dispose();
-    _tanggalLahirController.dispose();
-    _pekerjaanController.dispose();
-    _alamatController.dispose();
-    _provinsiController.dispose();
-    _kabupatenKotaController.dispose();
-    _kecamatanController.dispose();
-    _kelurahanController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickTanggalLahir() async {
-    final initialDate = _selectedTanggalLahir ?? DateTime(1995, 1, 1);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(1940),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).colorScheme.primary,
-              onPrimary: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
 
-    if (picked != null) {
-      setState(() {
-        _selectedTanggalLahir = picked;
-        _tanggalLahirController.text = DateFormat('yyyy-MM-dd').format(picked);
-      });
-    }
-  }
 
   Future<void> _submitUpdate() async {
     final name = _nameController.text.trim();
@@ -131,16 +77,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'nik': nik,
         'no_ktp': nik,
       },
-      if (_tempatLahirController.text.trim().isNotEmpty) 'tempat_lahir': _tempatLahirController.text.trim(),
-      if (_tanggalLahirController.text.trim().isNotEmpty) 'tanggal_lahir': _tanggalLahirController.text.trim(),
-      if (_selectedJenisKelamin != null) 'jenis_kelamin': _selectedJenisKelamin,
-      if (_selectedAgama != null) 'agama': _selectedAgama,
-      if (_pekerjaanController.text.trim().isNotEmpty) 'pekerjaan': _pekerjaanController.text.trim(),
-      if (_provinsiController.text.trim().isNotEmpty) 'provinsi': _provinsiController.text.trim(),
-      if (_kabupatenKotaController.text.trim().isNotEmpty) 'kabupaten_kota': _kabupatenKotaController.text.trim(),
-      if (_kecamatanController.text.trim().isNotEmpty) 'kecamatan': _kecamatanController.text.trim(),
-      if (_kelurahanController.text.trim().isNotEmpty) 'kelurahan': _kelurahanController.text.trim(),
-      if (_alamatController.text.trim().isNotEmpty) 'alamat': _alamatController.text.trim(),
     };
 
     final profileProvider = context.read<ProfileProvider>();
@@ -185,6 +121,73 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return; // User canceled picking
+
+      setState(() {
+        _isUploadingPhoto = true;
+      });
+
+      final profileProvider = context.read<ProfileProvider>();
+      final success = await profileProvider.uploadPhoto(File(image.path));
+
+      if (!mounted) return;
+
+      if (success) {
+        // Refresh AuthProvider profile too
+        context.read<AuthProvider>().fetchProfile();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(child: Text('Foto profil berhasil diperbarui!')),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(profileProvider.errorMessage ?? 'Gagal mengunggah foto profil')),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      if (mounted) {
+        _showWarning('Terjadi kesalahan saat memilih gambar.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+        });
+      }
+    }
+  }
+
   void _showWarning(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -220,65 +223,79 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     // Profile Avatar Card
                     Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 95,
-                            height: 95,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: photoUrl != null && photoUrl.isNotEmpty
-                                  ? Image.network(
-                                      photoUrl,
-                                      width: 95,
-                                      height: 95,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        debugPrint('Edit profile photo load error: $error (URL: $photoUrl)');
-                                        return _buildDefaultAvatar(userName);
-                                      },
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) return child;
-                                        return Container(
-                                          color: const Color(0xFFF1F5F9),
-                                          child: Center(
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Theme.of(context).colorScheme.primary,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  : _buildDefaultAvatar(userName),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(7),
+                      child: GestureDetector(
+                        onTap: isUpdating || _isUploadingPhoto ? null : _pickAndUploadImage,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 95,
+                              height: 95,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                color: Colors.white,
+                                border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))
+                                ],
                               ),
-                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                              child: ClipOval(
+                                child: _isUploadingPhoto
+                                    ? Container(
+                                        color: const Color(0xFFF1F5F9),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                        ),
+                                      )
+                                    : (photoUrl != null && photoUrl.isNotEmpty
+                                        ? Image.network(
+                                            photoUrl,
+                                            width: 95,
+                                            height: 95,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('Edit profile photo load error: $error (URL: $photoUrl)');
+                                              return _buildDefaultAvatar(userName);
+                                            },
+                                            loadingBuilder: (context, child, loadingProgress) {
+                                              if (loadingProgress == null) return child;
+                                              return Container(
+                                                color: const Color(0xFFF1F5F9),
+                                                child: Center(
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Theme.of(context).colorScheme.primary,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : _buildDefaultAvatar(userName)),
+                              ),
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
 
                     // Section: Identitas Utama
+                    _buildInfoAlert('Pembaruan data pada Identitas Utama memerlukan proses verifikasi ulang oleh pihak KSPPS.'),
                     _buildSectionHeader('Identitas & Akun', Icons.person_pin_rounded),
                     const SizedBox(height: 12),
                     _buildInputCard([
@@ -314,57 +331,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ]),
                     const SizedBox(height: 24),
 
-                    // Section: Data Pribadi (KYC)
-                    _buildSectionHeader('Data Pribadi (KYC)', Icons.assignment_ind_outlined),
-                    const SizedBox(height: 12),
-                    _buildInputCard([
-                      _buildTextField('Tempat Lahir', Icons.location_city_outlined, _tempatLahirController, enabled: !isUpdating),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      InkWell(
-                        onTap: isUpdating ? null : _pickTanggalLahir,
-                        child: IgnorePointer(
-                          child: _buildTextField(
-                            'Tanggal Lahir',
-                            Icons.calendar_today_outlined,
-                            _tanggalLahirController,
-                            hint: 'YYYY-MM-DD',
-                            enabled: !isUpdating,
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildDropdownField(
-                        label: 'Jenis Kelamin',
-                        value: _selectedJenisKelamin,
-                        items: ['Laki-laki', 'Perempuan'],
-                        onChanged: isUpdating ? null : (val) => setState(() => _selectedJenisKelamin = val),
-                      ),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildDropdownField(
-                        label: 'Agama',
-                        value: _selectedAgama,
-                        items: ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'],
-                        onChanged: isUpdating ? null : (val) => setState(() => _selectedAgama = val),
-                      ),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Pekerjaan / Profesi', Icons.work_outline_rounded, _pekerjaanController, enabled: !isUpdating),
-                    ]),
-                    const SizedBox(height: 24),
 
-                    // Section: Alamat Domisili
-                    _buildSectionHeader('Alamat & Domisili', Icons.home_work_outlined),
-                    const SizedBox(height: 12),
-                    _buildInputCard([
-                      _buildTextField('Alamat Lengkap (Jalan / RT / RW)', Icons.home_outlined, _alamatController, maxLines: 2, enabled: !isUpdating),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Provinsi', Icons.map_outlined, _provinsiController, enabled: !isUpdating),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Kabupaten / Kota', Icons.location_city_rounded, _kabupatenKotaController, enabled: !isUpdating),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Kecamatan', Icons.apartment_rounded, _kecamatanController, enabled: !isUpdating),
-                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Kelurahan / Desa', Icons.signpost_outlined, _kelurahanController, enabled: !isUpdating),
-                    ]),
                     const SizedBox(height: 32),
 
                     // Submit Button
@@ -393,6 +360,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoAlert(String message) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFF2563EB), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 13, height: 1.4),
             ),
           ),
         ],
@@ -518,6 +510,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: DropdownButton<String>(
               value: items.contains(value) ? value : items.first,
               isExpanded: true,
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(12),
               icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
               items: items.map((val) {
                 return DropdownMenuItem<String>(

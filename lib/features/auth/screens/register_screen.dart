@@ -300,6 +300,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: DropdownButton<String>(
                     value: _selectedCabang,
                     isExpanded: true,
+                    dropdownColor: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
                     icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
                     items: ['Pusat', 'Semarang Barat', 'Kudus', 'Solo'].map((String val) {
                       return DropdownMenuItem<String>(

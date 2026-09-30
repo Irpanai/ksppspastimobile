@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/network/api_client.dart';
 import '../models/simpanan_riwayat_model.dart';
 import '../services/savings_service.dart';
@@ -13,6 +14,11 @@ class SavingsProvider extends ChangeNotifier {
   final Map<String, int> _pageByJenis = {};
   final Map<String, int> _lastPageByJenis = {};
 
+  // Filters per jenis
+  final Map<String, String?> _tipeByJenis = {};
+  final Map<String, DateTime?> _startDateByJenis = {};
+  final Map<String, DateTime?> _endDateByJenis = {};
+
   List<MutasiSimpananItem> getItems(String jenis) => _itemsByJenis[jenis.toLowerCase()] ?? [];
   bool isLoading(String jenis) => _loadingByJenis[jenis.toLowerCase()] ?? false;
   bool isLoadingMore(String jenis) => _loadingMoreByJenis[jenis.toLowerCase()] ?? false;
@@ -22,6 +28,23 @@ class SavingsProvider extends ChangeNotifier {
     final current = _pageByJenis[j] ?? 1;
     final last = _lastPageByJenis[j] ?? 1;
     return current < last;
+  }
+
+  String? getTipe(String jenis) => _tipeByJenis[jenis.toLowerCase()];
+  DateTime? getStartDate(String jenis) => _startDateByJenis[jenis.toLowerCase()];
+  DateTime? getEndDate(String jenis) => _endDateByJenis[jenis.toLowerCase()];
+
+  bool hasActiveFilter(String jenis) {
+    final key = jenis.toLowerCase();
+    return _tipeByJenis[key] != null || _startDateByJenis[key] != null || _endDateByJenis[key] != null;
+  }
+
+  void setFilter(String jenis, {String? tipe, DateTime? start, DateTime? end}) {
+    final key = jenis.toLowerCase();
+    _tipeByJenis[key] = tipe;
+    _startDateByJenis[key] = start;
+    _endDateByJenis[key] = end;
+    fetchRiwayat(key, refresh: true);
   }
 
   Future<void> fetchRiwayat(String jenis, {bool refresh = false}) async {
@@ -36,8 +59,17 @@ class SavingsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final start = _startDateByJenis[key];
+      final end = _endDateByJenis[key];
+      final tipe = _tipeByJenis[key];
+      final startStr = start != null ? DateFormat('yyyy-MM-dd').format(start) : null;
+      final endStr = end != null ? DateFormat('yyyy-MM-dd').format(end) : null;
+
       final res = await _savingsService.getRiwayatSimpanan(
         jenis: key == 'all' ? null : key,
+        tipe: tipe,
+        tglMulai: startStr,
+        tglSelesai: endStr,
         page: 1,
       );
 
@@ -66,8 +98,17 @@ class SavingsProvider extends ChangeNotifier {
 
     try {
       final nextPage = (_pageByJenis[key] ?? 1) + 1;
+      final start = _startDateByJenis[key];
+      final end = _endDateByJenis[key];
+      final tipe = _tipeByJenis[key];
+      final startStr = start != null ? DateFormat('yyyy-MM-dd').format(start) : null;
+      final endStr = end != null ? DateFormat('yyyy-MM-dd').format(end) : null;
+
       final res = await _savingsService.getRiwayatSimpanan(
         jenis: key == 'all' ? null : key,
+        tipe: tipe,
+        tglMulai: startStr,
+        tglSelesai: endStr,
         page: nextPage,
       );
 
@@ -90,6 +131,9 @@ class SavingsProvider extends ChangeNotifier {
     _errorByJenis.clear();
     _pageByJenis.clear();
     _lastPageByJenis.clear();
+    _tipeByJenis.clear();
+    _startDateByJenis.clear();
+    _endDateByJenis.clear();
     notifyListeners();
   }
 }

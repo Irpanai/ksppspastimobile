@@ -64,7 +64,7 @@ class _BalanceCardState extends State<BalanceCard> {
                   title: 'Total Simpanan Anggota',
                   balance: pokokDanWajib + sukarela,
                   extraInfo: 'Pokok, Wajib & Sukarela',
-                  icon: Icons.savings_rounded,
+                  icon: Icons.account_balance_wallet_rounded,
                   colorOverride: const [Color(0xFF14532D), Color(0xFF166534)], // Dark Green
                 ),
               ),

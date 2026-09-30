@@ -47,6 +47,23 @@ class BilyetSijakaItem {
   String get formattedSetorDate => AppDateFormatter.formatIndoFull(tglSetor);
   String get formattedJatuhTempoDate => AppDateFormatter.formatIndoFull(tglJatuhTempo);
 
+  int get calculatedBulanBerjalan {
+    if (tglSetor.isEmpty) return 0;
+    
+    try {
+      final startDate = DateTime.parse(tglSetor);
+      final now = DateTime.now();
+      
+      int months = (now.year - startDate.year) * 12 + now.month - startDate.month;
+      if (now.day < startDate.day) {
+        months--;
+      }
+      return months < 0 ? 0 : months;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   factory BilyetSijakaItem.fromJson(Map<String, dynamic> json) {
     num parseNum(dynamic val) {
       if (val is num) return val;
