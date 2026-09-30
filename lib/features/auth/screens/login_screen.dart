@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../providers/auth_provider.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -23,8 +24,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _regNameController = TextEditingController();
   final _regNikController = TextEditingController();
   final _regPhoneController = TextEditingController();
+  final _regEmailController = TextEditingController();
   final _regPasswordController = TextEditingController();
-  bool _regObscure = true;
+  final _regConfirmPasswordController = TextEditingController();
+  bool _regObscure1 = true;
+  bool _regObscure2 = true;
 
   @override
   void dispose() {
@@ -33,7 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
     _regNameController.dispose();
     _regNikController.dispose();
     _regPhoneController.dispose();
+    _regEmailController.dispose();
     _regPasswordController.dispose();
+    _regConfirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -421,7 +427,122 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Future<void> _submitRegister() async {
+    final name = _regNameController.text.trim();
+    final nik = _regNikController.text.trim();
+    final phone = _regPhoneController.text.trim();
+    final email = _regEmailController.text.trim();
+    final password = _regPasswordController.text;
+    final confirmPassword = _regConfirmPasswordController.text;
+
+    if (name.isEmpty) {
+      _showWarning('Silakan masukkan nama lengkap sesuai KTP.');
+      return;
+    }
+
+    if (nik.length != 16) {
+      _showWarning('NIK harus 16 digit angka.');
+      return;
+    }
+
+    if (phone.isEmpty || phone.length < 10) {
+      _showWarning('Silakan masukkan nomor handphone yang valid.');
+      return;
+    }
+
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      _showWarning('Silakan masukkan format alamat email yang valid.');
+      return;
+    }
+
+    if (password.length < 6) {
+      _showWarning('Password minimal 6 karakter.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showWarning('Konfirmasi password tidak cocok.');
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.register(
+      name: name,
+      email: email,
+      password: password,
+      passwordConfirmation: confirmPassword,
+      nik: nik,
+      noHp: phone,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Pendaftaran berhasil! Selamat datang di KSPPS PASTI.', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavScreen()),
+        (route) => false,
+      );
+    } else {
+      _showError(authProvider.errorMessage ?? 'Pendaftaran gagal. Silakan coba lagi.');
+    }
+  }
+
+  void _showWarning(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: const Color(0xFFF59E0B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: const Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+
   Widget _buildRegisterForm() {
+    final authProvider = context.watch<AuthProvider>();
+    final isLoading = authProvider.isLoading;
+
     return Column(
       key: const ValueKey('register'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,54 +552,79 @@ class _LoginScreenState extends State<LoginScreen> {
         _buildTextField(
           controller: _regNameController,
           hint: 'Masukkan nama lengkap',
-          icon: Icons.badge_outlined,
+          icon: Icons.person_outline_rounded,
+          enabled: !isLoading,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         
-        _buildLabel('Nomor Induk Kependudukan'),
+        _buildLabel('Nomor Induk Kependudukan (NIK)'),
         const SizedBox(height: 8),
         _buildTextField(
           controller: _regNikController,
           hint: '16 digit NIK',
           icon: Icons.credit_card_outlined,
           keyboardType: TextInputType.number,
+          enabled: !isLoading,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
 
-        _buildLabel('Nomor Handphone'),
+        _buildLabel('Nomor Handphone / WhatsApp'),
         const SizedBox(height: 8),
         _buildTextField(
           controller: _regPhoneController,
           hint: '081234567890',
           icon: Icons.phone_android_rounded,
           keyboardType: TextInputType.phone,
+          enabled: !isLoading,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
+
+        _buildLabel('Email Nasabah'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _regEmailController,
+          hint: 'nasabah@domain.com',
+          icon: Icons.email_outlined,
+          keyboardType: TextInputType.emailAddress,
+          enabled: !isLoading,
+        ),
+        const SizedBox(height: 18),
         
         _buildLabel('Password Akun'),
         const SizedBox(height: 8),
         _buildTextField(
           controller: _regPasswordController,
-          hint: '••••••••',
+          hint: 'Min. 6 karakter',
           icon: Icons.lock_outline_rounded,
-          isObscure: _regObscure,
+          isObscure: _regObscure1,
+          enabled: !isLoading,
           suffixIcon: IconButton(
-            icon: Icon(_regObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: const Color(0xFF94A3B8)),
-            onPressed: () => setState(() => _regObscure = !_regObscure),
+            icon: Icon(_regObscure1 ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: const Color(0xFF94A3B8)),
+            onPressed: () => setState(() => _regObscure1 = !_regObscure1),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 18),
+
+        _buildLabel('Konfirmasi Password'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _regConfirmPasswordController,
+          hint: 'Ulangi password',
+          icon: Icons.lock_outline_rounded,
+          isObscure: _regObscure2,
+          enabled: !isLoading,
+          suffixIcon: IconButton(
+            icon: Icon(_regObscure2 ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: const Color(0xFF94A3B8)),
+            onPressed: () => setState(() => _regObscure2 = !_regObscure2),
+          ),
+        ),
+        const SizedBox(height: 28),
         
         SizedBox(
           width: double.infinity,
           height: 60,
           child: ElevatedButton(
-            onPressed: () {
-              setState(() => _isLogin = true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Pendaftaran berhasil diajukan! Silakan login.')),
-              );
-            },
+            onPressed: isLoading ? null : _submitRegister,
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
@@ -486,7 +632,13 @@ class _LoginScreenState extends State<LoginScreen> {
               elevation: 4,
               shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
             ),
-            child: const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: isLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                  )
+                : const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ],

@@ -4,11 +4,10 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
-import 'shu_report_screen.dart';
-import 'sijaka_submission_screen.dart';
 
 class SijakaPortfolioScreen extends StatefulWidget {
-  const SijakaPortfolioScreen({super.key});
+  final bool? showBackButton;
+  const SijakaPortfolioScreen({super.key, this.showBackButton});
 
   @override
   State<SijakaPortfolioScreen> createState() => _SijakaPortfolioScreenState();
@@ -42,6 +41,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
         children: [
           PremiumHeader(
             title: 'Portofolio Sijaka',
+            showBackButton: widget.showBackButton,
             actions: [
               IconButton(
                 icon: Icon(

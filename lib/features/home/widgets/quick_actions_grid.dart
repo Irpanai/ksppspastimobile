@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../history/screens/transaction_history_screen.dart';
+import '../../payment/screens/top_up_screen.dart';
 
 class QuickActionsGrid extends StatelessWidget {
   const QuickActionsGrid({Key? key}) : super(key: key);
@@ -30,7 +31,12 @@ class QuickActionsGrid extends StatelessWidget {
                 ),
                 child: InkWell(
                   onTap: () {
-                    if (action['label'] == 'Mutasi') {
+                    if (action['label'] == 'Top Up') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const TopUpScreen()),
+                      );
+                    } else if (action['label'] == 'Mutasi') {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const TransactionHistoryScreen()),

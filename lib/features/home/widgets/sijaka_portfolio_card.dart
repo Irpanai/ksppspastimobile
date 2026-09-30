@@ -37,7 +37,7 @@ class SijakaPortfolioCard extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen()),
+                    MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
                   );
                 },
                 child: Text(
@@ -58,7 +58,7 @@ class SijakaPortfolioCard extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen()),
+                  MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
                 );
               },
               borderRadius: BorderRadius.circular(24),

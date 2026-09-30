@@ -57,13 +57,14 @@ class ApiClient {
     Map<String, dynamic>? queryParams,
     bool withAuth = true,
     T Function(dynamic json)? fromJsonT,
+    Duration? timeout,
   }) async {
     try {
       final uri = _buildUri(endpoint, queryParams);
       final headers = await _getHeaders(withAuth: withAuth);
 
       final response = await _client.get(uri, headers: headers).timeout(
-        const Duration(seconds: 15),
+        timeout ?? const Duration(seconds: 15),
       );
 
       return _processResponse<T>(response, fromJsonT);
@@ -82,6 +83,7 @@ class ApiClient {
     dynamic body,
     bool withAuth = true,
     T Function(dynamic json)? fromJsonT,
+    Duration? timeout,
   }) async {
     try {
       final uri = _buildUri(endpoint);
@@ -90,7 +92,34 @@ class ApiClient {
 
       final response = await _client
           .post(uri, headers: headers, body: encodedBody)
-          .timeout(const Duration(seconds: 15));
+          .timeout(timeout ?? const Duration(seconds: 15));
+
+      return _processResponse<T>(response, fromJsonT);
+    } on SocketException {
+      throw ApiException(message: 'Tidak dapat terhubung ke server backend.');
+    } on http.ClientException {
+      throw ApiException(message: 'Gagal menghubungi server. Periksa koneksi jaringan Anda.');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'Terjadi kesalahan: ${e.toString()}');
+    }
+  }
+
+  static Future<ApiResponse<T>> put<T>(
+    String endpoint, {
+    dynamic body,
+    bool withAuth = true,
+    T Function(dynamic json)? fromJsonT,
+    Duration? timeout,
+  }) async {
+    try {
+      final uri = _buildUri(endpoint);
+      final headers = await _getHeaders(withAuth: withAuth);
+      final encodedBody = body != null ? jsonEncode(body) : null;
+
+      final response = await _client
+          .put(uri, headers: headers, body: encodedBody)
+          .timeout(timeout ?? const Duration(seconds: 15));
 
       return _processResponse<T>(response, fromJsonT);
     } on SocketException {

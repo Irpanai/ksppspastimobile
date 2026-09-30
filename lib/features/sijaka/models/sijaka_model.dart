@@ -150,3 +150,72 @@ class BilyetSijakaDetail {
     );
   }
 }
+
+class SijakaProdukItem {
+  final int id;
+  final String namaProduk;
+  final int tenorBulan;
+  final num persenNisbahTotal;
+  final num persenNisbahBulanan;
+  final num minimalSetoran;
+  final String? minimalSetoranFormat;
+  final int? tglSetorTerakhir;
+  final String status;
+
+  SijakaProdukItem({
+    required this.id,
+    required this.namaProduk,
+    required this.tenorBulan,
+    required this.persenNisbahTotal,
+    required this.persenNisbahBulanan,
+    required this.minimalSetoran,
+    this.minimalSetoranFormat,
+    this.tglSetorTerakhir,
+    required this.status,
+  });
+
+  bool get isActive => status.toLowerCase() == 'aktif';
+
+  String get formattedMinimalSetoran =>
+      minimalSetoranFormat ?? AppCurrency.format(minimalSetoran);
+
+  num hitungBagiHasilBulanan(num nominal) {
+    return (nominal * persenNisbahBulanan) / 100;
+  }
+
+  num hitungTotalBagiHasil(num nominal) {
+    if (persenNisbahTotal > 0) {
+      return (nominal * persenNisbahTotal) / 100;
+    }
+    return hitungBagiHasilBulanan(nominal) * tenorBulan;
+  }
+
+  factory SijakaProdukItem.fromJson(Map<String, dynamic> json) {
+    num parseNum(dynamic val) {
+      if (val is num) return val;
+      if (val == null) return 0;
+      return num.tryParse(val.toString()) ?? 0;
+    }
+
+    int parseInt(dynamic val, [int fallback = 0]) {
+      if (val is int) return val;
+      if (val == null) return fallback;
+      return int.tryParse(val.toString()) ?? fallback;
+    }
+
+    return SijakaProdukItem(
+      id: parseInt(json['id']),
+      namaProduk: json['nama_produk']?.toString() ?? 'Sijaka',
+      tenorBulan: parseInt(json['tenor_bulan'], 1),
+      persenNisbahTotal: parseNum(json['persen_nisbah_total']),
+      persenNisbahBulanan: parseNum(json['persen_nisbah_bulanan']),
+      minimalSetoran: parseNum(json['minimal_setoran']),
+      minimalSetoranFormat: json['minimal_setoran_format']?.toString(),
+      tglSetorTerakhir: json['tgl_setor_terakhir'] != null
+          ? parseInt(json['tgl_setor_terakhir'])
+          : null,
+      status: json['status']?.toString() ?? 'aktif',
+    );
+  }
+}
+
