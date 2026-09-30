@@ -240,7 +240,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       width: 95,
                                       height: 95,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(userName),
+                                      errorBuilder: (context, error, stackTrace) {
+                                        debugPrint('Edit profile photo load error: $error (URL: $photoUrl)');
+                                        return _buildDefaultAvatar(userName);
+                                      },
                                       loadingBuilder: (context, child, loadingProgress) {
                                         if (loadingProgress == null) return child;
                                         return Container(
