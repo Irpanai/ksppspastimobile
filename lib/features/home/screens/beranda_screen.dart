@@ -148,7 +148,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildInitials(displayName),
+                          errorBuilder: (context, error, stackTrace) {
+                            debugPrint('Beranda photo load error: $error (URL: $photoUrl)');
+                            return _buildInitials(displayName);
+                          },
                         )
                       : _buildInitials(displayName),
                 ),

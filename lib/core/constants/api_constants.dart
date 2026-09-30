@@ -28,27 +28,65 @@ class ApiConstants {
     return baseUrl.replaceAll(RegExp(r'/api/?$'), '');
   }
 
-  /// Resolves relative storage paths or localhost URLs to the active backend host
+  /// Resolves relative storage paths, localhost URLs, and CORS endpoints to the active backend host
   static String? resolveImageUrl(String? rawUrl) {
     if (rawUrl == null || rawUrl.trim().isEmpty) return null;
-    final trimmed = rawUrl.trim();
+    var trimmed = rawUrl.trim();
+
+    // 1. If relative path (e.g. 'profile-photos/abc.webp', '/storage/profile-photos/abc.webp')
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      if (trimmed.startsWith('/api/storage/')) {
+        trimmed = trimmed.substring(13);
+      } else if (trimmed.startsWith('api/storage/')) {
+        trimmed = trimmed.substring(12);
+      } else if (trimmed.startsWith('/storage/')) {
+        trimmed = trimmed.substring(9);
+      } else if (trimmed.startsWith('storage/')) {
+        trimmed = trimmed.substring(8);
+      }
+      if (trimmed.startsWith('/')) {
+        trimmed = trimmed.substring(1);
+      }
+      // Route via /api/storage/ which has CORS headers enabled
+      return '$baseUrl/storage/$trimmed';
+    }
 
     final host = baseHost;
     final hostUri = Uri.tryParse(host);
 
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      final uri = Uri.tryParse(trimmed);
-      if (uri != null && (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
-        if (hostUri != null && hostUri.host.isNotEmpty) {
-          final replaced = uri.replace(
-            scheme: hostUri.scheme,
-            host: hostUri.host,
-            port: hostUri.hasPort ? hostUri.port : (hostUri.scheme == 'https' ? 443 : (hostUri.scheme == 'http' ? 80 : null)),
-          );
-          return replaced.toString();
+    // 2. If full URL (http or https)
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null) {
+      final isLocal = uri.host == 'localhost' || uri.host == '127.0.0.1';
+      final isMatchingHost = hostUri != null && uri.host == hostUri.host;
+
+      String targetScheme = uri.scheme;
+      String targetHost = uri.host;
+      int? targetPort = uri.hasPort ? uri.port : null;
+      String targetPath = uri.path;
+
+      // Ensure storage images route through /api/storage for CORS if they use /storage/
+      if (targetPath.startsWith('/storage/') && !targetPath.startsWith('/api/storage/')) {
+        targetPath = targetPath.replaceFirst('/storage/', '/api/storage/');
+      }
+
+      if (isLocal && hostUri != null && hostUri.host.isNotEmpty) {
+        targetScheme = hostUri.scheme;
+        targetHost = hostUri.host;
+        targetPort = hostUri.hasPort ? hostUri.port : null;
+      } else if (hostUri != null && hostUri.scheme == 'https' && (isMatchingHost || isLocal)) {
+        targetScheme = 'https';
+        if (targetPort == 80 || targetPort == 443) {
+          targetPort = null;
         }
       }
-      return trimmed;
+
+      return uri.replace(
+        scheme: targetScheme,
+        host: targetHost,
+        port: targetPort,
+        path: targetPath,
+      ).toString();
     }
 
     final cleanPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';

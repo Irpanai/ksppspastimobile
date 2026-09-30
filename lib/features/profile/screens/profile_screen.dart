@@ -101,7 +101,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 100,
                                 height: 100,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(userName),
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('Profile photo load error: $error (URL: $photoUrl)');
+                                  return _buildDefaultAvatar(userName);
+                                },
                                 loadingBuilder: (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return Container(
