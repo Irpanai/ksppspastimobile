@@ -20,6 +20,7 @@ class SijakaProvider extends ChangeNotifier {
   }
   
   List<SijakaProdukItem> get produkList => _produkList;
+  List<SijakaProdukItem> get activeProdukList => _produkList.where((p) => p.isActive).toList();
   bool get isLoading => _isLoading;
   bool get isLoadingProduk => _isLoadingProduk;
   String? get errorMessage => _errorMessage;

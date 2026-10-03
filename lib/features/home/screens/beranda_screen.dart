@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../models/dashboard_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/ppob_menu.dart';
 import '../widgets/promo_carousel.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/sijaka_portfolio_card.dart';
+
+import '../widgets/tunggakan_modal_dialog.dart';
 
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
@@ -21,8 +24,31 @@ class _BerandaScreenState extends State<BerandaScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DashboardProvider>().fetchDashboard();
+      _loadDashboardAndCheckTunggakan();
     });
+  }
+
+  Future<void> _loadDashboardAndCheckTunggakan() async {
+    final dashboardProvider = context.read<DashboardProvider>();
+    await dashboardProvider.fetchDashboard();
+    if (!mounted) return;
+    _checkAndShowTunggakanPopup();
+  }
+
+  void _checkAndShowTunggakanPopup() {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final anggota = dashboardProvider.dashboardData?.anggota;
+
+    if (anggota != null &&
+        (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty) &&
+        !dashboardProvider.hasShownTunggakanDialog) {
+      dashboardProvider.markTunggakanDialogShown();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          TunggakanModalDialog.show(context, anggota);
+        }
+      });
+    }
   }
 
   Future<void> _onRefresh() async {
@@ -30,11 +56,16 @@ class _BerandaScreenState extends State<BerandaScreen> {
       context.read<DashboardProvider>().fetchDashboard(refresh: true),
       context.read<AuthProvider>().fetchProfile(),
     ]);
+    if (mounted) {
+      _checkAndShowTunggakanPopup();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final dashboardProvider = context.watch<DashboardProvider>();
+    final anggota = dashboardProvider.dashboardData?.anggota;
+    final isMenunggak = anggota != null && (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -63,6 +94,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     _buildCustomAppBar(context),
                     if (dashboardProvider.errorMessage != null)
                       _buildErrorBanner(context, dashboardProvider.errorMessage!),
+                    if (isMenunggak)
+                      _buildTunggakanWarningBanner(context, anggota),
                     const SizedBox(height: 24),
                     const BalanceCard(),
                     const SizedBox(height: 32),
@@ -80,6 +113,77 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTunggakanWarningBanner(BuildContext context, DashboardAnggota anggota) {
+    final bulanCount = anggota.jumlahBulanMenunggak > 0
+        ? anggota.jumlahBulanMenunggak
+        : anggota.tunggakanWajib.length;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB), // Amber-50
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)), // Amber-200
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD97706).withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEF3C7),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Perhatian: Status Menunggak',
+                  style: TextStyle(
+                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  bulanCount > 0
+                      ? 'Ada $bulanCount bulan Simpanan Wajib belum dibayar.'
+                      : 'Simpanan Wajib belum terbayar.',
+                  style: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => TunggakanModalDialog.show(context, anggota),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: const Text('Bayar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

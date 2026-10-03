@@ -41,6 +41,10 @@ class PaymentProvider extends ChangeNotifier {
     int? sijakaProdukId,
     String? namaAhliWaris,
     String? hubunganAhliWaris,
+    String? nikAhliWaris,
+    String? namaBank,
+    String? noRekening,
+    String? atasNamaRekening,
     String? metodePenyerahanBagihasil,
   }) async {
     _isCreatingToken = true;
@@ -56,6 +60,10 @@ class PaymentProvider extends ChangeNotifier {
         sijakaProdukId: sijakaProdukId,
         namaAhliWaris: namaAhliWaris,
         hubunganAhliWaris: hubunganAhliWaris,
+        nikAhliWaris: nikAhliWaris,
+        namaBank: namaBank,
+        noRekening: noRekening,
+        atasNamaRekening: atasNamaRekening,
         metodePenyerahanBagihasil: metodePenyerahanBagihasil,
       );
       _activePayment = result;

@@ -101,21 +101,49 @@ class BilyetSijakaItem {
 class RiwayatBagiHasilItem {
   final int id;
   final String periode;
+  final String? periodeLabel;
   final num modalSijaka;
   final num nominalBagihasil;
+  final String? noTransaksi;
+  final String? tanggalTransaksi;
+  final String? tanggalTransaksiJam;
+  final String? namaAnggota;
+  final String? noAnggota;
+  final String? jenisTransaksi;
+  final String? rekeningSumber;
+  final String? bankTujuan;
+  final String? noRekTujuan;
+  final String? namaRekTujuan;
+  final String? keterangan;
+  final String? status;
   final String createdAt;
 
   RiwayatBagiHasilItem({
     required this.id,
     required this.periode,
+    this.periodeLabel,
     required this.modalSijaka,
     required this.nominalBagihasil,
+    this.noTransaksi,
+    this.tanggalTransaksi,
+    this.tanggalTransaksiJam,
+    this.namaAnggota,
+    this.noAnggota,
+    this.jenisTransaksi,
+    this.rekeningSumber,
+    this.bankTujuan,
+    this.noRekTujuan,
+    this.namaRekTujuan,
+    this.keterangan,
+    this.status,
     required this.createdAt,
   });
 
   String get formattedNominal => AppCurrency.format(nominalBagihasil);
 
-  String get formattedDate => AppDateFormatter.formatIndoWithTime(createdAt);
+  String get formattedDate => tanggalTransaksiJam?.isNotEmpty == true 
+      ? tanggalTransaksiJam! 
+      : AppDateFormatter.formatIndoWithTime(createdAt);
 
   factory RiwayatBagiHasilItem.fromJson(Map<String, dynamic> json) {
     num parseNum(dynamic val) {
@@ -133,8 +161,21 @@ class RiwayatBagiHasilItem {
     return RiwayatBagiHasilItem(
       id: parseInt(json['id']),
       periode: json['periode']?.toString() ?? '',
+      periodeLabel: json['periode_label']?.toString(),
       modalSijaka: parseNum(json['modal_sijaka']),
       nominalBagihasil: parseNum(json['nominal_bagihasil']),
+      noTransaksi: json['no_transaksi']?.toString(),
+      tanggalTransaksi: json['tanggal_transaksi']?.toString(),
+      tanggalTransaksiJam: json['tanggal_transaksi_jam']?.toString(),
+      namaAnggota: json['nama_anggota']?.toString(),
+      noAnggota: json['no_anggota']?.toString(),
+      jenisTransaksi: json['jenis_transaksi']?.toString(),
+      rekeningSumber: json['rekening_sumber']?.toString(),
+      bankTujuan: json['bank_tujuan']?.toString(),
+      noRekTujuan: json['no_rek_tujuan']?.toString(),
+      namaRekTujuan: json['nama_rek_tujuan']?.toString(),
+      keterangan: json['keterangan']?.toString(),
+      status: json['status']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
     );
   }

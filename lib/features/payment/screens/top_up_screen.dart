@@ -9,11 +9,17 @@ import '../providers/payment_provider.dart';
 import 'midtrans_webview_screen.dart';
 
 class TopUpScreen extends StatefulWidget {
-  final String? initialType; // 'sukarela', 'wajib', 'pokok', 'sijaka'
+  final String? initialType; // 'sukarela', 'wajib', 'simpanan_wajib', 'pokok', 'sijaka'
+  final int? initialStartMonth;
+  final int? initialEndMonth;
+  final int? initialYear;
 
   const TopUpScreen({
     Key? key,
     this.initialType,
+    this.initialStartMonth,
+    this.initialEndMonth,
+    this.initialYear,
   }) : super(key: key);
 
   @override
@@ -61,18 +67,18 @@ class _TopUpScreenState extends State<TopUpScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _wajibStartMonth = now.month;
-    _wajibEndMonth = 12; // Default up to December (end of year)
-    _wajibYear = now.year;
+    _wajibStartMonth = widget.initialStartMonth ?? now.month;
+    _wajibEndMonth = widget.initialEndMonth ?? 12; // Default up to December (end of year)
+    _wajibYear = widget.initialYear ?? now.year;
 
     final init = widget.initialType?.toLowerCase();
-    if (init == 'wajib') {
+    if (init == 'wajib' || init == 'simpanan_wajib') {
       _selectedType = 'simpanan_wajib';
       _updateWajibAmount();
-    } else if (init == 'pokok') {
+    } else if (init == 'pokok' || init == 'simpanan_pokok') {
       _selectedType = 'simpanan_pokok';
       _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
-    } else if (init == 'sijaka') {
+    } else if (init == 'sijaka' || init == 'pembukaan_sijaka') {
       _selectedType = 'pembukaan_sijaka';
       _amountController.text = AppCurrency.format(1000000).replaceAll('Rp ', '');
     } else {
@@ -173,7 +179,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Bisa dicairkan kembali saat keluar keanggotaan pada RAT.',
+                      'Bisa dicairkan kembali saat keluar keanggotaan.',
                       style: TextStyle(fontSize: 11, color: Color(0xFF0369A1)),
                     ),
                   ),
@@ -413,7 +419,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
               child: _buildTypeCard(
                 type: 'simpanan_wajib',
                 title: 'Simpanan Wajib',
-                subtitle: 'Rp 2.500/bln (Batch)',
+                subtitle: 'Rp 2.500/bln',
                 icon: Icons.calendar_month_outlined,
               ),
             ),
@@ -1153,7 +1159,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Investasi amanah dengan bagi hasil kompetitif setiap bulan. Pilihan tenor 1, 3, 6, dan 12 bulan.',
+            'Investasi amanah dengan bagi hasil kompetitif setiap bulan. Pilihan tenor 1, 6, dan 12 bulan.',
             style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 20),

@@ -10,9 +10,16 @@ class DashboardProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  bool _hasShownTunggakanDialog = false;
+
   DashboardData? get dashboardData => _dashboardData;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get hasShownTunggakanDialog => _hasShownTunggakanDialog;
+
+  void markTunggakanDialogShown() {
+    _hasShownTunggakanDialog = true;
+  }
 
   Future<void> fetchDashboard({bool refresh = false}) async {
     if (_dashboardData != null && !refresh && !_isLoading) {
@@ -44,6 +51,7 @@ class DashboardProvider extends ChangeNotifier {
     _dashboardData = null;
     _isLoading = false;
     _errorMessage = null;
+    _hasShownTunggakanDialog = false;
     notifyListeners();
   }
 }

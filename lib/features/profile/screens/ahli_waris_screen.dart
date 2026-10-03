@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../providers/profile_provider.dart';
 
 class AhliWarisScreen extends StatefulWidget {
   const AhliWarisScreen({super.key});
@@ -16,6 +18,7 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _alamatController = TextEditingController();
   String _selectedHubungan = 'Pasangan (Suami/Istri)';
+  bool _isInitialized = false;
 
   final List<String> _hubunganOptions = [
     'Pasangan (Suami/Istri)',
@@ -25,15 +28,83 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
     'Keluarga Lainnya',
   ];
 
-  void _saveData() {
-    if (_formKey.currentState!.validate()) {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFormValues();
+    });
+  }
+
+  void _initFormValues() {
+    if (_isInitialized) return;
+    final profileProvider = context.read<ProfileProvider>();
+    final anggota = profileProvider.profileData?.anggota;
+
+    if (anggota != null) {
+      _namaController.text = anggota.namaAhliWaris ?? '';
+      _ktpController.text = anggota.nikAhliWaris ?? '';
+      _hpController.text = anggota.noHpAhliWaris ?? '';
+      _emailController.text = anggota.emailAhliWaris ?? '';
+      _alamatController.text = anggota.alamatAhliWaris ?? '';
+
+      if (anggota.hubunganAhliWaris != null &&
+          anggota.hubunganAhliWaris!.isNotEmpty) {
+        if (_hubunganOptions.contains(anggota.hubunganAhliWaris)) {
+          _selectedHubungan = anggota.hubunganAhliWaris!;
+        } else {
+          _selectedHubungan = 'Keluarga Lainnya';
+        }
+      }
+      setState(() {
+        _isInitialized = true;
+      });
+    }
+  }
+
+  Future<void> _saveData() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final profileProvider = context.read<ProfileProvider>();
+    final updateData = <String, dynamic>{
+      'nama_ahli_waris': _namaController.text.trim(),
+      'hubungan_ahli_waris': _selectedHubungan,
+      'nik_ahli_waris': _ktpController.text.trim(),
+      'no_ktp_ahli_waris': _ktpController.text.trim(),
+      'no_hp_ahli_waris': _hpController.text.trim(),
+      'email_ahli_waris': _emailController.text.trim(),
+      'alamat_ahli_waris': _alamatController.text.trim(),
+    };
+
+    final success = await profileProvider.updateProfile(updateData);
+
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Data Ahli Waris berhasil disimpan!'),
-          backgroundColor: Colors.green.shade600,
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Data Ahli Waris berhasil disimpan!'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF166534),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(profileProvider.errorMessage ?? 'Gagal menyimpan data ahli waris.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     }
   }
 
@@ -78,28 +149,43 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
                         },
                       ),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('No. KTP / Passport (Opsional)', Icons.badge_outlined, _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true, isRequired: false),
+                      _buildTextField('No. KTP / Passport', Icons.badge_outlined, _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true, isRequired: false),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField('No. HP Ahli Waris', Icons.phone_android_rounded, _hpController, hint: 'Contoh: 08123456789', isNumber: true),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Alamat Email (Opsional)', Icons.email_outlined, _emailController, hint: 'Email aktif ahli waris', isRequired: false),
+                      _buildTextField('Alamat Email', Icons.email_outlined, _emailController, hint: 'Email aktif ahli waris', isRequired: false),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Alamat Tinggal', Icons.home_outlined, _alamatController, hint: 'Alamat lengkap', maxLines: 3),
+                      _buildTextField('Alamat Tinggal', Icons.home_outlined, _alamatController, hint: 'Alamat lengkap', maxLines: 3, isRequired: false),
                     ]),
                     const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saveData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        child: const Text('Simpan Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      ),
+                    Consumer<ProfileProvider>(
+                      builder: (context, profileProvider, _) {
+                        final isUpdating = profileProvider.isUpdating;
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isUpdating ? null : _saveData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey.shade400,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            child: isUpdating
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text('Simpan Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -192,7 +278,7 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
           controller: controller,
           maxLines: maxLines,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          validator: isRequired ? (value) => value == null || value.isEmpty ? 'Harap diisi' : null : null,
+          validator: isRequired ? (value) => value == null || value.trim().isEmpty ? 'Harap diisi' : null : null,
           style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             isDense: true,

@@ -12,6 +12,10 @@ class PaymentService {
     int? sijakaProdukId,
     String? namaAhliWaris,
     String? hubunganAhliWaris,
+    String? nikAhliWaris,
+    String? namaBank,
+    String? noRekening,
+    String? atasNamaRekening,
     String? metodePenyerahanBagihasil,
   }) async {
     final body = <String, dynamic>{
@@ -28,6 +32,10 @@ class PaymentService {
       if (sijakaProdukId != null) body['sijaka_produk_id'] = sijakaProdukId;
       if (namaAhliWaris != null && namaAhliWaris.isNotEmpty) body['nama_ahli_waris'] = namaAhliWaris;
       if (hubunganAhliWaris != null && hubunganAhliWaris.isNotEmpty) body['hubungan_ahli_waris'] = hubunganAhliWaris;
+      if (nikAhliWaris != null && nikAhliWaris.isNotEmpty) body['nik_ahli_waris'] = nikAhliWaris;
+      if (namaBank != null && namaBank.isNotEmpty) body['nama_bank'] = namaBank;
+      if (noRekening != null && noRekening.isNotEmpty) body['no_rekening'] = noRekening;
+      if (atasNamaRekening != null && atasNamaRekening.isNotEmpty) body['atas_nama_rekening'] = atasNamaRekening;
       if (metodePenyerahanBagihasil != null && metodePenyerahanBagihasil.isNotEmpty) {
         body['metode_penyerahan_bagihasil'] = metodePenyerahanBagihasil;
       }

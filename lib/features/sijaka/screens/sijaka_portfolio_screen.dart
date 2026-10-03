@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
+import '../widgets/bukti_transaksi_nisbah_dialog.dart';
 
 class SijakaPortfolioScreen extends StatefulWidget {
   final bool? showBackButton;
@@ -907,6 +912,8 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
   BilyetSijakaDetail? _detail;
   bool _isLoading = true;
   String? _error;
+  bool _isPrintingBilyet = false;
+  bool _isPrintingAkad = false;
 
   @override
   void initState() {
@@ -915,17 +922,92 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
   }
 
   Future<void> _loadDetail() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final detail = await context.read<SijakaProvider>().fetchBilyetDetail(widget.bilyetId);
       if (mounted) {
         setState(() {
           _detail = detail;
+          _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleCetak(String docType, int bilyetId, String noBilyet) async {
+    final isBilyet = docType == 'bilyet';
+    setState(() {
+      if (isBilyet) {
+        _isPrintingBilyet = true;
+      } else {
+        _isPrintingAkad = true;
+      }
+    });
+
+    try {
+      final token = context.read<AuthProvider>().token ?? await StorageService.getToken();
+      final endpoint = isBilyet ? 'bilyet-pdf' : 'akad-pdf';
+      final docLabel = isBilyet ? 'Bilyet Sijaka' : 'Akad & Formulir Sijaka';
+
+      final urlString = '${ApiConstants.baseUrl}/sijaka-docs/$bilyetId/$endpoint${token != null && token.isNotEmpty ? '?token=$token' : ''}';
+      final uri = Uri.parse(urlString);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Membuka dokumen $docLabel ($noBilyet)...')),
+                ],
+              ),
+              backgroundColor: const Color(0xFF0E7955),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Tidak dapat membuka URL dokumen.');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text('Gagal mencetak dokumen: ${e.toString()}')),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (isBilyet) {
+            _isPrintingBilyet = false;
+          } else {
+            _isPrintingAkad = false;
+          }
         });
       }
     }
@@ -957,7 +1039,12 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(minHeight: 2.5, color: Color(0xFF0E7955), backgroundColor: Color(0xFFE2E8F0)),
+              ),
+            const SizedBox(height: 20),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -1171,54 +1258,94 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                           final item = riwayat[index];
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFF1F5F9),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Container(
-                                    width: 18,
-                                    height: 18,
-                                    alignment: Alignment.center,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF10B981),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Text(
-                                      'Rp',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  BuktiTransaksiNisbahDialog.show(context, item, bilyet);
+                                },
+                                splashColor: const Color(0xFF10B981).withValues(alpha: 0.1),
+                                highlightColor: const Color(0xFF10B981).withValues(alpha: 0.05),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
                                     children: [
-                                      Text('Periode ${item.periode}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF0F172A))),
-                                      const SizedBox(height: 4),
-                                      Text(item.formattedDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFF1F5F9),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Container(
+                                          width: 18,
+                                          height: 18,
+                                          alignment: Alignment.center,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Text(
+                                            'Rp',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.periodeLabel?.isNotEmpty == true
+                                                  ? item.periodeLabel!
+                                                  : 'Periode ${item.periode}',
+                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(item.formattedDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            item.formattedNominal,
+                                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF059669)),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text('Lihat Bukti', style: TextStyle(fontSize: 10.5, color: Color(0xFF0E7955), fontWeight: FontWeight.w600)),
+                                              Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF0E7955)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
-                                Text(
-                                  item.formattedNominal,
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF059669)),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         },
@@ -1239,11 +1366,18 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // TODO: Implement cetak bilyet
-                      },
-                      icon: const Icon(Icons.file_download_outlined, size: 20),
-                      label: const Text('Cetak Bilyet', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      onPressed: _isPrintingBilyet ? null : () => _handleCetak('bilyet', bilyet.id, bilyet.noBilyet),
+                      icon: _isPrintingBilyet
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.file_download_outlined, size: 20),
+                      label: Text(
+                        _isPrintingBilyet ? 'Memproses Bilyet...' : 'Cetak Bilyet',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0E7955), // match green
                         foregroundColor: Colors.white,
@@ -1257,11 +1391,18 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // TODO: Implement cetak akad
-                      },
-                      icon: const Icon(Icons.file_download_outlined, size: 20),
-                      label: const Text('Cetak Akad & Formulir', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      onPressed: _isPrintingAkad ? null : () => _handleCetak('akad', bilyet.id, bilyet.noBilyet),
+                      icon: _isPrintingAkad
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.description_outlined, size: 20),
+                      label: Text(
+                        _isPrintingAkad ? 'Memproses Akad...' : 'Cetak Akad & Formulir',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF7C3AED), // match purple
                         foregroundColor: Colors.white,

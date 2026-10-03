@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../providers/profile_provider.dart';
 
 class BankAccountScreen extends StatefulWidget {
   const BankAccountScreen({super.key});
@@ -13,16 +15,102 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
   final TextEditingController _bankController = TextEditingController();
   final TextEditingController _noRekController = TextEditingController();
   final TextEditingController _atasNamaController = TextEditingController();
+  bool _isInitialized = false;
 
-  void _saveData() {
-    if (_formKey.currentState!.validate()) {
+  final List<String> _popularBanks = [
+    'Bank Syariah Indonesia (BSI)',
+    'Bank Central Asia (BCA)',
+    'Bank Mandiri',
+    'Bank Rakyat Indonesia (BRI)',
+    'Bank Negara Indonesia (BNI)',
+    'Bank Muamalat',
+    'Bank CIMB Niaga Syariah',
+    'Bank Jago Syariah',
+    'Bank Lainnya',
+  ];
+
+  String _selectedBank = 'Bank Syariah Indonesia (BSI)';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFormValues();
+    });
+  }
+
+  void _initFormValues() {
+    if (_isInitialized) return;
+    final profileProvider = context.read<ProfileProvider>();
+    final anggota = profileProvider.profileData?.anggota;
+    final user = profileProvider.profileData?.user;
+
+    if (anggota != null) {
+      final existingBank = anggota.namaBank ?? '';
+      _noRekController.text = anggota.noRekening ?? '';
+      _atasNamaController.text = anggota.atasNamaRekening ?? (user?.name ?? '');
+
+      if (existingBank.isNotEmpty) {
+        if (_popularBanks.contains(existingBank)) {
+          _selectedBank = existingBank;
+          _bankController.text = existingBank;
+        } else {
+          _selectedBank = 'Bank Lainnya';
+          _bankController.text = existingBank;
+        }
+      } else {
+        _bankController.text = _selectedBank;
+      }
+
+      setState(() {
+        _isInitialized = true;
+      });
+    }
+  }
+
+  Future<void> _saveData() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final profileProvider = context.read<ProfileProvider>();
+    final finalBankName = _selectedBank == 'Bank Lainnya'
+        ? _bankController.text.trim()
+        : _selectedBank;
+
+    final updateData = <String, dynamic>{
+      'nama_bank': finalBankName,
+      'no_rekening': _noRekController.text.trim(),
+      'atas_nama_rekening': _atasNamaController.text.trim(),
+    };
+
+    final success = await profileProvider.updateProfile(updateData);
+
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Data Rekening Bank berhasil disimpan!'),
-          backgroundColor: Colors.green.shade600,
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Data Rekening Bank berhasil disimpan!'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF166534),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(profileProvider.errorMessage ?? 'Gagal menyimpan data rekening bank.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
     }
   }
 
@@ -50,30 +138,49 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoAlert('Pastikan rekening bank atas nama Anda sendiri sesuai dengan KTP yang terdaftar.'),
+                    _buildInfoAlert('Pastikan rekening bank atas nama Anda sendiri sesuai dengan KTP yang terdaftar untuk keperluan pencairan simpanan.'),
                     _buildSectionHeader('Data Rekening Bank', Icons.account_balance_wallet_outlined),
                     const SizedBox(height: 12),
                     _buildInputCard([
-                      _buildTextField('Nama Bank', Icons.account_balance_rounded, _bankController, hint: 'Contoh: BCA, Mandiri, BSI'),
+                      _buildDropdownBankField(),
+                      if (_selectedBank == 'Bank Lainnya') ...[
+                        const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                        _buildTextField('Nama Bank Kustom', Icons.account_balance_rounded, _bankController, hint: 'Tulis nama bank lengkap'),
+                      ],
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField('Nomor Rekening', Icons.numbers_rounded, _noRekController, hint: 'Contoh: 1234567890', isNumber: true),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('Atas Nama (Pemilik Rekening)', Icons.person_outline_rounded, _atasNamaController, hint: 'Sesuai buku tabungan'),
+                      _buildTextField('Atas Nama (Pemilik Rekening)', Icons.person_outline_rounded, _atasNamaController, hint: 'Sesuai buku tabungan / KTP'),
                     ]),
                     const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saveData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        child: const Text('Simpan Rekening', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      ),
+                    Consumer<ProfileProvider>(
+                      builder: (context, profileProvider, _) {
+                        final isUpdating = profileProvider.isUpdating;
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isUpdating ? null : _saveData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.grey.shade400,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            child: isUpdating
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text('Simpan Rekening', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -82,6 +189,57 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDropdownBankField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pilih Bank',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _popularBanks.contains(_selectedBank) ? _selectedBank : 'Bank Lainnya',
+              isExpanded: true,
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+              items: _popularBanks.map((val) {
+                return DropdownMenuItem<String>(
+                  value: val,
+                  child: Text(
+                    val,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedBank = val;
+                    if (val != 'Bank Lainnya') {
+                      _bankController.text = val;
+                    } else {
+                      _bankController.clear();
+                    }
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -163,7 +321,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
         TextFormField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          validator: (value) => value == null || value.isEmpty ? 'Harap diisi' : null,
+          validator: (value) => value == null || value.trim().isEmpty ? 'Harap diisi' : null,
           style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             isDense: true,

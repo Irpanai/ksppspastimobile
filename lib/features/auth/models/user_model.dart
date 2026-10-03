@@ -12,6 +12,15 @@ class AnggotaModel {
   final String? jenisKelamin;
   final String? agama;
   final String? pekerjaan;
+  final String? namaAhliWaris;
+  final String? hubunganAhliWaris;
+  final String? nikAhliWaris;
+  final String? noHpAhliWaris;
+  final String? emailAhliWaris;
+  final String? alamatAhliWaris;
+  final String? namaBank;
+  final String? noRekening;
+  final String? atasNamaRekening;
   final String? provinsi;
   final String? kabupatenKota;
   final String? kecamatan;
@@ -36,6 +45,15 @@ class AnggotaModel {
     this.jenisKelamin,
     this.agama,
     this.pekerjaan,
+    this.namaAhliWaris,
+    this.hubunganAhliWaris,
+    this.nikAhliWaris,
+    this.noHpAhliWaris,
+    this.emailAhliWaris,
+    this.alamatAhliWaris,
+    this.namaBank,
+    this.noRekening,
+    this.atasNamaRekening,
     this.provinsi,
     this.kabupatenKota,
     this.kecamatan,
@@ -67,6 +85,15 @@ class AnggotaModel {
       jenisKelamin: json['jenis_kelamin']?.toString(),
       agama: json['agama']?.toString(),
       pekerjaan: json['pekerjaan']?.toString(),
+      namaAhliWaris: json['nama_ahli_waris']?.toString(),
+      hubunganAhliWaris: json['hubungan_ahli_waris']?.toString(),
+      nikAhliWaris: json['nik_ahli_waris']?.toString() ?? json['no_ktp_ahli_waris']?.toString(),
+      noHpAhliWaris: json['no_hp_ahli_waris']?.toString(),
+      emailAhliWaris: json['email_ahli_waris']?.toString(),
+      alamatAhliWaris: json['alamat_ahli_waris']?.toString(),
+      namaBank: json['nama_bank']?.toString(),
+      noRekening: json['no_rekening']?.toString(),
+      atasNamaRekening: json['atas_nama_rekening']?.toString(),
       provinsi: json['provinsi']?.toString(),
       kabupatenKota: json['kabupaten_kota']?.toString(),
       kecamatan: json['kecamatan']?.toString(),
@@ -94,6 +121,15 @@ class AnggotaModel {
       'jenis_kelamin': jenisKelamin,
       'agama': agama,
       'pekerjaan': pekerjaan,
+      'nama_ahli_waris': namaAhliWaris,
+      'hubungan_ahli_waris': hubunganAhliWaris,
+      'nik_ahli_waris': nikAhliWaris,
+      'no_hp_ahli_waris': noHpAhliWaris,
+      'email_ahli_waris': emailAhliWaris,
+      'alamat_ahli_waris': alamatAhliWaris,
+      'nama_bank': namaBank,
+      'no_rekening': noRekening,
+      'atas_nama_rekening': atasNamaRekening,
       'provinsi': provinsi,
       'kabupaten_kota': kabupatenKota,
       'kecamatan': kecamatan,

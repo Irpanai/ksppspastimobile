@@ -1,9 +1,36 @@
+class TunggakanItem {
+  final int bulan;
+  final int tahun;
+  final String label;
+  final int nominal;
+
+  TunggakanItem({
+    required this.bulan,
+    required this.tahun,
+    required this.label,
+    required this.nominal,
+  });
+
+  factory TunggakanItem.fromJson(Map<String, dynamic> json) {
+    return TunggakanItem(
+      bulan: json['bulan'] is int ? json['bulan'] : int.tryParse(json['bulan']?.toString() ?? '0') ?? 0,
+      tahun: json['tahun'] is int ? json['tahun'] : int.tryParse(json['tahun']?.toString() ?? '0') ?? 0,
+      label: json['label']?.toString() ?? '',
+      nominal: json['nominal'] is int ? json['nominal'] : int.tryParse(json['nominal']?.toString() ?? '2500') ?? 2500,
+    );
+  }
+}
+
 class DashboardAnggota {
   final int id;
   final String noAnggota;
   final String nama;
   final String status;
   final String cabang;
+  final bool isMenunggak;
+  final List<TunggakanItem> tunggakanWajib;
+  final int totalTunggakanWajib;
+  final int jumlahBulanMenunggak;
 
   DashboardAnggota({
     required this.id,
@@ -11,15 +38,40 @@ class DashboardAnggota {
     required this.nama,
     required this.status,
     required this.cabang,
+    this.isMenunggak = false,
+    this.tunggakanWajib = const [],
+    this.totalTunggakanWajib = 0,
+    this.jumlahBulanMenunggak = 0,
   });
 
   factory DashboardAnggota.fromJson(Map<String, dynamic> json) {
+    final rawTunggakan = json['tunggakan_wajib'];
+    List<TunggakanItem> tunggakanList = [];
+    if (rawTunggakan is List) {
+      tunggakanList = rawTunggakan
+          .whereType<Map<String, dynamic>>()
+          .map((item) => TunggakanItem.fromJson(item))
+          .toList();
+    }
+
+    final isMenunggakVal = json['is_menunggak'] == true ||
+        (json['status']?.toString().toLowerCase() == 'menunggak') ||
+        tunggakanList.isNotEmpty;
+
     return DashboardAnggota(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       noAnggota: json['no_anggota']?.toString() ?? '',
       nama: json['nama']?.toString() ?? '',
       status: json['status']?.toString() ?? 'aktif',
       cabang: json['cabang']?.toString() ?? 'Pusat',
+      isMenunggak: isMenunggakVal,
+      tunggakanWajib: tunggakanList,
+      totalTunggakanWajib: json['total_tunggakan_wajib'] is int
+          ? json['total_tunggakan_wajib']
+          : int.tryParse(json['total_tunggakan_wajib']?.toString() ?? '0') ?? (tunggakanList.length * 2500),
+      jumlahBulanMenunggak: json['jumlah_bulan_menunggak'] is int
+          ? json['jumlah_bulan_menunggak']
+          : int.tryParse(json['jumlah_bulan_menunggak']?.toString() ?? '0') ?? tunggakanList.length,
     );
   }
 }

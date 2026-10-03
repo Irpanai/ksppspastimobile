@@ -7,6 +7,7 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../payment/providers/payment_provider.dart';
 import '../../payment/screens/midtrans_webview_screen.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
 
@@ -35,6 +36,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   String _selectedHubungan = 'Pasangan (Suami/Istri)';
   bool _agreed = false;
   int _rawNominal = 1000000;
+  bool _isProfileSynced = false;
 
   final List<String> _hubunganOptions = [
     'Pasangan (Suami/Istri)',
@@ -57,7 +59,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     super.initState();
     _formatAndSetNominal(_rawNominal);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProducts();
+      _loadData();
     });
   }
 
@@ -86,22 +88,81 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     _nominalController.text = formatter.format(value).trim();
   }
 
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadProducts(),
+      _loadProfileData(),
+    ]);
+  }
+
   Future<void> _loadProducts() async {
     final provider = context.read<SijakaProvider>();
     await provider.fetchProdukList();
 
-    if (mounted && provider.produkList.isNotEmpty) {
+    final activeList = provider.activeProdukList;
+    if (mounted && activeList.isNotEmpty) {
       setState(() {
-        if (_selectedProduct == null) {
-          // Default to product with 6 or 12 months or first available
-          _selectedProduct = provider.produkList.firstWhere(
+        if (_selectedProduct == null || !_selectedProduct!.isActive) {
+          // Default to active product with 6 or 12 months or first available
+          _selectedProduct = activeList.firstWhere(
             (p) => p.tenorBulan == 6 || p.tenorBulan == 12,
-            orElse: () => provider.produkList.first,
+            orElse: () => activeList.first,
           );
           if (_rawNominal < _selectedProduct!.minimalSetoran) {
             _formatAndSetNominal(_selectedProduct!.minimalSetoran.toInt());
           }
         }
+      });
+    }
+  }
+
+  Future<void> _loadProfileData() async {
+    final profileProvider = context.read<ProfileProvider>();
+    if (profileProvider.profileData == null) {
+      await profileProvider.fetchProfileDetail();
+    }
+    final anggota = profileProvider.profileData?.anggota;
+    final user = profileProvider.profileData?.user;
+
+    if (mounted && anggota != null) {
+      setState(() {
+        // 1. Sync Data Ahli Waris
+        if (_ahliWarisNamaController.text.isEmpty && (anggota.namaAhliWaris?.isNotEmpty ?? false)) {
+          _ahliWarisNamaController.text = anggota.namaAhliWaris!;
+        }
+        if (_ktpController.text.isEmpty && (anggota.nikAhliWaris?.isNotEmpty ?? false)) {
+          _ktpController.text = anggota.nikAhliWaris!;
+        }
+        if (_hpController.text.isEmpty && (anggota.noHpAhliWaris?.isNotEmpty ?? false)) {
+          _hpController.text = anggota.noHpAhliWaris!;
+        }
+        if (_emailController.text.isEmpty && (anggota.emailAhliWaris?.isNotEmpty ?? false)) {
+          _emailController.text = anggota.emailAhliWaris!;
+        }
+        if (_alamatController.text.isEmpty && (anggota.alamatAhliWaris?.isNotEmpty ?? false)) {
+          _alamatController.text = anggota.alamatAhliWaris!;
+        }
+        if (anggota.hubunganAhliWaris != null && anggota.hubunganAhliWaris!.isNotEmpty) {
+          if (_hubunganOptions.contains(anggota.hubunganAhliWaris)) {
+            _selectedHubungan = anggota.hubunganAhliWaris!;
+          } else {
+            _selectedHubungan = 'Keluarga Lainnya';
+            _ahliWarisHubunganCustomController.text = anggota.hubunganAhliWaris!;
+          }
+        }
+
+        // 2. Sync Data Rekening Bank
+        if (_bankController.text.isEmpty && (anggota.namaBank?.isNotEmpty ?? false)) {
+          _bankController.text = anggota.namaBank!;
+        }
+        if (_noRekController.text.isEmpty && (anggota.noRekening?.isNotEmpty ?? false)) {
+          _noRekController.text = anggota.noRekening!;
+        }
+        if (_atasNamaController.text.isEmpty) {
+          _atasNamaController.text = anggota.atasNamaRekening ?? (user?.name ?? '');
+        }
+
+        _isProfileSynced = true;
       });
     }
   }
@@ -167,6 +228,18 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         hubunganAhliWaris: _ahliWarisNamaController.text.trim().isNotEmpty
             ? _finalHubunganAhliWaris
             : null,
+        nikAhliWaris: _ktpController.text.trim().isNotEmpty
+            ? _ktpController.text.trim()
+            : null,
+        namaBank: _bankController.text.trim().isNotEmpty
+            ? _bankController.text.trim()
+            : null,
+        noRekening: _noRekController.text.trim().isNotEmpty
+            ? _noRekController.text.trim()
+            : null,
+        atasNamaRekening: _atasNamaController.text.trim().isNotEmpty
+            ? _atasNamaController.text.trim()
+            : null,
         metodePenyerahanBagihasil: _selectedMetodeBagiHasil,
       );
 
@@ -209,20 +282,25 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           Expanded(
             child: Consumer<SijakaProvider>(
               builder: (context, provider, child) {
-                if (provider.isLoadingProduk && provider.produkList.isEmpty) {
+                if (provider.isLoadingProduk && provider.activeProdukList.isEmpty) {
                   return _buildLoadingSkeleton();
                 }
 
-                if (provider.produkError != null && provider.produkList.isEmpty) {
+                if (provider.produkError != null && provider.activeProdukList.isEmpty) {
                   return _buildErrorState(provider.produkError!);
                 }
 
-                final produkList = provider.produkList;
-                if (produkList.isEmpty) {
+                final activeProdukList = provider.activeProdukList;
+                if (activeProdukList.isEmpty) {
                   return _buildEmptyState();
                 }
 
-                _selectedProduct ??= produkList.first;
+                if (_selectedProduct == null || !_selectedProduct!.isActive) {
+                  _selectedProduct = activeProdukList.firstWhere(
+                    (p) => p.tenorBulan == 6 || p.tenorBulan == 12,
+                    orElse: () => activeProdukList.first,
+                  );
+                }
 
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -234,7 +312,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                       children: [
                         _buildHeroBanner(),
                         const SizedBox(height: 24),
-                        _buildProductSelectionSection(produkList),
+                        _buildProductSelectionSection(activeProdukList),
                         const SizedBox(height: 24),
                         _buildSimulationSection(),
                         const SizedBox(height: 24),
@@ -762,6 +840,9 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       title: 'Informasi Rekening Pencairan',
       subtitle: 'Tujuan transfer pencairan Sijaka (Bagi hasil & Pokok)',
       icon: Icons.account_balance_rounded,
+      trailingBadge: _isProfileSynced
+          ? _buildSyncBadge('Tersinkron Profil')
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -780,6 +861,9 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       title: 'Informasi Ahli Waris',
       subtitle: 'Data penerima manfaat jika terjadi hal-hal tak terduga',
       icon: Icons.family_restroom_rounded,
+      trailingBadge: _isProfileSynced
+          ? _buildSyncBadge('Tersinkron Profil')
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -800,13 +884,39 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             _buildSijakaTextField('Sebutkan hubungan', _ahliWarisHubunganCustomController, hint: 'Misal: Paman/Bibi'),
           ],
           const SizedBox(height: 14),
-          _buildSijakaTextField('No. KTP / Passport (Opsional)', _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true),
+          _buildSijakaTextField('No. KTP / Passport', _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true),
           const SizedBox(height: 14),
           _buildSijakaTextField('No. HP Ahli Waris', _hpController, hint: 'Contoh: 08123456789', isNumber: true),
           const SizedBox(height: 14),
-          _buildSijakaTextField('Alamat Email (Opsional)', _emailController, hint: 'Email aktif ahli waris'),
+          _buildSijakaTextField('Alamat Email', _emailController, hint: 'Email aktif ahli waris'),
           const SizedBox(height: 14),
           _buildSijakaTextField('Alamat Tinggal', _alamatController, hint: 'Alamat lengkap', maxLines: 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDCFCE7),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync_rounded, size: 12, color: Color(0xFF166534)),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF166534),
+            ),
+          ),
         ],
       ),
     );
@@ -900,7 +1010,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               items: items.map((opt) {
                 return DropdownMenuItem(
                   value: opt,
-                  child: Text(opt, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
+                  child: Text(
+                    opt,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -1081,26 +1197,6 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Divider(color: Colors.white12, height: 1),
-          const SizedBox(height: 10),
-          Row(
-            children: const [
-              Icon(Icons.verified_user_outlined,
-                  color: Color(0xFF86EFAC), size: 14),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Akad Mudharabah Muthlaqah sesuai syariah Islam & fatwa DSN MUI.',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 10,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -1215,6 +1311,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     required String title,
     String? subtitle,
     required IconData icon,
+    Widget? trailingBadge,
     required Widget child,
   }) {
     return Container(
@@ -1249,13 +1346,20 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                        fontSize: 14,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        if (trailingBadge != null) trailingBadge,
+                      ],
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
