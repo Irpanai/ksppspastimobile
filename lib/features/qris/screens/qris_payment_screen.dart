@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../../../shared/widgets/pin_verification_dialog.dart';
 
 class QrisPaymentScreen extends StatefulWidget {
   const QrisPaymentScreen({Key? key}) : super(key: key);
@@ -18,67 +19,11 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
     super.dispose();
   }
 
-  void _showPinDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 24),
-              const Text('Masukkan PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-              const SizedBox(height: 8),
-              const Text('Untuk konfirmasi pembayaran QRIS', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-              const SizedBox(height: 32),
-              // Dummy PIN fields
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index < 4 ? Theme.of(context).colorScheme.primary : Colors.grey.shade200,
-                  ),
-                )),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close PIN
-                    _showSuccessDialog();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void _showPinDialog() async {
+    final isPinValid = await PinVerificationDialog.show(context);
+    if (isPinValid) {
+      _showSuccessDialog();
+    }
   }
 
   void _showSuccessDialog() {

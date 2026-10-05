@@ -117,6 +117,8 @@ class RiwayatBagiHasilItem {
   final String? keterangan;
   final String? status;
   final String createdAt;
+  final num? persenNisbah;
+  final String? diprosesOleh;
 
   RiwayatBagiHasilItem({
     required this.id,
@@ -137,6 +139,8 @@ class RiwayatBagiHasilItem {
     this.keterangan,
     this.status,
     required this.createdAt,
+    this.persenNisbah,
+    this.diprosesOleh,
   });
 
   String get formattedNominal => AppCurrency.format(nominalBagihasil);
@@ -177,6 +181,8 @@ class RiwayatBagiHasilItem {
       keterangan: json['keterangan']?.toString(),
       status: json['status']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
+      persenNisbah: json['persen_nisbah'] != null ? parseNum(json['persen_nisbah']) : null,
+      diprosesOleh: json['diproses_oleh']?.toString() ?? json['user_by']?.toString(),
     );
   }
 }

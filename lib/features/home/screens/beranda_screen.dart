@@ -12,6 +12,8 @@ import '../widgets/sijaka_portfolio_card.dart';
 
 import '../widgets/tunggakan_modal_dialog.dart';
 
+import '../widgets/wajib_simpanan_modal_dialog.dart';
+
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
 
@@ -38,6 +40,17 @@ class _BerandaScreenState extends State<BerandaScreen> {
   void _checkAndShowTunggakanPopup() {
     final dashboardProvider = context.read<DashboardProvider>();
     final anggota = dashboardProvider.dashboardData?.anggota;
+    final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
+
+    // Cek jika saldo pokok 0 (artinya belum pernah bayar simpanan pokok / akun baru)
+    if (saldoPokok == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          WajibSimpananModalDialog.show(context);
+        }
+      });
+      return; // Jangan lanjut cek tunggakan lain jika pokok belum dibayar
+    }
 
     if (anggota != null &&
         (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty) &&

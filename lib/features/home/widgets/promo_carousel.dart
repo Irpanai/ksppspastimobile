@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../promo/screens/promo_screen.dart';
 
 class PromoCarousel extends StatelessWidget {
   const PromoCarousel({Key? key}) : super(key: key);
@@ -14,11 +15,29 @@ class PromoCarousel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.0),
-          child: Text(
-            'Info & Promo Koperasi',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Info & Promo Koperasi',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const PromoScreen()));
+                },
+                child: Text(
+                  'Lihat Semua',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),

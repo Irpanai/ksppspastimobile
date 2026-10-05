@@ -552,7 +552,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
                       ],
                     ),
                     Text(
-                      bilyet.formattedSaldoBagiHasil,
+                      bilyet.formattedTotalBagiHasil,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -1282,65 +1282,106 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                                 highlightColor: const Color(0xFF10B981).withValues(alpha: 0.05),
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
-                                  child: Row(
+                                  child: Column(
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFF1F5F9),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Container(
-                                          width: 18,
-                                          height: 18,
-                                          alignment: Alignment.center,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF10B981),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Text(
-                                            'Rp',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.periodeLabel?.isNotEmpty == true
-                                                  ? item.periodeLabel!
-                                                  : 'Periode ${item.periode}',
-                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(item.formattedDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                      Row(
                                         children: [
-                                          Text(
-                                            item.formattedNominal,
-                                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF059669)),
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFF1F5F9),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Container(
+                                              width: 18,
+                                              height: 18,
+                                              alignment: Alignment.center,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF10B981),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Text(
+                                                'Rp',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(height: 2),
-                                          const Row(
-                                            mainAxisSize: MainAxisSize.min,
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item.periodeLabel?.isNotEmpty == true
+                                                      ? item.periodeLabel!
+                                                      : 'Periode ${item.periode}',
+                                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF0F172A)),
+                                                ),
+                                                const SizedBox(height: 3),
+                                                Text(item.formattedDate, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
                                             children: [
-                                              Text('Lihat Bukti', style: TextStyle(fontSize: 10.5, color: Color(0xFF0E7955), fontWeight: FontWeight.w600)),
-                                              Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF0E7955)),
+                                              Text(
+                                                item.formattedNominal,
+                                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF059669)),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text('Lihat Bukti', style: TextStyle(fontSize: 10.5, color: Color(0xFF0E7955), fontWeight: FontWeight.w600)),
+                                                  Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF0E7955)),
+                                                ],
+                                              ),
                                             ],
                                           ),
                                         ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(child: _buildRiwayatMiniItem('Modal Acuan', AppCurrency.format(item.modalSijaka))),
+                                                Expanded(child: _buildRiwayatMiniItem('Nisbah', '${item.persenNisbah ?? bilyet.persenNisbahBulanan}%')),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(child: _buildRiwayatMiniItem('Diproses Oleh', item.diprosesOleh ?? 'Sistem')),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      const Text('Status', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        (item.status ?? 'Berhasil').toUpperCase(),
+                                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669)),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1466,6 +1507,17 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRiwayatMiniItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+      ],
     );
   }
 }

@@ -18,6 +18,8 @@ import 'edit_profile_screen.dart';
 import 'help_center_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'about_app_screen.dart';
+import 'change_password_screen.dart';
+import 'set_pin_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -276,6 +278,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 24),
 
 
+
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4, bottom: 10),
+                            child: Text('Keamanan Akun', style: TextStyle(color: Color(0xFF1E293B), fontSize: 15, fontWeight: FontWeight.bold)),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 3))],
+                            ),
+                            child: Column(
+                              children: [
+                                _buildMenuRow(
+                                  Icons.lock_outline_rounded,
+                                  'Ganti Password',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+                                  },
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.pin_outlined,
+                                  'Atur PIN Transaksi',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SetPinScreen()));
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
 
                           const Padding(
                             padding: EdgeInsets.only(left: 4, bottom: 10),
