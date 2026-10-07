@@ -328,8 +328,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
                                     ],
                                   ),
-                                  onTap: () {
-                                    Navigator.push(
+                                  onTap: () async {
+                                    final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => SetPinScreen(
@@ -337,6 +337,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                       ),
                                     );
+                                    if (result == true) {
+                                      _refreshAll();
+                                    }
                                   },
                                 ),
                               ],

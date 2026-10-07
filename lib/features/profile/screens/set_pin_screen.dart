@@ -4,6 +4,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/pin_service.dart';
+import '../providers/profile_provider.dart';
 
 enum PinFlowMode { setup, change }
 
@@ -19,10 +20,8 @@ class SetPinScreen extends StatefulWidget {
 class _SetPinScreenState extends State<SetPinScreen> {
   final PinService _pinService = PinService();
 
-  // Mode: 0 for setup (new -> confirm), 1 for change (old -> new -> confirm)
   late PinFlowMode _mode;
-
-  int _currentStep = 0; // 0: Old (if change) or New (if setup), 1: New (if change) or Confirm, 2: Confirm (if change)
+  int _currentStep = 0; // 0: Old/New, 1: New/Confirm, 2: Confirm (if change)
   String _oldPin = '';
   String _newPin = '';
   String _confirmPin = '';
@@ -49,6 +48,8 @@ class _SetPinScreenState extends State<SetPinScreen> {
     }
   }
 
+  int get _totalSteps => _mode == PinFlowMode.setup ? 2 : 3;
+
   void _onKeyPress(String key) {
     if (_isLoading) return;
 
@@ -69,7 +70,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
           }
         }
       } else {
-        // Change Mode
+        // Change Mode: 0: Old PIN -> 1: New PIN -> 2: Confirm New PIN
         if (_currentStep == 0 && _oldPin.length < 6) {
           _oldPin += key;
           if (_oldPin.length == 6) {
@@ -78,7 +79,13 @@ class _SetPinScreenState extends State<SetPinScreen> {
         } else if (_currentStep == 1 && _newPin.length < 6) {
           _newPin += key;
           if (_newPin.length == 6) {
-            _currentStep = 2;
+            if (_newPin == _oldPin) {
+              _isError = true;
+              _errorMessage = 'PIN baru tidak boleh sama dengan PIN lama.';
+              _newPin = '';
+            } else {
+              _currentStep = 2;
+            }
           }
         } else if (_currentStep == 2 && _confirmPin.length < 6) {
           _confirmPin += key;
@@ -147,7 +154,9 @@ class _SetPinScreenState extends State<SetPinScreen> {
 
       if (success && mounted) {
         Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
-        _showSuccessAndPop('PIN Berhasil Dibuat', 'PIN transaksi Anda telah aktif dan dapat digunakan untuk keamanan transaksi.');
+        Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+        Provider.of<ProfileProvider>(context, listen: false).fetchProfileDetail(refresh: true);
+        _showSuccessAndPop('PIN Berhasil Dibuat', 'PIN transaksi Anda telah aktif dan siap digunakan.');
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -202,6 +211,8 @@ class _SetPinScreenState extends State<SetPinScreen> {
 
       if (success && mounted) {
         Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+        Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+        Provider.of<ProfileProvider>(context, listen: false).fetchProfileDetail(refresh: true);
         _showSuccessAndPop('PIN Berhasil Diperbarui', 'PIN transaksi Anda telah berhasil diperbarui.');
       }
     } on ApiException catch (e) {
@@ -289,12 +300,22 @@ class _SetPinScreenState extends State<SetPinScreen> {
   String get _stepSubtitle {
     if (_mode == PinFlowMode.setup) {
       return _currentStep == 0
-          ? 'Masukkan 6 digit angka untuk PIN keamanan'
+          ? 'Masukkan 6 digit angka untuk PIN keamanan transaksi'
           : 'Ketik ulang 6 digit PIN untuk konfirmasi';
     } else {
-      if (_currentStep == 0) return 'Masukkan 6 digit PIN lama Anda';
+      if (_currentStep == 0) return 'Masukkan 6 digit PIN lama Anda untuk verifikasi';
       if (_currentStep == 1) return 'Masukkan 6 digit PIN baru yang Anda inginkan';
       return 'Ketik ulang 6 digit PIN baru untuk konfirmasi';
+    }
+  }
+
+  IconData get _stepIcon {
+    if (_mode == PinFlowMode.setup) {
+      return _currentStep == 0 ? Icons.shield_outlined : Icons.check_circle_outline_rounded;
+    } else {
+      if (_currentStep == 0) return Icons.lock_open_rounded;
+      if (_currentStep == 1) return Icons.lock_reset_rounded;
+      return Icons.check_circle_outline_rounded;
     }
   }
 
@@ -310,130 +331,238 @@ class _SetPinScreenState extends State<SetPinScreen> {
             title: _mode == PinFlowMode.setup ? 'Buat PIN' : 'Ubah PIN',
           ),
           Expanded(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  const SizedBox(height: 32),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFA7F3D0)),
-                    ),
-                    child: Icon(
-                      _currentStep > 0 ? Icons.check_circle_outline_rounded : Icons.lock_outline_rounded,
-                      size: 48,
-                      color: const Color(0xFF0E7955),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    _stepTitle,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    child: Text(
-                      _stepSubtitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
+            child: Column(
+              children: [
+                // Top Content Area
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 16),
 
-                  // PIN Indicators
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(6, (index) {
-                      final isFilled = index < currentInput.length;
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isFilled ? const Color(0xFF0E7955) : Colors.transparent,
-                          border: Border.all(
-                            color: _isError ? Colors.red : (isFilled ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1)),
-                            width: 2,
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-
-                  const SizedBox(height: 16),
-                  if (_isLoading) ...[
-                    const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
-                    ),
-                  ] else if (_isError) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                      child: Text(
-                        _errorMessage.isNotEmpty ? _errorMessage : 'PIN tidak sesuai.',
-                        style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  // Keypad
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4))],
-                    ),
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        childAspectRatio: 1.4,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 24,
-                      ),
-                      itemCount: 12,
-                      itemBuilder: (context, index) {
-                        if (index == 9) return const SizedBox.shrink();
-                        if (index == 11) {
-                          return InkWell(
-                            onTap: _isLoading ? null : _onDeletePress,
-                            borderRadius: BorderRadius.circular(24),
-                            child: const Center(
-                              child: Icon(Icons.backspace_outlined, color: Color(0xFF475569), size: 28),
+                          // Step Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFA7F3D0)),
                             ),
-                          );
-                        }
-                        final number = index == 10 ? '0' : '${index + 1}';
-                        return InkWell(
-                          onTap: _isLoading ? null : () => _onKeyPress(number),
-                          borderRadius: BorderRadius.circular(24),
-                          child: Center(
-                            child: Text(
-                              number,
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.security, size: 14, color: Color(0xFF0E7955)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Langkah ${_currentStep + 1} dari $_totalSteps',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0E7955),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
+
+                          const SizedBox(height: 16),
+
+                          // Icon Circle
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+                            ),
+                            child: Icon(
+                              _stepIcon,
+                              size: 32,
+                              color: const Color(0xFF0E7955),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Title
+                          Text(
+                            _stepTitle,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          // Subtitle
+                          Text(
+                            _stepSubtitle,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // PIN 6 Dots
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(6, (index) {
+                              final isFilled = index < currentInput.length;
+                              return Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 7),
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isFilled ? const Color(0xFF0E7955) : Colors.transparent,
+                                  border: Border.all(
+                                    color: _isError
+                                        ? Colors.red
+                                        : (isFilled ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1)),
+                                    width: 2,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Loading / Error
+                          if (_isLoading)
+                            const Center(
+                              child: SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
+                              ),
+                            )
+                          else if (_isError)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFECACA)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      _errorMessage.isNotEmpty ? _errorMessage : 'PIN tidak sesuai.',
+                                      style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w600),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            const SizedBox(height: 24),
+
+                          const SizedBox(height: 8),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                // Keypad anchored to bottom
+                Container(
+                  padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x0F000000),
+                        blurRadius: 16,
+                        offset: Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildKeypadRow(['1', '2', '3']),
+                        const SizedBox(height: 10),
+                        _buildKeypadRow(['4', '5', '6']),
+                        const SizedBox(height: 10),
+                        _buildKeypadRow(['7', '8', '9']),
+                        const SizedBox(height: 10),
+                        _buildKeypadRow(['', '0', 'delete']),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
+  Widget _buildKeypadRow(List<String> keys) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: keys.map((key) {
+        if (key.isEmpty) {
+          return const SizedBox(width: 68, height: 50);
+        }
+
+        if (key == 'delete') {
+          return SizedBox(
+            width: 68,
+            height: 50,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isLoading ? null : _onDeletePress,
+                borderRadius: BorderRadius.circular(24),
+                child: const Center(
+                  child: Icon(Icons.backspace_outlined, color: Color(0xFF475569), size: 24),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          width: 68,
+          height: 50,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isLoading ? null : () => _onKeyPress(key),
+              borderRadius: BorderRadius.circular(24),
+              child: Center(
+                child: Text(
+                  key,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}

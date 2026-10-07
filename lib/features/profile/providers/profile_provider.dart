@@ -49,6 +49,18 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Update local hasPin status
+  void updateHasPin(bool hasPin) {
+    if (_profileData != null) {
+      _profileData = MemberProfileModel(
+        user: _profileData!.user.copyWith(hasPin: hasPin),
+        anggota: _profileData!.anggota,
+        ringkasanSaldo: _profileData!.ringkasanSaldo,
+      );
+      notifyListeners();
+    }
+  }
+
   /// 7.2 Update profile
   Future<bool> updateProfile(Map<String, dynamic> updateData) async {
     _isUpdating = true;
