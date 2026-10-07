@@ -102,12 +102,20 @@ class ApiConstants {
   // Member Endpoints
   static const String dashboard = '/member/dashboard';
   static const String simpananRiwayat = '/member/simpanan/riwayat';
+  static const String simpananTarik = '/member/simpanan/tarik';
+  static const String simpananPenarikanRiwayat = '/member/simpanan/penarikan-riwayat';
   static const String sijaka = '/member/sijaka';
   static const String sijakaProduk = '/member/sijaka/produk';
   static String sijakaDetail(int id) => '/member/sijaka/$id';
   static const String memberProfile = '/member/profile';
   static const String updateProfile = '/member/profile';
   static const String changePassword = '/member/profile/password';
+
+  // PIN Security Endpoints
+  static const String pinStatus = '/member/pin/status';
+  static const String pinSetup = '/member/pin/setup';
+  static const String pinVerify = '/member/pin/verify';
+  static const String pinChange = '/member/pin/change';
 
   // Payment Gateway Endpoints
   static const String snapToken = '/payment/snap-token';

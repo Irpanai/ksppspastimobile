@@ -163,6 +163,15 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Update local user hasPin flag
+  void updateHasPin(bool hasPin) {
+    if (_user != null) {
+      _user = _user!.copyWith(hasPin: hasPin);
+      StorageService.saveUserData(_user!.toJson());
+      notifyListeners();
+    }
+  }
+
   /// Logout and clear state
   Future<void> logout() async {
     try {

@@ -1,76 +1,238 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../../core/network/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/services/pin_service.dart';
+
+enum PinFlowMode { setup, change }
 
 class SetPinScreen extends StatefulWidget {
-  const SetPinScreen({super.key});
+  final PinFlowMode? mode;
+
+  const SetPinScreen({super.key, this.mode});
 
   @override
   State<SetPinScreen> createState() => _SetPinScreenState();
 }
 
 class _SetPinScreenState extends State<SetPinScreen> {
-  String _pin = '';
+  final PinService _pinService = PinService();
+
+  // Mode: 0 for setup (new -> confirm), 1 for change (old -> new -> confirm)
+  late PinFlowMode _mode;
+
+  int _currentStep = 0; // 0: Old (if change) or New (if setup), 1: New (if change) or Confirm, 2: Confirm (if change)
+  String _oldPin = '';
+  String _newPin = '';
   String _confirmPin = '';
-  bool _isConfirming = false;
+
   bool _isError = false;
+  String _errorMessage = '';
   bool _isLoading = false;
 
-  void _onKeyPress(String key) {
-    if ((_isConfirming ? _confirmPin.length : _pin.length) < 6) {
-      setState(() {
-        if (_isConfirming) {
-          _confirmPin += key;
-        } else {
-          _pin += key;
-        }
-        _isError = false;
-      });
-      
-      if (_isConfirming && _confirmPin.length == 6) {
-        _verifyAndSubmit();
-      } else if (!_isConfirming && _pin.length == 6) {
-        setState(() => _isConfirming = true);
-      }
+  @override
+  void initState() {
+    super.initState();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final hasPin = authProvider.user?.hasPin ?? false;
+    _mode = widget.mode ?? (hasPin ? PinFlowMode.change : PinFlowMode.setup);
+  }
+
+  String get _currentPinInput {
+    if (_mode == PinFlowMode.setup) {
+      return _currentStep == 0 ? _newPin : _confirmPin;
+    } else {
+      if (_currentStep == 0) return _oldPin;
+      if (_currentStep == 1) return _newPin;
+      return _confirmPin;
     }
   }
 
-  void _onDeletePress() {
+  void _onKeyPress(String key) {
+    if (_isLoading) return;
+
     setState(() {
-      if (_isConfirming && _confirmPin.isNotEmpty) {
-        _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
-      } else if (!_isConfirming && _pin.isNotEmpty) {
-        _pin = _pin.substring(0, _pin.length - 1);
-      } else if (_isConfirming && _confirmPin.isEmpty) {
-        _isConfirming = false; // Go back to first PIN entry
-      }
       _isError = false;
+      _errorMessage = '';
+
+      if (_mode == PinFlowMode.setup) {
+        if (_currentStep == 0 && _newPin.length < 6) {
+          _newPin += key;
+          if (_newPin.length == 6) {
+            _currentStep = 1;
+          }
+        } else if (_currentStep == 1 && _confirmPin.length < 6) {
+          _confirmPin += key;
+          if (_confirmPin.length == 6) {
+            _submitSetupPin();
+          }
+        }
+      } else {
+        // Change Mode
+        if (_currentStep == 0 && _oldPin.length < 6) {
+          _oldPin += key;
+          if (_oldPin.length == 6) {
+            _currentStep = 1;
+          }
+        } else if (_currentStep == 1 && _newPin.length < 6) {
+          _newPin += key;
+          if (_newPin.length == 6) {
+            _currentStep = 2;
+          }
+        } else if (_currentStep == 2 && _confirmPin.length < 6) {
+          _confirmPin += key;
+          if (_confirmPin.length == 6) {
+            _submitChangePin();
+          }
+        }
+      }
     });
   }
 
-  void _verifyAndSubmit() async {
-    if (_pin != _confirmPin) {
+  void _onDeletePress() {
+    if (_isLoading) return;
+
+    setState(() {
+      _isError = false;
+      _errorMessage = '';
+
+      if (_mode == PinFlowMode.setup) {
+        if (_currentStep == 1) {
+          if (_confirmPin.isNotEmpty) {
+            _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
+          } else {
+            _currentStep = 0;
+          }
+        } else if (_currentStep == 0 && _newPin.isNotEmpty) {
+          _newPin = _newPin.substring(0, _newPin.length - 1);
+        }
+      } else {
+        if (_currentStep == 2) {
+          if (_confirmPin.isNotEmpty) {
+            _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
+          } else {
+            _currentStep = 1;
+          }
+        } else if (_currentStep == 1) {
+          if (_newPin.isNotEmpty) {
+            _newPin = _newPin.substring(0, _newPin.length - 1);
+          } else {
+            _currentStep = 0;
+          }
+        } else if (_currentStep == 0 && _oldPin.isNotEmpty) {
+          _oldPin = _oldPin.substring(0, _oldPin.length - 1);
+        }
+      }
+    });
+  }
+
+  void _submitSetupPin() async {
+    if (_newPin != _confirmPin) {
       setState(() {
         _isError = true;
+        _errorMessage = 'Konfirmasi PIN tidak cocok.';
         _confirmPin = '';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Konfirmasi PIN tidak cocok, silakan coba lagi.'), backgroundColor: Colors.red),
-      );
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // Simulasi API set PIN
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final success = await _pinService.setupPin(
+        pin: _newPin,
+        pinConfirmation: _confirmPin,
+      );
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    _showSuccessAndPop();
+      if (success && mounted) {
+        Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+        _showSuccessAndPop('PIN Berhasil Dibuat', 'PIN transaksi Anda telah aktif dan dapat digunakan untuk keamanan transaksi.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _errorMessage = e.message;
+          _confirmPin = '';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _errorMessage = 'Gagal menyimpan PIN. Silakan coba lagi.';
+          _confirmPin = '';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  void _showSuccessAndPop() {
+  void _submitChangePin() async {
+    if (_newPin != _confirmPin) {
+      setState(() {
+        _isError = true;
+        _errorMessage = 'Konfirmasi PIN baru tidak cocok.';
+        _confirmPin = '';
+      });
+      return;
+    }
+
+    if (_oldPin == _newPin) {
+      setState(() {
+        _isError = true;
+        _errorMessage = 'PIN baru tidak boleh sama dengan PIN lama.';
+        _newPin = '';
+        _confirmPin = '';
+        _currentStep = 1;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await _pinService.changePin(
+        oldPin: _oldPin,
+        newPin: _newPin,
+        newPinConfirmation: _confirmPin,
+      );
+
+      if (success && mounted) {
+        Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+        _showSuccessAndPop('PIN Berhasil Diperbarui', 'PIN transaksi Anda telah berhasil diperbarui.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _errorMessage = e.message;
+          _isLoading = false;
+          if (e.message.toLowerCase().contains('lama')) {
+            _oldPin = '';
+            _newPin = '';
+            _confirmPin = '';
+            _currentStep = 0;
+          } else {
+            _confirmPin = '';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _errorMessage = 'Gagal memperbarui PIN. Silakan coba lagi.';
+          _confirmPin = '';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showSuccessAndPop(String title, String message) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -87,24 +249,24 @@ class _SetPinScreenState extends State<SetPinScreen> {
                 child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
               ),
               const SizedBox(height: 16),
-              const Text('PIN Berhasil Diatur', textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text('PIN Anda berhasil disimpan dan sudah aktif untuk transaksi selanjutnya.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF64748B))),
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF64748B), height: 1.4)),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: const Color(0xFF0E7955),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Selesai'),
+                  child: const Text('Selesai', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -114,38 +276,78 @@ class _SetPinScreenState extends State<SetPinScreen> {
     );
   }
 
+  String get _stepTitle {
+    if (_mode == PinFlowMode.setup) {
+      return _currentStep == 0 ? 'Buat PIN Transaksi' : 'Konfirmasi PIN';
+    } else {
+      if (_currentStep == 0) return 'Masukkan PIN Lama';
+      if (_currentStep == 1) return 'Masukkan PIN Baru';
+      return 'Konfirmasi PIN Baru';
+    }
+  }
+
+  String get _stepSubtitle {
+    if (_mode == PinFlowMode.setup) {
+      return _currentStep == 0
+          ? 'Masukkan 6 digit angka untuk PIN keamanan'
+          : 'Ketik ulang 6 digit PIN untuk konfirmasi';
+    } else {
+      if (_currentStep == 0) return 'Masukkan 6 digit PIN lama Anda';
+      if (_currentStep == 1) return 'Masukkan 6 digit PIN baru yang Anda inginkan';
+      return 'Ketik ulang 6 digit PIN baru untuk konfirmasi';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentPin = _isConfirming ? _confirmPin : _pin;
-    
+    final currentInput = _currentPinInput;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const PremiumHeader(title: 'Atur PIN'),
+          PremiumHeader(
+            title: _mode == PinFlowMode.setup ? 'Buat PIN' : 'Ubah PIN',
+          ),
           Expanded(
             child: SafeArea(
               child: Column(
                 children: [
                   const SizedBox(height: 32),
-                  Icon(_isConfirming ? Icons.check_circle_outline_rounded : Icons.lock_outline_rounded, size: 64, color: const Color(0xFF0E7955)),
-                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: Icon(
+                      _currentStep > 0 ? Icons.check_circle_outline_rounded : Icons.lock_outline_rounded,
+                      size: 48,
+                      color: const Color(0xFF0E7955),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Text(
-                    _isConfirming ? 'Konfirmasi PIN' : 'Buat PIN Transaksi',
+                    _stepTitle,
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _isConfirming ? 'Masukkan kembali PIN yang Anda buat' : 'Masukkan 6 digit angka untuk PIN keamanan',
-                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Text(
+                      _stepSubtitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                    ),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 36),
 
                   // PIN Indicators
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(6, (index) {
-                      final isFilled = index < currentPin.length;
+                      final isFilled = index < currentInput.length;
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 8),
                         width: 18,
@@ -162,9 +364,22 @@ class _SetPinScreenState extends State<SetPinScreen> {
                     }),
                   ),
 
+                  const SizedBox(height: 16),
                   if (_isLoading) ...[
-                    const SizedBox(height: 48),
-                    const CircularProgressIndicator(color: Color(0xFF0E7955)),
+                    const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
+                    ),
+                  ] else if (_isError) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: Text(
+                        _errorMessage.isNotEmpty ? _errorMessage : 'PIN tidak sesuai.',
+                        style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ],
 
                   const Spacer(),
@@ -194,7 +409,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
                             onTap: _isLoading ? null : _onDeletePress,
                             borderRadius: BorderRadius.circular(24),
                             child: const Center(
-                              child: Icon(Icons.backspace_outlined, color: Color(0xFF475569)),
+                              child: Icon(Icons.backspace_outlined, color: Color(0xFF475569), size: 28),
                             ),
                           );
                         }
@@ -221,3 +436,4 @@ class _SetPinScreenState extends State<SetPinScreen> {
     );
   }
 }
+

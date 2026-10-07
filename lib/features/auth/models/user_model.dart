@@ -153,6 +153,7 @@ class UserModel {
   final String? statusKeanggotaan;
   final String? cabang;
   final String? profilePhotoUrl;
+  final bool hasPin;
   final List<String> roles;
   final AnggotaModel? anggota;
 
@@ -164,6 +165,7 @@ class UserModel {
     this.statusKeanggotaan,
     this.cabang,
     this.profilePhotoUrl,
+    this.hasPin = false,
     this.roles = const [],
     this.anggota,
   });
@@ -172,6 +174,32 @@ class UserModel {
   String? get fullProfilePhotoUrl {
     final raw = profilePhotoUrl ?? anggota?.foto;
     return ApiConstants.resolveImageUrl(raw);
+  }
+
+  UserModel copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? noAnggota,
+    String? statusKeanggotaan,
+    String? cabang,
+    String? profilePhotoUrl,
+    bool? hasPin,
+    List<String>? roles,
+    AnggotaModel? anggota,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      noAnggota: noAnggota ?? this.noAnggota,
+      statusKeanggotaan: statusKeanggotaan ?? this.statusKeanggotaan,
+      cabang: cabang ?? this.cabang,
+      profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
+      hasPin: hasPin ?? this.hasPin,
+      roles: roles ?? this.roles,
+      anggota: anggota ?? this.anggota,
+    );
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -192,6 +220,11 @@ class UserModel {
         json['profile_photo_path']?.toString() ??
         parsedAnggota?.foto;
 
+    final bool parsedHasPin = json['has_pin'] == true ||
+        json['has_pin'] == 1 ||
+        json['has_pin'] == '1' ||
+        json['has_pin'] == 'true';
+
     return UserModel(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       name: json['name']?.toString() ?? '',
@@ -200,6 +233,7 @@ class UserModel {
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? parsedAnggota?.status,
       cabang: json['cabang']?.toString() ?? parsedAnggota?.cabang,
       profilePhotoUrl: rawPhoto,
+      hasPin: parsedHasPin,
       roles: parsedRoles,
       anggota: parsedAnggota,
     );
@@ -214,6 +248,7 @@ class UserModel {
       'status_keanggotaan': statusKeanggotaan,
       'cabang': cabang,
       'profile_photo_url': profilePhotoUrl,
+      'has_pin': hasPin,
       'roles': roles,
       'anggota': anggota?.toJson(),
     };

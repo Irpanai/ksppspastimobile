@@ -302,9 +302,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
                                   Icons.pin_outlined,
-                                  'Atur PIN Transaksi',
+                                  user?.hasPin == true ? 'Ubah PIN Transaksi' : 'Buat PIN Transaksi',
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: user?.hasPin == true ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: user?.hasPin == true ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          user?.hasPin == true ? 'Aktif' : 'Belum Ada',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: user?.hasPin == true ? const Color(0xFF0E7955) : const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
+                                    ],
+                                  ),
                                   onTap: () {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SetPinScreen()));
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => SetPinScreen(
+                                          mode: user?.hasPin == true ? PinFlowMode.change : PinFlowMode.setup,
+                                        ),
+                                      ),
+                                    );
                                   },
                                 ),
                               ],
