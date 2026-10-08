@@ -33,15 +33,19 @@ class ApiResponse<T> {
         final List<String> messages = [];
         errMap.forEach((key, value) {
           if (value is List) {
-            messages.addAll(value.map((e) => e.toString()));
-          } else if (value != null) {
-            messages.add(value.toString());
+            for (var item in value) {
+              if (item != null && item.toString().isNotEmpty) {
+                messages.add(item.toString());
+              }
+            }
+          } else if (value is String && value.isNotEmpty && value != 'false' && value != 'true') {
+            messages.add(value);
           }
         });
         if (messages.isNotEmpty) {
           return messages.join('\n');
         }
-      } else if (errors is String) {
+      } else if (errors is String && (errors as String).isNotEmpty && errors != 'false' && errors != 'true') {
         return errors as String;
       }
     }

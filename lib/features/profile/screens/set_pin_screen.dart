@@ -74,7 +74,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
         if (_currentStep == 0 && _oldPin.length < 6) {
           _oldPin += key;
           if (_oldPin.length == 6) {
-            _currentStep = 1;
+            _verifyOldPin();
           }
         } else if (_currentStep == 1 && _newPin.length < 6) {
           _newPin += key;
@@ -105,33 +105,58 @@ class _SetPinScreenState extends State<SetPinScreen> {
       _errorMessage = '';
 
       if (_mode == PinFlowMode.setup) {
-        if (_currentStep == 1) {
-          if (_confirmPin.isNotEmpty) {
-            _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
-          } else {
-            _currentStep = 0;
-          }
+        if (_currentStep == 1 && _confirmPin.isNotEmpty) {
+          _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
         } else if (_currentStep == 0 && _newPin.isNotEmpty) {
           _newPin = _newPin.substring(0, _newPin.length - 1);
         }
       } else {
-        if (_currentStep == 2) {
-          if (_confirmPin.isNotEmpty) {
-            _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
-          } else {
-            _currentStep = 1;
-          }
-        } else if (_currentStep == 1) {
-          if (_newPin.isNotEmpty) {
-            _newPin = _newPin.substring(0, _newPin.length - 1);
-          } else {
-            _currentStep = 0;
-          }
+        if (_currentStep == 2 && _confirmPin.isNotEmpty) {
+          _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
+        } else if (_currentStep == 1 && _newPin.isNotEmpty) {
+          _newPin = _newPin.substring(0, _newPin.length - 1);
         } else if (_currentStep == 0 && _oldPin.isNotEmpty) {
           _oldPin = _oldPin.substring(0, _oldPin.length - 1);
         }
       }
     });
+  }
+
+  void _verifyOldPin() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await _pinService.verifyPin(_oldPin);
+      if (success && mounted) {
+        setState(() {
+          _isLoading = false;
+          _isError = false;
+          _errorMessage = '';
+          _currentStep = 1;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        final msg = (e.message.isNotEmpty && e.message.toLowerCase() != 'false')
+            ? e.message
+            : 'PIN lama yang Anda masukkan salah.';
+        setState(() {
+          _isLoading = false;
+          _isError = true;
+          _errorMessage = msg;
+          _oldPin = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isError = true;
+          _errorMessage = 'PIN lama yang Anda masukkan salah.';
+          _oldPin = '';
+        });
+      }
+    }
   }
 
   void _submitSetupPin() async {
@@ -319,199 +344,222 @@ class _SetPinScreenState extends State<SetPinScreen> {
     }
   }
 
+  void _handlePreviousStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _isError = false;
+        _errorMessage = '';
+        _currentStep--;
+        if (_currentStep == 1) _confirmPin = '';
+        if (_currentStep == 0) _newPin = '';
+      });
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentInput = _currentPinInput;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
-        children: [
-          PremiumHeader(
-            title: _mode == PinFlowMode.setup ? 'Buat PIN' : 'Ubah PIN',
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                // Top Content Area
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 16),
+    return PopScope(
+      canPop: _currentStep == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _currentStep > 0) {
+          _handlePreviousStep();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Column(
+          children: [
+            PremiumHeader(
+              title: _mode == PinFlowMode.setup ? 'Buat PIN' : 'Ubah PIN',
+              onBackPressed: _handlePreviousStep,
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  // Top Content Area
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 16),
 
-                          // Step Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFA7F3D0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.security, size: 14, color: Color(0xFF0E7955)),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Langkah ${_currentStep + 1} dari $_totalSteps',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0E7955),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Icon Circle
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
-                            ),
-                            child: Icon(
-                              _stepIcon,
-                              size: 32,
-                              color: const Color(0xFF0E7955),
-                            ),
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          // Title
-                          Text(
-                            _stepTitle,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          // Subtitle
-                          Text(
-                            _stepSubtitle,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // PIN 6 Dots
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(6, (index) {
-                              final isFilled = index < currentInput.length;
-                              return Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 7),
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isFilled ? const Color(0xFF0E7955) : Colors.transparent,
-                                  border: Border.all(
-                                    color: _isError
-                                        ? Colors.red
-                                        : (isFilled ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1)),
-                                    width: 2,
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Loading / Error
-                          if (_isLoading)
-                            const Center(
-                              child: SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
-                              ),
-                            )
-                          else if (_isError)
+                            // Step Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFFECACA)),
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFA7F3D0)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      _errorMessage.isNotEmpty ? _errorMessage : 'PIN tidak sesuai.',
-                                      style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w600),
-                                      textAlign: TextAlign.center,
+                                  const Icon(Icons.security, size: 14, color: Color(0xFF0E7955)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Langkah ${_currentStep + 1} dari $_totalSteps',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0E7955),
                                     ),
                                   ),
                                 ],
                               ),
-                            )
-                          else
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Icon Circle
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+                              ),
+                              child: Icon(
+                                _stepIcon,
+                                size: 32,
+                                color: const Color(0xFF0E7955),
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Title
+                            Text(
+                              _stepTitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            // Subtitle
+                            Text(
+                              _stepSubtitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.3),
+                            ),
+
                             const SizedBox(height: 24),
 
-                          const SizedBox(height: 8),
+                            // PIN 6 Dots
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(6, (index) {
+                                final isFilled = index < currentInput.length;
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 7),
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isFilled ? const Color(0xFF0E7955) : Colors.transparent,
+                                    border: Border.all(
+                                      color: _isError
+                                          ? Colors.red
+                                          : (isFilled ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1)),
+                                      width: 2,
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Loading / Error
+                            if (_isLoading)
+                              const Center(
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
+                                ),
+                              )
+                            else if (_isError)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFECACA)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        _errorMessage.isNotEmpty ? _errorMessage : 'PIN tidak sesuai.',
+                                        style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w600),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              const SizedBox(height: 24),
+
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Keypad anchored to bottom
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x0F000000),
+                          blurRadius: 16,
+                          offset: Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildKeypadRow(['1', '2', '3']),
+                          const SizedBox(height: 10),
+                          _buildKeypadRow(['4', '5', '6']),
+                          const SizedBox(height: 10),
+                          _buildKeypadRow(['7', '8', '9']),
+                          const SizedBox(height: 10),
+                          _buildKeypadRow(['', '0', 'delete']),
                         ],
                       ),
                     ),
                   ),
-                ),
-
-                // Keypad anchored to bottom
-                Container(
-                  padding: const EdgeInsets.fromLTRB(28, 16, 28, 20),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x0F000000),
-                        blurRadius: 16,
-                        offset: Offset(0, -4),
-                      ),
-                    ],
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildKeypadRow(['1', '2', '3']),
-                        const SizedBox(height: 10),
-                        _buildKeypadRow(['4', '5', '6']),
-                        const SizedBox(height: 10),
-                        _buildKeypadRow(['7', '8', '9']),
-                        const SizedBox(height: 10),
-                        _buildKeypadRow(['', '0', 'delete']),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
