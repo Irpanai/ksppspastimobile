@@ -144,6 +144,43 @@ class ApiClient {
     }
   }
 
+  static Future<ApiResponse<T>> postMultipartFiles<T>(
+    String endpoint, {
+    required List<http.MultipartFile> files,
+    Map<String, String>? fields,
+    bool withAuth = true,
+    T Function(dynamic json)? fromJsonT,
+    Duration? timeout,
+  }) async {
+    try {
+      final uri = _buildUri(endpoint);
+      final headers = await _getHeaders(withAuth: withAuth);
+
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(headers);
+
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      request.files.addAll(files);
+
+      final streamedResponse = await _client.send(request).timeout(
+            timeout ?? const Duration(seconds: 30),
+          );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _processResponse<T>(response, fromJsonT);
+    } on SocketException {
+      throw ApiException(message: 'Tidak dapat terhubung ke server backend.');
+    } on http.ClientException {
+      throw ApiException(message: 'Gagal menghubungi server. Periksa koneksi jaringan Anda.');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'Terjadi kesalahan: ${e.toString()}');
+    }
+  }
+
   static Future<ApiResponse<T>> put<T>(
     String endpoint, {
     dynamic body,

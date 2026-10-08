@@ -290,20 +290,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _isLogin = false),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                              );
+                            },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: !_isLogin ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                                color: Colors.transparent,
                                 borderRadius: BorderRadius.circular(28),
-                                boxShadow: !_isLogin
-                                    ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
-                                    : [],
                               ),
                               alignment: Alignment.center,
-                              child: Text(
+                              child: const Text(
                                 'Daftar',
                                 style: TextStyle(
-                                  color: !_isLogin ? Colors.white : const Color(0xFF64748B),
+                                  color: Color(0xFF64748B),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
@@ -316,13 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Form Switcher
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeOutQuint,
-                    switchOutCurve: Curves.easeInQuint,
-                    child: _isLogin ? _buildLoginForm() : _buildRegisterForm(),
-                  ),
+                  _buildLoginForm(),
                   
                   const SizedBox(height: 48),
                 ],

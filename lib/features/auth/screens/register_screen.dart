@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -26,6 +30,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isObscure1 = true;
   bool _isObscure2 = true;
 
+  File? _fotoKtp;
+  File? _fotoWajah;
+  bool _isOcrLoading = false;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -36,6 +45,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmPasswordController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickKtp() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    if (pickedFile != null) {
+      setState(() {
+        _fotoKtp = File(pickedFile.path);
+      });
+      _scanOcr();
+    }
+  }
+
+  Future<void> _scanOcr() async {
+    if (_fotoKtp == null) return;
+    setState(() => _isOcrLoading = true);
+    
+    try {
+      final inputImage = InputImage.fromFile(_fotoKtp!);
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      
+      String text = recognizedText.text;
+      String? nik;
+      String? nama;
+
+      // Parse NIK (16 digit angka)
+      final nikRegExp = RegExp(r'(?:NIK|N I K|KIK|NIK:|KTP)[\W_]*(\d{16})', caseSensitive: false);
+      final nikMatch = nikRegExp.firstMatch(text);
+      if (nikMatch != null) {
+        nik = nikMatch.group(1);
+      } else {
+        // Coba cari deretan 16 angka saja
+        final angkaRegExp = RegExp(r'\b(\d{16})\b');
+        final angkaMatch = angkaRegExp.firstMatch(text);
+        if (angkaMatch != null) {
+          nik = angkaMatch.group(1);
+        }
+      }
+
+      // Parse Nama (Biasanya baris di bawah NIK atau mengandung kata NAMA)
+      final namaRegExp = RegExp(r'Nama[\W_]*([A-Z\s]+)', caseSensitive: false);
+      final namaMatch = namaRegExp.firstMatch(text);
+      if (namaMatch != null) {
+        nama = namaMatch.group(1)?.trim();
+        // Hapus teks berlebih seperti 'Tempat' jika terikut
+        if (nama != null && nama.contains('TEMPAT')) {
+          nama = nama.split('TEMPAT')[0].trim();
+        }
+      }
+
+      if (nik != null) {
+        _nikController.text = nik;
+      }
+      if (nama != null && nama.isNotEmpty) {
+        _nameController.text = nama;
+      }
+      
+      if (nik != null || nama != null) {
+        _showSuccess('KTP berhasil dipindai!');
+      } else {
+        _showWarning('Gagal menemukan data NIK/Nama di foto.');
+      }
+
+      textRecognizer.close();
+    } catch (e) {
+      _showError('Terjadi kesalahan saat membaca KTP.');
+    } finally {
+      if (mounted) setState(() => _isOcrLoading = false);
+    }
+  }
+
+  Future<void> _pickWajah() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.front, imageQuality: 80);
+    if (pickedFile != null) {
+      setState(() {
+        _fotoWajah = File(pickedFile.path);
+      });
+    }
   }
 
   Future<void> _submitRegister() async {
@@ -87,6 +174,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       noHp: phone,
       alamat: address.isNotEmpty ? address : null,
       cabang: _selectedCabang,
+      fotoWajah: _fotoWajah,
+      fotoKtp: _fotoKtp,
     );
 
     if (!mounted) return;
@@ -117,6 +206,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       _showError(authProvider.errorMessage ?? 'Pendaftaran gagal. Silakan coba lagi.');
     }
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: const Color(0xFF0E7955),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
   }
 
   void _showWarning(String message) {
@@ -192,6 +298,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 28),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPhotoUploadButton(
+                      title: 'Foto Wajah',
+                      file: _fotoWajah,
+                      onTap: _pickWajah,
+                      icon: Icons.face_retouching_natural_rounded,
+                      isLoading: false,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildPhotoUploadButton(
+                      title: 'Scan KTP',
+                      file: _fotoKtp,
+                      onTap: _pickKtp,
+                      icon: Icons.credit_card_rounded,
+                      isLoading: _isOcrLoading,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
 
               // Form Fields
               _buildLabel('Nama Lengkap (Sesuai KTP) *'),
@@ -430,6 +561,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoUploadButton({
+    required String title,
+    required File? file,
+    required VoidCallback onTap,
+    required IconData icon,
+    required bool isLoading,
+  }) {
+    return InkWell(
+      onTap: isLoading ? null : onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: file != null ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: file != null ? const Color(0xFF0E7955) : const Color(0xFFE2E8F0),
+            width: file != null ? 2 : 1,
+          ),
+        ),
+        child: isLoading
+            ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0E7955)))))
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    file != null ? Icons.check_circle_rounded : icon,
+                    color: file != null ? const Color(0xFF0E7955) : const Color(0xFF94A3B8),
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    file != null ? 'Selesai' : title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: file != null ? const Color(0xFF0E7955) : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

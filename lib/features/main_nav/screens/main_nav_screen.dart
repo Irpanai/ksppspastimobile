@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../home/screens/beranda_screen.dart';
 import '../../savings/screens/simpanan_screen.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
-import '../../qris/screens/qris_scanner_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
 class MainNavScreen extends StatefulWidget {
@@ -105,12 +104,11 @@ class _MainNavScreenState extends State<MainNavScreen> {
                   ],
                 ),
               ),
-              // Floating QR Button raksasa di tengah
+              // Floating Pembiayaan Button raksasa di tengah
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const QrisScannerScreen()),
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Fitur Gadai / Pinjaman (Pembiayaan) segera hadir!')),
                   );
                 },
                 child: Container(
@@ -128,7 +126,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 32),
+                  child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 32),
                 ),
               ),
             ],

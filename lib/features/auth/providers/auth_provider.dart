@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/network/api_client.dart';
@@ -109,6 +110,8 @@ class AuthProvider extends ChangeNotifier {
     String? kecamatan,
     String? kelurahan,
     String? cabang,
+    File? fotoWajah,
+    File? fotoKtp,
   }) async {
     _status = AuthStatus.authenticating;
     _errorMessage = null;
@@ -133,6 +136,8 @@ class AuthProvider extends ChangeNotifier {
         kecamatan: kecamatan?.trim(),
         kelurahan: kelurahan?.trim(),
         cabang: cabang?.trim(),
+        fotoWajah: fotoWajah,
+        fotoKtp: fotoKtp,
       );
       _token = loginData.token;
       _user = loginData.user;

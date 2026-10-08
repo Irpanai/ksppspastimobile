@@ -155,76 +155,83 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                     ],
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Rentang Tanggal Transaksi',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Rentang Tanggal Transaksi',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                      ),
+                      if (tempStart != null || tempEnd != null)
+                        InkWell(
+                          onTap: () => setModalState(() {
+                            tempStart = null;
+                            tempEnd = null;
+                          }),
+                          child: const Text('Hapus', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDateRangePicker(
-                        context: context,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                        initialDateRange: tempStart != null && tempEnd != null
-                            ? DateTimeRange(start: tempStart!, end: tempEnd!)
-                            : null,
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.light(
-                                primary: Theme.of(context).colorScheme.primary,
-                                onPrimary: Colors.white,
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setModalState(() {
-                          tempStart = picked.start;
-                          tempEnd = picked.end;
-                        });
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_month_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              tempStart != null && tempEnd != null
-                                  ? '${DateFormat('d MMM yyyy', 'id_ID').format(tempStart!)} - ${DateFormat('d MMM yyyy', 'id_ID').format(tempEnd!)}'
-                                  : 'Pilih Rentang Tanggal',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: tempStart != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
-                              ),
-                            ),
-                          ),
-                          if (tempStart != null)
-                            InkWell(
-                              onTap: () {
-                                setModalState(() {
-                                  tempStart = null;
-                                  tempEnd = null;
-                                });
-                              },
-                              child: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
-                            ),
-                        ],
-                      ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildQuickDateChip('Hari Ini', () {
+                          setModalState(() {
+                            final now = DateTime.now();
+                            tempStart = now;
+                            tempEnd = now;
+                          });
+                        }),
+                        _buildQuickDateChip('7 Hari Terakhir', () {
+                          setModalState(() {
+                            final now = DateTime.now();
+                            tempStart = now.subtract(const Duration(days: 7));
+                            tempEnd = now;
+                          });
+                        }),
+                        _buildQuickDateChip('Bulan Ini', () {
+                          setModalState(() {
+                            final now = DateTime.now();
+                            tempStart = DateTime(now.year, now.month, 1);
+                            tempEnd = DateTime(now.year, now.month + 1, 0);
+                          });
+                        }),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDatePickerField(
+                          context: context,
+                          label: 'Dari Tanggal',
+                          selectedDate: tempStart,
+                          onDateSelected: (date) {
+                            setModalState(() {
+                              tempStart = date;
+                              if (tempEnd != null && tempEnd!.isBefore(date)) {
+                                tempEnd = date;
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDatePickerField(
+                          context: context,
+                          label: 'Sampai Tanggal',
+                          selectedDate: tempEnd,
+                          minDate: tempStart,
+                          onDateSelected: (date) {
+                            setModalState(() => tempEnd = date);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 32),
                   SizedBox(
@@ -268,6 +275,90 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
       checkmarkColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    );
+  }
+
+  Widget _buildQuickDateChip(String label, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required BuildContext context,
+    required String label,
+    required DateTime? selectedDate,
+    DateTime? minDate,
+    required Function(DateTime) onDateSelected,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: selectedDate ?? minDate ?? DateTime.now(),
+          firstDate: minDate ?? DateTime(2020),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: Theme.of(context).colorScheme.primary,
+                  onPrimary: Colors.white,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          onDateSelected(picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    selectedDate != null ? DateFormat('d MMM yyyy', 'id_ID').format(selectedDate) : 'Pilih',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: selectedDate != null ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
