@@ -64,6 +64,9 @@ class PenarikanPaginationModel {
   final int lastPage;
   final int perPage;
   final int total;
+  final bool hasPending;
+  final PenarikanItemModel? activePending;
+  final Map<String, dynamic>? ringkasanSaldoTarik;
 
   PenarikanPaginationModel({
     required this.items,
@@ -71,6 +74,9 @@ class PenarikanPaginationModel {
     required this.lastPage,
     required this.perPage,
     required this.total,
+    this.hasPending = false,
+    this.activePending,
+    this.ringkasanSaldoTarik,
   });
 
   factory PenarikanPaginationModel.fromJson(Map<String, dynamic> json) {
@@ -80,12 +86,26 @@ class PenarikanPaginationModel {
       parsedItems = rawItems.map((e) => PenarikanItemModel.fromJson(e as Map<String, dynamic>)).toList();
     }
 
+    PenarikanItemModel? active;
+    if (json['active_pending'] is Map<String, dynamic>) {
+      active = PenarikanItemModel.fromJson(json['active_pending'] as Map<String, dynamic>);
+    } else {
+      try {
+        active = parsedItems.firstWhere((it) => it.isPending);
+      } catch (_) {
+        active = null;
+      }
+    }
+
     return PenarikanPaginationModel(
       items: parsedItems,
       currentPage: json['current_page'] is int ? json['current_page'] : 1,
       lastPage: json['last_page'] is int ? json['last_page'] : 1,
       perPage: json['per_page'] is int ? json['per_page'] : 15,
       total: json['total'] is int ? json['total'] : parsedItems.length,
+      hasPending: json['has_pending'] == true || active != null,
+      activePending: active,
+      ringkasanSaldoTarik: json['ringkasan_saldo_tarik'] as Map<String, dynamic>?,
     );
   }
 }

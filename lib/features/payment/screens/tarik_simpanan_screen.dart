@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/providers/dashboard_provider.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../../savings/models/penarikan_model.dart';
 import '../../savings/services/savings_service.dart';
 import '../../../../core/network/api_client.dart';
@@ -24,15 +25,27 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   // Form Controllers
   final _amountController = TextEditingController();
   final _bankNameController = TextEditingController();
+  final _customBankController = TextEditingController();
   final _accountNoController = TextEditingController();
   final _accountNameController = TextEditingController();
   final _noteController = TextEditingController();
+
+  String get _finalBankName {
+    if (_bankNameController.text == 'Bank Lainnya') {
+      return _customBankController.text.trim().isNotEmpty
+          ? _customBankController.text.trim()
+          : 'Bank Lainnya';
+    }
+    return _bankNameController.text.trim();
+  }
 
   String _selectedSumber = 'simpanan_sukarela';
   bool _isLoading = false;
 
   // Riwayat State
   List<PenarikanItemModel> _riwayatList = [];
+  PenarikanItemModel? _activePendingPengajuan;
+  bool get _hasActivePending => _activePendingPengajuan != null;
   bool _isLoadingRiwayat = false;
   String? _riwayatError;
 
@@ -46,18 +59,75 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   ];
 
   final List<String> _bankOptions = [
-    'BCA',
-    'BRI',
-    'BNI',
-    'Mandiri',
-    'BSI (Bank Syariah Indonesia)',
+    'Bank Syariah Indonesia (BSI)',
+    'Bank Central Asia (BCA)',
+    'Bank Mandiri',
+    'Bank Rakyat Indonesia (BRI)',
+    'Bank Negara Indonesia (BNI)',
+    'Bank Muamalat',
     'Bank Jateng',
-    'CIMB Niaga',
+    'Bank CIMB Niaga Syariah',
+    'Bank Jago Syariah',
     'Permata Bank',
     'Bank Danamon',
-    'Bank Muamalat',
-    'Lainnya',
+    'Bank Lainnya',
   ];
+
+  List<String> get _currentBankOptions {
+    final list = List<String>.from(_bankOptions);
+    final current = _bankNameController.text.trim();
+    if (current.isNotEmpty && !list.contains(current) && current != 'Bank Lainnya') {
+      list.insert(list.length - 1, current);
+    }
+    return list;
+  }
+
+  String _matchBankOption(String raw) {
+    if (raw.trim().isEmpty) return 'Bank Syariah Indonesia (BSI)';
+
+    final trimmed = raw.trim();
+    final lower = trimmed.toLowerCase();
+
+    for (final opt in _bankOptions) {
+      if (opt.toLowerCase() == lower) return opt;
+    }
+
+    if (lower.contains('bsi') || lower.contains('syariah indonesia')) {
+      return 'Bank Syariah Indonesia (BSI)';
+    }
+    if (lower.contains('bca') || lower.contains('central asia')) {
+      return 'Bank Central Asia (BCA)';
+    }
+    if (lower.contains('mandiri')) {
+      return 'Bank Mandiri';
+    }
+    if (lower.contains('bri') || lower.contains('rakyat indonesia')) {
+      return 'Bank Rakyat Indonesia (BRI)';
+    }
+    if (lower.contains('bni') || lower.contains('negara indonesia')) {
+      return 'Bank Negara Indonesia (BNI)';
+    }
+    if (lower.contains('muamalat')) {
+      return 'Bank Muamalat';
+    }
+    if (lower.contains('jateng')) {
+      return 'Bank Jateng';
+    }
+    if (lower.contains('cimb') || lower.contains('niaga')) {
+      return 'Bank CIMB Niaga Syariah';
+    }
+    if (lower.contains('jago')) {
+      return 'Bank Jago Syariah';
+    }
+    if (lower.contains('permata')) {
+      return 'Permata Bank';
+    }
+    if (lower.contains('danamon')) {
+      return 'Bank Danamon';
+    }
+
+    return trimmed;
+  }
 
   @override
   void initState() {
@@ -69,27 +139,58 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       }
     });
 
-    // Populate default bank info from user profile
+    // Populate bank info directly from profile and load pending status
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = Provider.of<AuthProvider>(context, listen: false).user;
-      final anggota = user?.anggota;
-      if (anggota != null) {
-        if (anggota.namaBank != null && anggota.namaBank!.isNotEmpty) {
-          _bankNameController.text = anggota.namaBank!;
-        } else {
-          _bankNameController.text = 'BCA';
-        }
-        if (anggota.noRekening != null && anggota.noRekening!.isNotEmpty) {
-          _accountNoController.text = anggota.noRekening!;
-        }
-        if (anggota.atasNamaRekening != null && anggota.atasNamaRekening!.isNotEmpty) {
-          _accountNameController.text = anggota.atasNamaRekening!;
-        } else if (user != null) {
-          _accountNameController.text = user.name;
-        }
-        setState(() {});
-      }
+      _fetchRiwayat();
+      _syncBankInfoFromProfile();
     });
+  }
+
+  Future<void> _syncBankInfoFromProfile() async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    var anggota = profileProvider.profileData?.anggota;
+    var user = profileProvider.profileData?.user ?? authProvider.user;
+
+    // Jika data rekening di profileData belum lengkap, fetch dari API profil
+    if (anggota == null || anggota.namaBank == null || anggota.namaBank!.trim().isEmpty) {
+      try {
+        await profileProvider.fetchProfileDetail(refresh: true);
+        if (mounted) {
+          anggota = profileProvider.profileData?.anggota;
+          user = profileProvider.profileData?.user ?? authProvider.user;
+        }
+      } catch (_) {}
+    }
+
+    // Fallback ke AuthProvider jika ada
+    anggota ??= authProvider.user?.anggota;
+
+    if (anggota != null && mounted) {
+      final rawBank = anggota.namaBank?.trim() ?? '';
+      final noRek = anggota.noRekening?.trim() ?? '';
+      final atasNama = anggota.atasNamaRekening?.trim() ?? user?.name.trim() ?? '';
+
+      if (rawBank.isNotEmpty) {
+        final matched = _matchBankOption(rawBank);
+        _bankNameController.text = matched;
+        if (!_bankOptions.contains(matched)) {
+          _customBankController.text = rawBank;
+        }
+      } else if (_bankNameController.text.isEmpty) {
+        _bankNameController.text = 'Bank Syariah Indonesia (BSI)';
+      }
+
+      if (noRek.isNotEmpty) {
+        _accountNoController.text = noRek;
+      }
+      if (atasNama.isNotEmpty) {
+        _accountNameController.text = atasNama;
+      }
+
+      setState(() {});
+    }
   }
 
   @override
@@ -97,6 +198,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     _tabController.dispose();
     _amountController.dispose();
     _bankNameController.dispose();
+    _customBankController.dispose();
     _accountNoController.dispose();
     _accountNameController.dispose();
     _noteController.dispose();
@@ -119,6 +221,17 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       if (mounted) {
         setState(() {
           _riwayatList = result.items;
+          PenarikanItemModel? pending;
+          if (result.activePending != null) {
+            pending = result.activePending;
+          } else {
+            try {
+              pending = _riwayatList.firstWhere((it) => it.isPending);
+            } catch (_) {
+              pending = null;
+            }
+          }
+          _activePendingPengajuan = pending;
           _isLoadingRiwayat = false;
         });
       }
@@ -141,22 +254,44 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       return;
     }
 
-    final dashboard = context.read<DashboardProvider>().dashboardData?.ringkasanSaldo;
-    final maxBalance = _selectedSumber == 'saldo_sijaka'
-        ? (dashboard?.saldoBagihasilSijaka ?? 0)
-        : (dashboard?.saldoSukarela ?? 0);
-
-    if (amount > maxBalance) {
+    // 1. Cek apakah ada pengajuan aktif yang masih pending
+    if (_hasActivePending) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Saldo tidak mencukupi. Saldo tersedia: ${AppCurrency.format(maxBalance)}'),
-          backgroundColor: Colors.red,
+          content: Text(
+            'Anda masih memiliki pengajuan penarikan sebesar ${_activePendingPengajuan!.nominalFormat} yang sedang Menunggu Transfer. Mohon tunggu proses pencairan selesai.',
+          ),
+          backgroundColor: Colors.amber.shade900,
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
     }
 
-    if (_bankNameController.text.trim().isEmpty) {
+    final dashboard = context.read<DashboardProvider>().dashboardData?.ringkasanSaldo;
+    final realBalance = _selectedSumber == 'saldo_sijaka'
+        ? (dashboard?.saldoBagihasilSijaka ?? 0)
+        : (dashboard?.saldoSukarela ?? 0);
+
+    final currentType = _selectedSumber == 'saldo_sijaka' ? 'bagihasil_sijaka' : 'sukarela';
+    final pendingForSelected = _riwayatList
+        .where((it) => it.isPending && it.jenisSimpanan == currentType)
+        .fold<num>(0, (sum, it) => sum + it.nominal);
+
+    final maxAvailable = realBalance > pendingForSelected ? realBalance - pendingForSelected : 0;
+
+    if (amount > maxAvailable) {
+      final String msg = pendingForSelected > 0
+          ? 'Saldo tidak mencukupi. Saldo rekening: ${AppCurrency.format(realBalance)}, tertahan menunggu transfer: ${AppCurrency.format(pendingForSelected)}. Sisa bisa ditarik: ${AppCurrency.format(maxAvailable)}'
+          : 'Saldo tidak mencukupi. Saldo tersedia: ${AppCurrency.format(realBalance)}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final finalBank = _finalBankName;
+    if (finalBank.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nama bank tujuan wajib diisi'), backgroundColor: Colors.red),
       );
@@ -177,7 +312,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       return;
     }
 
-    // 1. Verifikasi PIN Transaksi 6 Digit
+    // Verifikasi PIN Transaksi 6 Digit
     final isPinValid = await PinVerificationDialog.show(
       context,
       title: 'Konfirmasi Penarikan',
@@ -192,15 +327,16 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       await _savingsService.ajukanPenarikan(
         nominal: amount,
         jenisSimpanan: _selectedSumber == 'saldo_sijaka' ? 'bagihasil_sijaka' : 'sukarela',
-        namaBank: _bankNameController.text.trim(),
+        namaBank: finalBank,
         noRekening: _accountNoController.text.trim(),
         atasNama: _accountNameController.text.trim(),
         catatanAnggota: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
       );
 
-      // Refresh data
+      // Refresh data dashboard & riwayat
       if (mounted) {
         context.read<DashboardProvider>().fetchDashboard();
+        _fetchRiwayat();
       }
 
       setState(() => _isLoading = false);
@@ -245,7 +381,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               const Text('Pengajuan Berhasil Dikirim', textAlign: TextAlign.center, style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(
-                'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} telah diteruskan ke tim Finance. Dana akan ditransfer secara manual ke rekening ${_bankNameController.text} (${_accountNoController.text}) Anda.',
+                'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} telah diteruskan ke tim Finance. Dana akan ditransfer secara manual ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFF64748B), height: 1.4, fontSize: 13),
               ),
@@ -346,6 +482,10 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_hasActivePending) ...[
+                  _buildPendingWarningCard(),
+                  const SizedBox(height: 16),
+                ],
                 _buildBalanceBanner(dashboard),
                 const SizedBox(height: 20),
 
@@ -532,10 +672,15 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _bankOptions.contains(_bankNameController.text) ? _bankNameController.text : null,
-                            hint: Text(_bankNameController.text.isNotEmpty ? _bankNameController.text : 'Pilih Bank Tujuan', style: const TextStyle(fontSize: 13)),
+                            value: _currentBankOptions.contains(_bankNameController.text)
+                                ? _bankNameController.text
+                                : null,
+                            hint: Text(
+                              _bankNameController.text.isNotEmpty ? _bankNameController.text : 'Pilih Bank Tujuan',
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
+                            ),
                             isExpanded: true,
-                            items: _bankOptions.map((bank) {
+                            items: _currentBankOptions.map((bank) {
                               return DropdownMenuItem<String>(
                                 value: bank,
                                 child: Text(bank, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
@@ -543,12 +688,33 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                             }).toList(),
                             onChanged: (val) {
                               if (val != null) {
-                                setState(() => _bankNameController.text = val);
+                                setState(() {
+                                  _bankNameController.text = val;
+                                  if (val != 'Bank Lainnya') {
+                                    _customBankController.clear();
+                                  }
+                                });
                               }
                             },
                           ),
                         ),
                       ),
+                      if (_bankNameController.text == 'Bank Lainnya') ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _customBankController,
+                          style: const TextStyle(fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: 'Ketik nama bank lainnya...',
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
                       const SizedBox(height: 12),
 
                       // No Rekening
@@ -637,16 +803,20 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               ),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _isLoading || _parsedAmount < 50000 ? null : _submitTarik,
+                  onPressed: _isLoading || _parsedAmount < 50000 || _hasActivePending ? null : _submitTarik,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0E7955),
+                    backgroundColor: _hasActivePending ? const Color(0xFF94A3B8) : const Color(0xFF0E7955),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Ajukan Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      : Text(
+                          _hasActivePending ? 'Menunggu Transfer' : 'Ajukan Sekarang',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
                 ),
               ),
             ],
@@ -827,17 +997,94 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     );
   }
 
+  Widget _buildPendingWarningCard() {
+    final pending = _activePendingPengajuan!;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF3C7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD97706), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pengajuan Sedang Diproses',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
+                    ),
+                    Text(
+                      'Menunggu transfer oleh finance',
+                      style: TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: const Text('Menunggu Transfer', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Anda memiliki permohonan penarikan aktif sebesar ${pending.nominalFormat} (Kode: ${pending.kodeTransaksi}). Dana sedang dalam antrean transfer manual oleh tim Finance. Anda baru dapat mengajukan penarikan kembali setelah proses transfer selesai.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () => _tabController.animateTo(1),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Lihat di Riwayat Pengajuan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFFB45309)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBalanceBanner(dynamic dashboard) {
-    num activeBalance = 0;
+    num realBalance = 0;
     String label = 'Saldo Sirela (Sukarela)';
+    final String currentType = _selectedSumber == 'saldo_sijaka' ? 'bagihasil_sijaka' : 'sukarela';
 
     if (_selectedSumber == 'saldo_sijaka') {
-      activeBalance = dashboard?.saldoBagihasilSijaka ?? 0;
+      realBalance = dashboard?.saldoBagihasilSijaka ?? 0;
       label = 'Saldo Bagi Hasil (Nisbah)';
     } else {
-      activeBalance = dashboard?.saldoSukarela ?? 0;
+      realBalance = dashboard?.saldoSukarela ?? 0;
       label = 'Saldo Sirela (Sukarela)';
     }
+
+    final pendingAmount = _riwayatList
+        .where((it) => it.isPending && it.jenisSimpanan == currentType)
+        .fold<num>(0, (sum, it) => sum + it.nominal);
+    final availableBalance = realBalance > pendingAmount ? realBalance - pendingAmount : 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -845,49 +1092,90 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Color(0x0A000000),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           )
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFECFDF5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF0E7955), size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text(
-                    AppCurrency.format(activeBalance),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF0E7955), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppCurrency.format(realBalance),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: pendingAmount > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: pendingAmount > 0 ? const Color(0xFFFDE68A) : Colors.transparent,
+                  ),
+                ),
+                child: Text(
+                  pendingAmount > 0 ? 'Ada Tertahan' : 'Bisa Ditarik',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: pendingAmount > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
+                  ),
+                ),
+              ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
+          if (pendingAmount > 0) ...[
+            const SizedBox(height: 10),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tertahan (Menunggu Transfer):', style: TextStyle(fontSize: 11, color: Color(0xFFB45309))),
+                Text(
+                  '- ${AppCurrency.format(pendingAmount)}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                ),
+              ],
             ),
-            child: const Text('Bisa Ditarik', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
-          )
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Sisa Tersedia untuk Ditarik:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Text(
+                  AppCurrency.format(availableBalance),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0E7955)),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

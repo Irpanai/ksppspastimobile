@@ -80,18 +80,29 @@ class RingkasanSaldo {
   final num saldoPokok;
   final num saldoWajib;
   final num saldoSukarela;
+  final num saldoSukarelaTersedia;
+  final num saldoSukarelaPending;
   final num saldoSijaka;
   final num saldoBagihasilSijaka;
+  final num saldoBagihasilTersedia;
+  final num saldoBagihasilPending;
   final num totalSimpanan;
+  final bool hasPendingPenarikan;
 
   RingkasanSaldo({
     required this.saldoPokok,
     required this.saldoWajib,
     required this.saldoSukarela,
+    num? saldoSukarelaTersedia,
+    this.saldoSukarelaPending = 0,
     required this.saldoSijaka,
     required this.saldoBagihasilSijaka,
+    num? saldoBagihasilTersedia,
+    this.saldoBagihasilPending = 0,
     required this.totalSimpanan,
-  });
+    this.hasPendingPenarikan = false,
+  })  : saldoSukarelaTersedia = saldoSukarelaTersedia ?? saldoSukarela,
+        saldoBagihasilTersedia = saldoBagihasilTersedia ?? saldoBagihasilSijaka;
 
   num get saldoPokokDanWajib => saldoPokok + saldoWajib;
 
@@ -102,13 +113,30 @@ class RingkasanSaldo {
       return num.tryParse(val.toString()) ?? 0;
     }
 
+    final sukarela = parseNum(json['saldo_sukarela']);
+    final sukarelaPending = parseNum(json['saldo_sukarela_pending']);
+    final sukarelaTersedia = json['saldo_sukarela_tersedia'] != null
+        ? parseNum(json['saldo_sukarela_tersedia'])
+        : (sukarela - sukarelaPending > 0 ? sukarela - sukarelaPending : 0);
+
+    final bagihasil = parseNum(json['saldo_bagihasil_sijaka']);
+    final bagihasilPending = parseNum(json['saldo_bagihasil_pending']);
+    final bagihasilTersedia = json['saldo_bagihasil_tersedia'] != null
+        ? parseNum(json['saldo_bagihasil_tersedia'])
+        : (bagihasil - bagihasilPending > 0 ? bagihasil - bagihasilPending : 0);
+
     return RingkasanSaldo(
       saldoPokok: parseNum(json['saldo_pokok']),
       saldoWajib: parseNum(json['saldo_wajib']),
-      saldoSukarela: parseNum(json['saldo_sukarela']),
+      saldoSukarela: sukarela,
+      saldoSukarelaTersedia: sukarelaTersedia,
+      saldoSukarelaPending: sukarelaPending,
       saldoSijaka: parseNum(json['saldo_sijaka']),
-      saldoBagihasilSijaka: parseNum(json['saldo_bagihasil_sijaka']),
+      saldoBagihasilSijaka: bagihasil,
+      saldoBagihasilTersedia: bagihasilTersedia,
+      saldoBagihasilPending: bagihasilPending,
       totalSimpanan: parseNum(json['total_simpanan']),
+      hasPendingPenarikan: json['has_pending_penarikan'] == true || (sukarelaPending + bagihasilPending) > 0,
     );
   }
 }
