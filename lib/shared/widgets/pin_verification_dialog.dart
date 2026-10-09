@@ -8,11 +8,13 @@ import '../../features/profile/screens/set_pin_screen.dart';
 class PinVerificationDialog extends StatefulWidget {
   final String title;
   final String subtitle;
+  final bool returnPin;
 
   const PinVerificationDialog({
     super.key,
     this.title = 'Masukkan PIN Transaksi',
     this.subtitle = 'Masukkan 6 digit PIN keamanan akun Anda',
+    this.returnPin = false,
   });
 
   /// Static helper to trigger PIN verification dialog
@@ -72,7 +74,7 @@ class PinVerificationDialog extends StatefulWidget {
 
     if (!context.mounted) return false;
 
-    final result = await showDialog<bool>(
+    final result = await showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => PinVerificationDialog(
@@ -80,7 +82,77 @@ class PinVerificationDialog extends StatefulWidget {
         subtitle: subtitle,
       ),
     );
-    return result ?? false;
+    return result == true || (result is String && result.isNotEmpty);
+  }
+
+  /// Static helper to trigger PIN verification dialog and return the verified PIN
+  static Future<String?> showForPin(
+    BuildContext context, {
+    String title = 'Masukkan PIN Transaksi',
+    String subtitle = 'Masukkan 6 digit PIN keamanan akun Anda',
+  }) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+
+    // Jika user belum mengatur PIN, arahkan ke pembuatan PIN terlebih dahulu
+    if (user != null && !user.hasPin) {
+      final shouldCreate = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: Color(0xFF0E7955)),
+              SizedBox(width: 8),
+              Text('PIN Belum Dibuat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text(
+            'Untuk keamanan akun, Anda wajib membuat 6 digit PIN terlebih dahulu.',
+            style: TextStyle(color: Color(0xFF64748B), height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0E7955),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Buat PIN Sekarang'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldCreate == true && context.mounted) {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => const SetPinScreen()),
+        );
+        if (result != true) return null;
+      } else {
+        return null;
+      }
+    }
+
+    if (!context.mounted) return null;
+
+    final result = await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => PinVerificationDialog(
+        title: title,
+        subtitle: subtitle,
+        returnPin: true,
+      ),
+    );
+    if (result is String) return result;
+    return null;
   }
 
   @override
@@ -129,7 +201,7 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
     try {
       final success = await _pinService.verifyPin(_pin);
       if (success && mounted) {
-        Navigator.pop(context, true);
+        Navigator.pop(context, widget.returnPin ? _pin : true);
       }
     } on ApiException catch (e) {
       if (mounted) {

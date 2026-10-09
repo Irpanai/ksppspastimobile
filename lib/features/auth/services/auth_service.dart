@@ -151,4 +151,58 @@ class AuthService {
       await StorageService.clearAll();
     }
   }
+
+  /// Request OTP Pemulihan Password
+  Future<Map<String, dynamic>?> requestForgotPasswordOtp(String email) async {
+    final response = await ApiClient.post<Map<String, dynamic>>(
+      ApiConstants.forgotPassword,
+      body: {'email': email},
+      withAuth: false,
+      fromJsonT: (data) => data as Map<String, dynamic>,
+    );
+
+    if (!response.success) {
+      throw ApiException(message: response.message.isNotEmpty ? response.message : 'Gagal mengirim kode OTP');
+    }
+    return response.data;
+  }
+
+  /// Verifikasi Kode OTP
+  Future<void> verifyResetOtp({required String email, required String otp}) async {
+    final response = await ApiClient.post(
+      ApiConstants.verifyResetOtp,
+      body: {
+        'email': email,
+        'otp': otp,
+      },
+      withAuth: false,
+    );
+
+    if (!response.success) {
+      throw ApiException(message: response.message.isNotEmpty ? response.message : 'Kode OTP tidak valid');
+    }
+  }
+
+  /// Reset Password Baru dengan OTP
+  Future<void> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await ApiClient.post(
+      ApiConstants.resetPassword,
+      body: {
+        'email': email,
+        'otp': otp,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+      withAuth: false,
+    );
+
+    if (!response.success) {
+      throw ApiException(message: response.message.isNotEmpty ? response.message : 'Gagal mengatur ulang password');
+    }
+  }
 }

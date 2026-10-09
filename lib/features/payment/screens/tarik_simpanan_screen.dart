@@ -368,7 +368,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               const Text('Pengajuan Berhasil Dikirim', textAlign: TextAlign.center, style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(
-                'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} telah diteruskan ke tim Finance. Dana akan ditransfer secara manual ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
+                'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} berhasil diajukan. Dana akan ditransfer ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFF64748B), height: 1.4, fontSize: 13),
               ),
@@ -765,7 +765,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                         controller: _noteController,
                         style: const TextStyle(fontSize: 13),
                         decoration: InputDecoration(
-                          hintText: 'Catatan untuk finance (opsional)',
+                          hintText: 'Catatan tambahan (opsional)',
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1447,7 +1447,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Menunggu transfer oleh finance',
+                      'Menunggu proses transfer',
                       style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -1463,7 +1463,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Anda memiliki permohonan penarikan aktif sebesar ${pending.nominalFormat} (Kode: ${pending.kodeTransaksi}). Dana sedang dalam antrean transfer manual oleh tim Finance. Anda baru dapat mengajukan penarikan kembali setelah proses pencairan sebelumnya selesai.',
+              'Anda memiliki permohonan penarikan aktif sebesar ${pending.nominalFormat} (Kode: ${pending.kodeTransaksi}). Dana sedang dalam antrean transfer. Anda baru dapat mengajukan penarikan kembali setelah proses pencairan sebelumnya selesai.',
               style: const TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.4),
             ),
           ),

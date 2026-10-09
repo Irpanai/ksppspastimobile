@@ -187,4 +187,66 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }
+
+  /// Request OTP Forgot Password
+  Future<Map<String, dynamic>?> requestForgotPasswordOtp(String email) async {
+    _errorMessage = null;
+    try {
+      final res = await _authService.requestForgotPasswordOtp(email);
+      return res;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _errorMessage = 'Gagal mengirim OTP: ${e.toString()}';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Verifikasi OTP
+  Future<bool> verifyResetOtp({required String email, required String otp}) async {
+    _errorMessage = null;
+    try {
+      await _authService.verifyResetOtp(email: email, otp: otp);
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Kode OTP tidak valid: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Reset Password with OTP
+  Future<bool> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    _errorMessage = null;
+    try {
+      await _authService.resetPasswordWithOtp(
+        email: email,
+        otp: otp,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Gagal mereset password: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
 }
+

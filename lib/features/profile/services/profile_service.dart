@@ -63,6 +63,29 @@ class ProfileService {
     }
   }
 
+  /// Reset Password Akun dengan PIN Transaksi
+  Future<void> resetPasswordWithPin({
+    required String pin,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await ApiClient.post(
+      ApiConstants.resetPasswordWithPin,
+      body: {
+        'pin': pin,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+      withAuth: true,
+    );
+
+    if (!response.success) {
+      throw ApiException(
+        message: response.message.isNotEmpty ? response.message : 'Gagal mereset password dengan PIN',
+      );
+    }
+  }
+
   /// 7.4 Upload Foto Profil
   Future<MemberProfileModel> uploadPhoto(File imageFile) async {
     final response = await ApiClient.postMultipart<MemberProfileModel>(

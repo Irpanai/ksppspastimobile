@@ -20,6 +20,7 @@ import 'terms_conditions_screen.dart';
 import 'about_app_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
+import '../../auth/screens/forgot_password_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -297,6 +298,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   'Ganti Password',
                                   onTap: () {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+                                  },
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.lock_reset_rounded,
+                                  'Lupa Password',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                    );
                                   },
                                 ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),

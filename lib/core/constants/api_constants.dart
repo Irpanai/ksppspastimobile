@@ -98,6 +98,9 @@ class ApiConstants {
   static const String register = '/auth/register';
   static const String me = '/auth/me';
   static const String logout = '/auth/logout';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String verifyResetOtp = '/auth/verify-reset-otp';
+  static const String resetPassword = '/auth/reset-password';
 
   // Member Endpoints
   static const String dashboard = '/member/dashboard';
@@ -110,6 +113,7 @@ class ApiConstants {
   static const String memberProfile = '/member/profile';
   static const String updateProfile = '/member/profile';
   static const String changePassword = '/member/profile/password';
+  static const String resetPasswordWithPin = '/member/profile/password-reset-pin';
 
   // PIN Security Endpoints
   static const String pinStatus = '/member/pin/status';

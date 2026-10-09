@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../auth/screens/forgot_password_screen.dart';
+import '../providers/profile_provider.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -19,9 +22,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _isLoading = false;
 
   void _submit() async {
-    final oldPass = _oldPassController.text;
-    final newPass = _newPassController.text;
-    final confirmPass = _confirmPassController.text;
+    final oldPass = _oldPassController.text.trim();
+    final newPass = _newPassController.text.trim();
+    final confirmPass = _confirmPassController.text.trim();
 
     if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
       _showError('Mohon lengkapi semua kolom password.');
@@ -40,13 +43,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulasi API ganti password
-    await Future.delayed(const Duration(seconds: 2));
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final success = await profileProvider.changePassword(
+      currentPassword: oldPass,
+      password: newPass,
+      passwordConfirmation: confirmPass,
+    );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    _showSuccessAndPop();
+    if (success) {
+      _showSuccessAndPop();
+    } else {
+      _showError(profileProvider.errorMessage ?? 'Gagal mengubah password. Pastikan password lama sesuai.');
+    }
   }
 
   void _showError(String message) {
@@ -162,6 +173,28 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     controller: _oldPassController,
                     isObscure: _oldObscure,
                     onToggleObscure: () => setState(() => _oldObscure = !_oldObscure),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text(
+                          'Lupa password lama?',
+                          style: TextStyle(
+                            color: Color(0xFF0E7955),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                   _buildTextField(
                     label: 'Password Baru',

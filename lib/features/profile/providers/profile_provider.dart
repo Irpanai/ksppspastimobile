@@ -118,6 +118,38 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Reset password via PIN
+  Future<bool> resetPasswordWithPin({
+    required String pin,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    _isUpdating = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _profileService.resetPasswordWithPin(
+        pin: pin,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      _isUpdating = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _isUpdating = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Gagal mereset password: ${e.toString()}';
+      _isUpdating = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// 7.4 Upload Photo
   Future<bool> uploadPhoto(File imageFile) async {
     _isUpdating = true;
