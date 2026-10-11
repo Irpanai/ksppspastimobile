@@ -62,6 +62,10 @@ class DigitalCoopApp extends StatelessWidget {
     return MaterialApp(
       title: 'Si Hijau by INTIRA',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        physics: const ClampingScrollPhysics(),
+        overscroll: false,
+      ),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(

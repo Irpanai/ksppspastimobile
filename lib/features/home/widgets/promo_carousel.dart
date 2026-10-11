@@ -52,7 +52,7 @@ class PromoCarousel extends StatelessWidget {
           height: 160,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             itemCount: itemCount,
             itemBuilder: (context, index) {

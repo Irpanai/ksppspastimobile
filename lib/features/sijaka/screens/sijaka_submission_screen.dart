@@ -303,7 +303,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                 }
 
                 return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
+                  physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
                   child: Form(
                     key: _formKey,
@@ -694,7 +694,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             child: Row(
               children: _quickPresets.map((preset) {
                 final isSelected = _rawNominal == preset;

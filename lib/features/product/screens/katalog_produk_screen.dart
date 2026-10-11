@@ -14,7 +14,7 @@ class KatalogProdukScreen extends StatelessWidget {
           const PremiumHeader(title: 'Katalog Produk & Layanan'),
           Expanded(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

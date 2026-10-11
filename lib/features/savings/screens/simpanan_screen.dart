@@ -55,7 +55,7 @@ class SimpananScreen extends StatelessWidget {
             ),
             const Expanded(
               child: TabBarView(
-                physics: BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 children: [
                   _SimpananTabView(
                     jenis: 'pokok',
@@ -161,7 +161,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
       color: widget.gradientColors[0],
       child: SingleChildScrollView(
         controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -684,7 +684,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
       padding: const EdgeInsets.only(left: 24, right: 24, top: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: Row(
           children: [
             const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),

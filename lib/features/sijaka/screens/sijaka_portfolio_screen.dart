@@ -65,7 +65,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
               onRefresh: _handleRefresh,
               color: Theme.of(context).colorScheme.primary,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
                 padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -833,7 +833,7 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
       padding: const EdgeInsets.only(top: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: Row(
           children: [
             const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),
@@ -1047,7 +1047,7 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
             const SizedBox(height: 20),
             Expanded(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

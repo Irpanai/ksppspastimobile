@@ -1198,7 +1198,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 child: Row(
                   children: [
                     const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),

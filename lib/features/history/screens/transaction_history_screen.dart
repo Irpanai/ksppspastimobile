@@ -457,7 +457,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: Row(
           children: [
             const Icon(Icons.filter_alt_outlined, size: 16, color: Color(0xFF64748B)),
@@ -551,7 +551,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
 
     return ListView.builder(
       controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       itemCount: dateKeys.length + (isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {

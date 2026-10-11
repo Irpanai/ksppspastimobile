@@ -21,7 +21,7 @@ class ShuReportScreen extends StatelessWidget {
           ),
           Expanded(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
               child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

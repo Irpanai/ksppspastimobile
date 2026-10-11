@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../../main.dart';
 
@@ -108,51 +109,59 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1B5E20), // Background hijau tua identik tema aplikasi
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_isInitialized)
-            SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller.value.size.width,
-                  height: _controller.value.size.height,
-                  child: VideoPlayer(_controller),
-                ),
-              ),
-            )
-          else
-            const SizedBox.shrink(),
-
-          // Tombol Lewati (Skip) di pojok kanan atas
-          Positioned(
-            top: 48,
-            right: 20,
-            child: SafeArea(
-              child: TextButton(
-                onPressed: _navigateToNextScreen,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.25),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF1B5E20),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1B5E20), // Background hijau tua identik tema aplikasi
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_isInitialized)
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller.value.size.width,
+                    height: _controller.value.size.height,
+                    child: VideoPlayer(_controller),
                   ),
                 ),
-                child: const Text(
-                  'Lewati',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+              )
+            else
+              const SizedBox.shrink(),
+
+            // Tombol Lewati (Skip) di pojok kanan atas
+            Positioned(
+              top: 48,
+              right: 20,
+              child: SafeArea(
+                child: TextButton(
+                  onPressed: _navigateToNextScreen,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.black.withOpacity(0.25),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text(
+                    'Lewati',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -383,7 +383,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
                   // Top Content Area
                   Expanded(
                     child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
+                      physics: const ClampingScrollPhysics(),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24.0),
                         child: Column(
