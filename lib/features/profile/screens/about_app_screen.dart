@@ -17,11 +17,24 @@ class AboutAppScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline_rounded, size: 80, color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
-            const SizedBox(height: 24),
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 4))
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset('assets/images/logo-kspps-pasti.png', fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text(
-              'KSPPS PASTI Mobile',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+              'Si Hijau by INTIRA',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),
             const SizedBox(height: 8),
             const Text(

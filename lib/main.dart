@@ -9,8 +9,10 @@ import 'features/home/providers/dashboard_provider.dart';
 import 'features/main_nav/screens/main_nav_screen.dart';
 import 'features/payment/providers/payment_provider.dart';
 import 'features/profile/providers/profile_provider.dart';
+import 'features/promo/providers/promo_provider.dart';
 import 'features/savings/providers/savings_provider.dart';
 import 'features/sijaka/providers/sijaka_provider.dart';
+import 'features/splash/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +32,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HistoryProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
+        ChangeNotifierProvider(create: (_) => PromoProvider()..fetchPromos()),
       ],
       child: const DigitalCoopApp(),
     ),
@@ -57,7 +60,7 @@ class DigitalCoopApp extends StatelessWidget {
     const Color darkGreen = Color(0xFF1B5E20);    // Deep Forest Green (from "PASTI")
 
     return MaterialApp(
-      title: 'KSPP PASTI',
+      title: 'Si Hijau by INTIRA',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -75,7 +78,7 @@ class DigitalCoopApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const AuthWrapper(),
+      home: const SplashScreen(),
     );
   }
 }

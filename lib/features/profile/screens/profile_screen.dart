@@ -18,6 +18,7 @@ import 'edit_profile_screen.dart';
 import 'help_center_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'about_app_screen.dart';
+import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
 import '../../auth/screens/forgot_password_screen.dart';
@@ -390,6 +391,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   trailing: const Text('v1.0.0', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppScreen())),
                                 ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.person_remove_outlined,
+                                  'Keluar Keanggotaan',
+                                  iconColor: const Color(0xFFDC2626),
+                                  textColor: const Color(0xFFDC2626),
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PengunduranDiriScreen())),
+                                ),
                               ],
                             ),
                           ),
@@ -410,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // App Version
                           const Center(
                             child: Text(
-                              'Mobile KSPPS PASTI v1.0.0 • Sistem Syariah Terpadu',
+                              'Si Hijau by INTIRA v1.0.0 • Sistem Syariah Terpadu',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                             ),
                           ),
@@ -495,11 +504,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuRow(IconData icon, String title, {Widget? trailing, VoidCallback? onTap}) {
+  Widget _buildMenuRow(IconData icon, String title, {Widget? trailing, VoidCallback? onTap, Color? iconColor, Color? textColor}) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(icon, color: const Color(0xFF64748B), size: 22),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Color(0xFF334155))),
+      leading: Icon(icon, color: iconColor ?? const Color(0xFF64748B), size: 22),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: textColor ?? const Color(0xFF334155))),
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
       onTap: onTap ?? () {},
     );

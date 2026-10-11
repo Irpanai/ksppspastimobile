@@ -7,7 +7,8 @@ class ApiConstants {
   // For real device: Use your machine's LAN IP, e.g. 'http://192.168.1.xxx:8000/api'
   
   // static const String defaultLocalhostUrl = 'http://localhost:8000/api';
-  static const String defaultLocalhostUrl = 'https://app.zoy.web.id/api';
+  // static const String defaultLocalhostUrl = 'https://app.zoy.web.id/api';
+  static const String defaultLocalhostUrl = 'https://demo.ksppspasti.com/api';
   static const String androidEmulatorUrl = 'http://10.0.2.2:8000/api';
 
   // Active Base URL
@@ -125,4 +126,11 @@ class ApiConstants {
   static const String snapToken = '/payment/snap-token';
   static String paymentStatus(String orderId) => '/payment/status/$orderId';
   static const String paymentHistory = '/payment/history';
+
+  // Pengunduran Diri (Keluar Keanggotaan) Endpoints
+  static const String pengunduranDiri = '/member/pengunduran-diri';
+
+  // Promo & Info Koperasi Endpoints
+  static const String promos = '/promos';
+  static String promoDetail(int id) => '/promos/$id';
 }

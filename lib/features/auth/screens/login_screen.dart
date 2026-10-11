@@ -32,6 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _regObscure2 = true;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/images/logo-kspps-pasti.png'), context);
+  }
+
+  @override
   void dispose() {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
@@ -221,8 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             child: Image.asset(
-                              'web/logo-kspps-pasti.png',
+                              'assets/images/logo-kspps-pasti.png',
                               fit: BoxFit.contain,
+                              gaplessPlayback: true,
                             ),
                           ),
                         ),
