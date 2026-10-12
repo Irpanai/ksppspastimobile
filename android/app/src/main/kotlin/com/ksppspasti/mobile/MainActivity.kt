@@ -1,4 +1,4 @@
-package com.example.digital_coop
+package com.ksppspasti.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
