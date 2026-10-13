@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../services/storage_service.dart';
@@ -107,7 +108,9 @@ class ApiClient {
 
   static Future<ApiResponse<T>> postMultipart<T>(
     String endpoint, {
-    required File file,
+    File? file,
+    List<int>? fileBytes,
+    String? filename,
     required String fileField,
     Map<String, String>? fields,
     bool withAuth = true,
@@ -117,6 +120,8 @@ class ApiClient {
     try {
       final uri = _buildUri(endpoint);
       final headers = await _getHeaders(withAuth: withAuth);
+      // Remove Content-Type so MultipartRequest sets multipart/form-data with proper boundary
+      headers.remove('Content-Type');
 
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(headers);
@@ -125,8 +130,34 @@ class ApiClient {
         request.fields.addAll(fields);
       }
 
-      final multipartFile = await http.MultipartFile.fromPath(fileField, file.path);
-      request.files.add(multipartFile);
+      if (fileBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            fileField,
+            fileBytes,
+            filename: filename ?? 'photo.jpg',
+          ),
+        );
+      } else if (file != null) {
+        if (kIsWeb) {
+          final bytes = await file.readAsBytes();
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              fileField,
+              bytes,
+              filename: filename ?? 'photo.jpg',
+            ),
+          );
+        } else {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              fileField,
+              file.path,
+              filename: filename,
+            ),
+          );
+        }
+      }
 
       final streamedResponse = await _client.send(request).timeout(
             timeout ?? const Duration(seconds: 30),
@@ -155,6 +186,8 @@ class ApiClient {
     try {
       final uri = _buildUri(endpoint);
       final headers = await _getHeaders(withAuth: withAuth);
+      // Remove Content-Type so MultipartRequest sets multipart/form-data with proper boundary
+      headers.remove('Content-Type');
 
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(headers);

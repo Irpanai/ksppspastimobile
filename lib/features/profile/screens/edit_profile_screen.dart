@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/constants/api_constants.dart';
@@ -136,8 +134,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _isUploadingPhoto = true;
       });
 
+      final imageBytes = await image.readAsBytes();
       final profileProvider = context.read<ProfileProvider>();
-      final success = await profileProvider.uploadPhoto(File(image.path));
+      final success = await profileProvider.uploadPhoto(
+        bytes: imageBytes,
+        filename: image.name,
+        xFile: image,
+      );
 
       if (!mounted) return;
 

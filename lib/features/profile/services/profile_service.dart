@@ -88,11 +88,17 @@ class ProfileService {
   }
 
   /// 7.4 Upload Foto Profil
-  Future<MemberProfileModel> uploadPhoto(File imageFile) async {
+  Future<MemberProfileModel> uploadPhoto({
+    File? file,
+    List<int>? bytes,
+    String? filename,
+  }) async {
     final response = await ApiClient.postMultipart<MemberProfileModel>(
-      '${ApiConstants.memberProfile}/photo', // Sesuaikan endpoint API jika berbeda (misal POST /member/profile/photo)
-      file: imageFile,
-      fileField: 'photo', // Sesuaikan dengan key payload yang diterima API backend Anda
+      ApiConstants.updateProfile, // POST /member/profile
+      file: file,
+      fileBytes: bytes,
+      filename: filename,
+      fileField: 'photo',
       withAuth: true,
       fromJsonT: (data) => MemberProfileModel.fromJson(data as Map<String, dynamic>),
     );

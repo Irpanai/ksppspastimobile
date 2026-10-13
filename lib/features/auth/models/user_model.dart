@@ -104,7 +104,11 @@ class AnggotaModel {
       status: json['status']?.toString(),
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? json['status']?.toString(),
       tglBergabung: json['tgl_bergabung']?.toString(),
-      foto: json['foto']?.toString() ?? json['photo']?.toString() ?? json['foto_url']?.toString(),
+      foto: json['foto']?.toString() ??
+          json['photo']?.toString() ??
+          json['foto_url']?.toString() ??
+          json['foto_wajah']?.toString() ??
+          json['foto_wajah_url']?.toString(),
     );
   }
 
@@ -217,6 +221,8 @@ class UserModel {
         json['photo_url']?.toString() ??
         json['photo']?.toString() ??
         json['foto']?.toString() ??
+        json['foto_wajah']?.toString() ??
+        json['foto_wajah_url']?.toString() ??
         json['profile_photo_path']?.toString() ??
         parsedAnggota?.foto;
 

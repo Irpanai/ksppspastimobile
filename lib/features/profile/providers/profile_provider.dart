@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../models/member_profile_model.dart';
 import '../models/pengunduran_diri_model.dart';
@@ -158,13 +159,33 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   /// 7.4 Upload Photo
-  Future<bool> uploadPhoto(File imageFile) async {
+  Future<bool> uploadPhoto({
+    File? file,
+    List<int>? bytes,
+    String? filename,
+    XFile? xFile,
+  }) async {
     _isUpdating = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final updatedProfile = await _profileService.uploadPhoto(imageFile);
+      List<int>? uploadBytes = bytes;
+      String? uploadFilename = filename;
+
+      if (xFile != null) {
+        uploadBytes ??= await xFile.readAsBytes();
+        uploadFilename ??= xFile.name;
+      } else if (file != null && kIsWeb) {
+        uploadBytes ??= await file.readAsBytes();
+        uploadFilename ??= file.path.split(RegExp(r'[/\\]')).last;
+      }
+
+      final updatedProfile = await _profileService.uploadPhoto(
+        file: file,
+        bytes: uploadBytes,
+        filename: uploadFilename,
+      );
       _profileData = updatedProfile;
       _isUpdating = false;
       notifyListeners();
