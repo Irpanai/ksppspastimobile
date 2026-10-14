@@ -108,7 +108,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur Gadai / Pinjaman (Pembiayaan) segera hadir!')),
+                    const SnackBar(content: Text('Fitur Rahn / Pinjaman (Pembiayaan) segera hadir!')),
                   );
                 },
                 child: Container(
