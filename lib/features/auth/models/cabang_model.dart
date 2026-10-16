@@ -9,6 +9,7 @@ class CabangModel {
   final double? latitude;
   final double? longitude;
   final bool isActive;
+  final double? distanceInKm;
 
   CabangModel({
     required this.id,
@@ -21,6 +22,7 @@ class CabangModel {
     this.latitude,
     this.longitude,
     this.isActive = true,
+    this.distanceInKm,
   });
 
   factory CabangModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,43 @@ class CabangModel {
     if (city != null && city!.isNotEmpty) parts.add(city!);
     if (province != null && province!.isNotEmpty && province != city) parts.add(province!);
     return parts.join(', ');
+  }
+
+  /// Jarak terformat (misal: "850 m" atau "2.4 km")
+  String? get formattedDistance {
+    if (distanceInKm == null) return null;
+    if (distanceInKm! < 1) {
+      return '${(distanceInKm! * 1000).round()} m';
+    }
+    return '${distanceInKm!.toStringAsFixed(1)} km';
+  }
+
+  CabangModel copyWith({
+    int? id,
+    String? code,
+    String? name,
+    String? phone,
+    String? address,
+    String? city,
+    String? province,
+    double? latitude,
+    double? longitude,
+    bool? isActive,
+    double? distanceInKm,
+  }) {
+    return CabangModel(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      province: province ?? this.province,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isActive: isActive ?? this.isActive,
+      distanceInKm: distanceInKm ?? this.distanceInKm,
+    );
   }
 }
 

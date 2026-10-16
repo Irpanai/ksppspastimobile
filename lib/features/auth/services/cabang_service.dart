@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
@@ -6,6 +7,42 @@ import '../models/cabang_model.dart';
 class CabangService {
   /// Cache semua cabang yang sudah di-fetch untuk performa cepat & offline-friendly
   static List<CabangModel>? _cachedAllCabangs;
+
+  /// Hitung jarak antara dua koordinat geografis dalam satuan kilometer (Rumus Haversine)
+  static double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const p = 0.017453292519943295; // Math.PI / 180
+    final a = 0.5 -
+        math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) *
+            math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) /
+            2;
+    return 12742 * math.asin(math.sqrt(a)); // 2 * R; R = 6371 km
+  }
+
+  /// Mengambil seluruh cabang terdaftar yang diurutkan berdasarkan jarak terdekat dari pengguna
+  static Future<List<CabangModel>> getCabangsSortedByDistance(double userLat, double userLon) async {
+    final allCabangs = await getAllCabangs();
+    final List<CabangModel> withDistance = [];
+
+    for (final c in allCabangs) {
+      if (c.latitude != null && c.longitude != null) {
+        final dist = calculateDistanceKm(userLat, userLon, c.latitude!, c.longitude!);
+        withDistance.add(c.copyWith(distanceInKm: dist));
+      } else {
+        withDistance.add(c);
+      }
+    }
+
+    withDistance.sort((a, b) {
+      if (a.distanceInKm == null && b.distanceInKm == null) return 0;
+      if (a.distanceInKm == null) return 1;
+      if (b.distanceInKm == null) return -1;
+      return a.distanceInKm!.compareTo(b.distanceInKm!);
+    });
+
+    return withDistance;
+  }
 
   /// Mengambil daftar provinsi yang memiliki kantor cabang
   static Future<List<String>> getProvinces() async {
@@ -172,6 +209,8 @@ class CabangService {
       address: 'Gedung Intira, Jl. Pangeran Antasari No. 10',
       city: 'KOTA BANJARMASIN',
       province: 'KALIMANTAN SELATAN',
+      latitude: -3.32490,
+      longitude: 114.59010,
     ),
     CabangModel(
       id: 12,
@@ -181,6 +220,8 @@ class CabangService {
       address: 'Jl. Antasari RT.06 Pekapuran Raya',
       city: 'KOTA BANJARMASIN',
       province: 'KALIMANTAN SELATAN',
+      latitude: -3.32850,
+      longitude: 114.59780,
     ),
     CabangModel(
       id: 13,
@@ -190,6 +231,8 @@ class CabangService {
       address: 'Jl. Brigjend H. Hasan Basry No. 45',
       city: 'KOTA BANJARMASIN',
       province: 'KALIMANTAN SELATAN',
+      latitude: -3.29820,
+      longitude: 114.58890,
     ),
     CabangModel(
       id: 14,
@@ -199,6 +242,8 @@ class CabangService {
       address: 'Jl. A. Yani Km. 34, Loktabat',
       city: 'KOTA BANJARBARU',
       province: 'KALIMANTAN SELATAN',
+      latitude: -3.44060,
+      longitude: 114.83060,
     ),
     CabangModel(
       id: 15,
@@ -208,6 +253,8 @@ class CabangService {
       address: 'Jl. Sukaramai Pasar Batuah',
       city: 'KABUPATEN BANJAR',
       province: 'KALIMANTAN SELATAN',
+      latitude: -3.41160,
+      longitude: 114.85170,
     ),
     CabangModel(
       id: 16,
@@ -217,6 +264,8 @@ class CabangService {
       address: 'Jl. RTA Milono Km. 2.5',
       city: 'KOTA PALANGKARAYA',
       province: 'KALIMANTAN TENGAH',
+      latitude: -2.20780,
+      longitude: 113.91650,
     ),
     CabangModel(
       id: 17,
@@ -226,6 +275,8 @@ class CabangService {
       address: 'Jl. Pamularsih Raya No. 88',
       city: 'KOTA SEMARANG',
       province: 'JAWA TENGAH',
+      latitude: -6.99320,
+      longitude: 110.39570,
     ),
     CabangModel(
       id: 18,
@@ -235,6 +286,8 @@ class CabangService {
       address: 'Jl. Slamet Riyadi No. 120',
       city: 'KOTA SURAKARTA',
       province: 'JAWA TENGAH',
+      latitude: -7.56930,
+      longitude: 110.82500,
     ),
     CabangModel(
       id: 19,
@@ -244,6 +297,8 @@ class CabangService {
       address: 'Jl. Jend. Sudirman No. 50',
       city: 'KABUPATEN KUDUS',
       province: 'JAWA TENGAH',
+      latitude: -6.80480,
+      longitude: 110.84050,
     ),
   ];
 }
