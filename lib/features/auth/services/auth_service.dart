@@ -52,6 +52,7 @@ class AuthService {
     String? kabupatenKota,
     String? kecamatan,
     String? kelurahan,
+    int? cabangId,
     String? cabang,
     File? fotoWajah,
     File? fotoKtp,
@@ -75,6 +76,7 @@ class AuthService {
         if (kabupatenKota != null && kabupatenKota.isNotEmpty) 'kabupaten_kota': kabupatenKota,
         if (kecamatan != null && kecamatan.isNotEmpty) 'kecamatan': kecamatan,
         if (kelurahan != null && kelurahan.isNotEmpty) 'kelurahan': kelurahan,
+        if (cabangId != null) 'cabang_id': cabangId.toString(),
         if (cabang != null && cabang.isNotEmpty) 'cabang': cabang,
     };
 

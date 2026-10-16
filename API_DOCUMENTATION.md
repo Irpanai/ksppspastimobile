@@ -16,10 +16,19 @@ Dokumentasi resmi REST API untuk aplikasi mobile & integrasi KSPPS PASTI (Fokus 
 | :--- | :--- | :--- | :--- | :--- |
 | **Autentikasi** | `POST` | `/api/auth/register` | Public | **Registrasi akun nasabah baru & penerbitan No. Anggota** |
 | | `POST` | `/api/auth/login` | Public | Login nasabah dengan Email & Password |
+| | `POST` | `/api/auth/forgot-password` | Public | **Kirim 6-digit kode OTP pemulihan password ke email** |
+| | `POST` | `/api/auth/verify-reset-otp` | Public | **Verifikasi keabsahan kode OTP reset password** |
+| | `POST` | `/api/auth/reset-password` | Public | **Atur ulang password baru menggunakan kode OTP** |
 | | `GET` | `/api/auth/me` | Bearer | Cek profil user & status keanggotaan aktif |
 | | `POST` | `/api/auth/logout` | Bearer | Logout & cabut token sesi |
+| **Keamanan PIN** | `GET` | `/api/member/pin/status` | Bearer | Cek status kepemilikan PIN transaksi |
+| | `POST` | `/api/member/pin/setup` | Bearer | Setup PIN 6 digit pertama kali |
+| | `POST` | `/api/member/pin/verify` | Bearer | Verifikasi PIN 6 digit sebelum transaksi finansial |
+| | `POST` | `/api/member/pin/change` | Bearer | Ubah PIN 6 digit |
 | **Dashboard** | `GET` | `/api/member/dashboard` | Bearer | Data ringkasan saldo simpanan & portofolio |
 | **Simpanan** | `GET` | `/api/member/simpanan/riwayat` | Bearer | Riwayat mutasi simpanan & filter jenis |
+| | `POST` | `/api/member/simpanan/tarik` | Bearer | Pengajuan penarikan dana simpanan (manual transfer) |
+| | `GET` | `/api/member/simpanan/penarikan-riwayat` | Bearer | Riwayat & status pengajuan pencairan dana |
 | **Sijaka** | `GET` | `/api/member/sijaka` | Bearer | Daftar bilyet simpanan berjangka aktif |
 | | `GET` | `/api/member/sijaka/{id}` | Bearer | Detail bilyet Sijaka & log bagi hasil |
 | **Payment Gateway** | `POST` | `/api/payment/snap-token` | Bearer | Request Midtrans Snap Token & redirect URL |
@@ -28,7 +37,10 @@ Dokumentasi resmi REST API untuk aplikasi mobile & integrasi KSPPS PASTI (Fokus 
 | | `GET` | `/api/payment/history` | Bearer | Riwayat transaksi pembayaran digital |
 | **Profil & KYC** | `GET` | `/api/member/profile` | Bearer | Data profil lengkap & ringkasan saldo |
 | | `PUT` | `/api/member/profile` | Bearer | Update data pribadi, alamat & foto profil |
-| | `PUT` | `/api/member/profile/password` | Bearer | Ubah password akun nasabah |
+| | `PUT` | `/api/member/profile/password` | Bearer | Ubah password akun nasabah (dengan password lama) |
+| | `POST` | `/api/member/profile/password-reset-pin` | Bearer | **Reset password instan via verifikasi PIN transaksi** |
+| **Master Cabang** | `GET` | `/api/cabangs` | Public | **Daftar kantor cabang aktif & filter lokasi untuk pendaftaran** |
+| | `GET` | `/api/cabangs/{id}` | Public | Detail kantor cabang |
 
 ---
 
@@ -153,7 +165,8 @@ Mendaftarkan akun nasabah baru secara mandiri dari aplikasi mobile. Sistem secar
 | `kelurahan` | `string` | Opsional | Kelurahan/Desa | `Pendrikan Kidul` |
 | `agama` | `string` | Opsional | Agama (Default: Islam) | `Islam` |
 | `pekerjaan` | `string` | Opsional | Pekerjaan nasabah | `Wiraswasta` |
-| `cabang` | `string` | Opsional | Cabang pendaftaran (Default: Pusat) | `Pusat` |
+| `cabang_id` | `integer` | Opsional | ID Cabang pilihan dari endpoint `GET /api/cabangs` | `1` |
+| `cabang` | `string` | Opsional | Nama Cabang pendaftaran (Default: Pusat) | `Head Office Banjarmasin` |
 
 #### Contoh Request Body:
 ```json
@@ -165,7 +178,8 @@ Mendaftarkan akun nasabah baru secara mandiri dari aplikasi mobile. Sistem secar
   "nik": "3301012345678901",
   "no_hp": "081234567890",
   "alamat": "Jl. Pemuda No. 10, Semarang",
-  "cabang": "Pusat"
+  "cabang_id": 1,
+  "cabang": "Head Office Banjarmasin"
 }
 ```
 
@@ -182,7 +196,8 @@ Mendaftarkan akun nasabah baru secara mandiri dari aplikasi mobile. Sistem secar
       "email": "budi.santoso@gmail.com",
       "no_anggota": "2409260001",
       "status_keanggotaan": "aktif",
-      "cabang": "Pusat",
+      "cabang_id": 1,
+      "cabang": "Head Office Banjarmasin",
       "roles": [
         "member"
       ]
@@ -229,7 +244,7 @@ Mendapatkan informasi detail profil nasabah serta status keanggotaan berdasarkan
 
 ---
 
-### 1.3 Logout Nasabah
+### 1.4 Logout Nasabah
 
 Mencabut (revoke) `currentAccessToken` yang sedang aktif digunakan di device mobile.
 
@@ -242,6 +257,101 @@ Mencabut (revoke) `currentAccessToken` yang sedang aktif digunakan di device mob
 {
   "success": true,
   "message": "Berhasil logout",
+  "data": null,
+  "errors": null
+}
+```
+
+---
+
+### 1.5 Permintaan OTP Lupa Password (`/auth/forgot-password`)
+
+Mengirimkan 6 digit kode OTP verifikasi ke email nasabah yang terdaftar dan menyimpannya secara terenkripsi di database (`password_reset_tokens`) dengan masa aktif **15 menit**.
+
+- **Method**: `POST`
+- **URL Path**: `/auth/forgot-password`
+- **Auth Required**: Tidak (Public)
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+
+#### Request Body:
+| Parameter | Tipe | Wajib | Keterangan | Contoh |
+| :--- | :--- | :--- | :--- | :--- |
+| `email` | `string` | Ya | Alamat email akun nasabah | `budi@gmail.com` |
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Kode OTP pemulihan password telah dikirim ke email Anda.",
+  "data": {
+    "email": "budi@gmail.com",
+    "expires_in_minutes": 15
+  },
+  "errors": null
+}
+```
+
+---
+
+### 1.6 Verifikasi Kode OTP Reset Password (`/auth/verify-reset-otp`)
+
+Memvalidasi kecocokan kode OTP 6 digit yang dimasukkan pengguna sebelum menampilkan form pembuatan password baru.
+
+- **Method**: `POST`
+- **URL Path**: `/auth/verify-reset-otp`
+- **Auth Required**: Tidak (Public)
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+
+#### Request Body:
+| Parameter | Tipe | Wajib | Keterangan | Contoh |
+| :--- | :--- | :--- | :--- | :--- |
+| `email` | `string` | Ya | Email yang menerima OTP | `budi@gmail.com` |
+| `otp` | `string` | Ya | 6 digit kode angka OTP | `730022` |
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Kode OTP valid.",
+  "data": null,
+  "errors": null
+}
+```
+
+#### Kemungkinan Respon Error:
+- **400 Bad Request**: Kode OTP salah atau telah kadaluarsa (>15 menit).
+- **404 Not Found**: Permintaan pemulihan tidak ditemukan.
+
+---
+
+### 1.7 Atur Ulang Password Baru dengan OTP (`/auth/reset-password`)
+
+Memperbarui password akun nasabah setelah kode OTP divalidasi. Token OTP akan langsung dihapus setelah berhasil digunakan.
+
+- **Method**: `POST`
+- **URL Path**: `/auth/reset-password`
+- **Auth Required**: Tidak (Public)
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+
+#### Request Body:
+| Parameter | Tipe | Wajib | Keterangan | Contoh |
+| :--- | :--- | :--- | :--- | :--- |
+| `email` | `string` | Ya | Email nasabah | `budi@gmail.com` |
+| `otp` | `string` | Ya | 6 digit kode angka OTP | `730022` |
+| `password` | `string` | Ya | Password baru (min. 6 karakter) | `passwordBaru123` |
+| `password_confirmation` | `string` | Ya | Konfirmasi password baru | `passwordBaru123` |
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Password akun berhasil diatur ulang. Silakan masuk menggunakan password baru.",
   "data": null,
   "errors": null
 }
@@ -502,11 +612,51 @@ Membuat pesanan pembayaran digital baru untuk Setor Simpanan Wajib, Simpanan Pok
     "created_at": "2026-09-21T14:30:00+08:00"
   }
 }
+#### Kemungkinan Status Error:
+- **422 Unprocessable Entity**: 
+  - Mencoba membayar bulan sebelum tanggal pendaftaran: `"Anda baru terdaftar pada bulan {Bulan Daftar}. Tidak dapat membayar simpanan wajib untuk bulan sebelumnya ({Bulan Input})."`
+  - Simpanan wajib untuk bulan/tahun terpilih sudah lunas: `"Simpanan wajib bulan {bulan}/{tahun} sudah dibayar dan lunas."`
+  - Simpanan pokok sudah lunas: `"Simpanan pokok sudah pernah dibayar dan lunas."`
+  - Nominal kurang dari batas minimal produk.
+
+---
+
+### 6.2 Cek Status Bulan Simpanan Wajib
+
+Digunakan oleh aplikasi frontend (Mobile / Web) untuk mendapatkan daftar bulan yang berlaku untuk anggota (dihitung mulai dari bulan pendaftaran), daftar bulan yang **sudah lunas**, dan **bulan berikutnya yang belum dibayar**, sehingga frontend dapat otomatis membatasi dan menonaktifkan pilihan bulan sebelum pendaftaran atau yang sudah lunas.
+
+- **Method**: `GET`
+- **URL Path**: `/payment/wajib-status`
+- **Auth Required**: Ya (`Bearer <token>`)
+
+#### Query Parameters:
+| Parameter | Tipe | Wajib | Keterangan | Contoh |
+| :--- | :--- | :--- | :--- | :--- |
+| `tahun` | `integer` | Tidak | Tahun yang dicek (Default: tahun saat ini) | `2026` |
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Status simpanan wajib berhasil dimuat.",
+  "data": {
+    "tahun": 2026,
+    "join_month": 9,
+    "join_year": 2026,
+    "join_date": "2026-09-15",
+    "start_month": 9,
+    "eligible_months": [9, 10, 11, 12],
+    "paid_months": [9, 10],
+    "next_unpaid_month": 11,
+    "is_all_paid": false,
+    "nominal_per_bulan": 2500
+  }
+}
 ```
 
 ---
 
-### 6.2 Webhook Notification Callback
+### 6.3 Webhook Notification Callback
 
 Endpoint publik yang dipanggil secara otomatis oleh server Midtrans saat terjadi perubahan status pembayaran (misal nasabah selesai transfer Virtual Account / scan QRIS).
 
@@ -734,5 +884,148 @@ Mengubah password login nasabah.
   "errors": null
 }
 ```
+
+---
+
+### 7.4 Reset Password Akun dengan PIN Transaksi (`/member/profile/password-reset-pin`)
+
+Mengatur ulang password login nasabah yang sedang login menggunakan verifikasi 6 digit PIN transaksi (tanpa perlu mengingat password lama atau menunggu email OTP).
+
+- **Method**: `POST`
+- **URL Path**: `/member/profile/password-reset-pin`
+- **Auth Required**: Ya (`Bearer <token>`)
+
+#### Request Body:
+
+| Parameter | Tipe | Wajib | Keterangan | Contoh |
+| :--- | :--- | :--- | :--- | :--- |
+| `pin` | `string` | Ya | 6 digit PIN transaksi nasabah | `123456` |
+| `password` | `string` | Ya | Password baru (Min. 6 karakter) | `passwordBaru456` |
+| `password_confirmation` | `string` | Ya | Konfirmasi password baru | `passwordBaru456` |
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Password akun berhasil diatur ulang menggunakan PIN transaksi.",
+  "data": null,
+  "errors": null
+}
+```
+
+#### Kemungkinan Respon Error:
+- **400 Bad Request**: PIN transaksi salah atau nasabah belum membuat PIN transaksi.
+- **422 Unprocessable Entity**: Format validasi gagal (password < 6 karakter atau konfirmasi tidak cocok).
+
+---
+
+## 🏢 8. Master Data Cabang (`/cabangs`)
+
+Modul ini digunakan untuk mengambil daftar kantor cabang KSPPS PASTI yang aktif untuk keperluan dropdown registrasi nasabah di aplikasi mobile, pemilihan kantor terdekat, serta informasi kontak cabang.
+
+### 8.1 Daftar Cabang Aktif (`/cabangs`)
+
+- **Method**: `GET`
+- **URL Path**: `/cabangs` (atau `/cabang`)
+- **Auth Required**: Tidak (Public)
+- **Query Parameters**:
+  - `search` (opsional): Kata kunci pencarian nama cabang, kode, kota, provinsi, atau alamat.
+  - `city` (opsional): Filter cabang berdasarkan nama kota/kabupaten.
+  - `province` (opsional): Filter cabang berdasarkan provinsi.
+  - `include_inactive` (opsional, boolean): Tampilkan juga cabang non-aktif (Default: false).
+
+#### Contoh Request:
+```http
+GET /api/cabangs?search=Banjarmasin
+```
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Daftar cabang berhasil dimuat.",
+  "data": [
+    {
+      "id": 1,
+      "code": "HO-BJM",
+      "name": "Head Office Banjarmasin",
+      "phone": "021-5000000",
+      "address": "Gedung Intira, Jl. Pangeran Antasari No. 10, Banjarmasin a1",
+      "city": "KOTA BANJARMASIN",
+      "province": "KALIMANTAN SELATAN",
+      "latitude": -3.3284,
+      "longitude": 114.5901,
+      "is_active": true
+    },
+    {
+      "id": 12,
+      "code": "BJM-003",
+      "name": "KC ANTASARI",
+      "phone": "0823-5147-0880",
+      "address": "Jl.Antasari RT.06 Pekapuran Raya Banjarmasin",
+      "city": "KOTA BANJARMASIN",
+      "province": "KALIMANTAN SELATAN",
+      "latitude": -3.3511548,
+      "longitude": 114.5466382,
+      "is_active": true
+    }
+  ],
+  "errors": null
+}
+```
+
+### 8.2 Detail Kantor Cabang (`/cabangs/{id}`)
+
+- **Method**: `GET`
+- **URL Path**: `/cabangs/{id}` (mendukung ID numerik atau Kode Cabang)
+- **Auth Required**: Tidak (Public)
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Detail cabang berhasil dimuat.",
+  "data": {
+    "id": 1,
+    "code": "HO-BJM",
+    "name": "Head Office Banjarmasin",
+    "phone": "021-5000000",
+    "address": "Gedung Intira, Jl. Pangeran Antasari No. 10, Banjarmasin a1",
+    "city": "KOTA BANJARMASIN",
+    "province": "KALIMANTAN SELATAN",
+    "latitude": -3.3284,
+    "longitude": 114.5901,
+    "is_active": true
+  },
+  "errors": null
+}
+```
+
+### 8.3 Daftar Provinsi Cabang (`/cabangs/provinces`)
+
+- **Method**: `GET`
+- **URL Path**: `/cabangs/provinces` (atau `/cabang/provinces`)
+- **Auth Required**: Tidak (Public)
+- **Keterangan**: Mengambil daftar seluruh provinsi yang memiliki kantor cabang aktif beserta jumlah cabangnya, digunakan untuk cascading dropdown pemilihan cabang pada saat registrasi.
+
+#### Contoh Respon Sukses (200 OK):
+```json
+{
+  "success": true,
+  "message": "Daftar provinsi cabang berhasil dimuat.",
+  "data": [
+    {
+      "province": "KALIMANTAN SELATAN",
+      "total_cabang": 27
+    },
+    {
+      "province": "KALIMANTAN TENGAH",
+      "total_cabang": 9
+    }
+  ],
+  "errors": null
+}
+```
+
 
 

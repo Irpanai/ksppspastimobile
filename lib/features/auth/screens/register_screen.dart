@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
+import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
-import '../services/auth_service.dart';
+import '../services/cabang_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -26,7 +27,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _addressController = TextEditingController();
 
-  String _selectedCabang = 'Pusat';
+  // State Pemilihan Cabang (Provinsi -> Cabang)
+  String? _selectedProvinceCabang;
+  CabangModel? _selectedCabangModel;
+  List<String> _provinces = [];
+  List<CabangModel> _cabangsInProvince = [];
+  bool _isLoadingProvinces = false;
+  bool _isLoadingCabangs = false;
+
   bool _isObscure1 = true;
   bool _isObscure2 = true;
 
@@ -34,6 +42,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   File? _fotoWajah;
   bool _isOcrLoading = false;
   final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProvinces();
+  }
 
   @override
   void dispose() {
@@ -45,6 +59,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmPasswordController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  /// Memuat daftar provinsi cabang dari API
+  Future<void> _loadProvinces() async {
+    if (!mounted) return;
+    setState(() => _isLoadingProvinces = true);
+    try {
+      final list = await CabangService.getProvinces();
+      if (mounted) {
+        setState(() {
+          _provinces = list;
+          _isLoadingProvinces = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingProvinces = false);
+    }
+  }
+
+  /// Memuat daftar cabang berdasarkan provinsi yang dipilih
+  Future<void> _loadCabangsByProvince(String province) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingCabangs = true;
+      _cabangsInProvince = [];
+      _selectedCabangModel = null;
+    });
+
+    try {
+      final list = await CabangService.getCabangsByProvince(province);
+      if (mounted) {
+        setState(() {
+          _cabangsInProvince = list;
+          _isLoadingCabangs = false;
+          if (list.length == 1) {
+            _selectedCabangModel = list.first;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingCabangs = false);
+    }
   }
 
   Future<void> _pickKtp() async {
@@ -164,6 +220,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // Validasi pemilihan cabang
+    if (_selectedProvinceCabang == null || _selectedProvinceCabang!.isEmpty) {
+      _showWarning('Silakan pilih provinsi kantor cabang terlebih dahulu.');
+      return;
+    }
+
+    if (_selectedCabangModel == null) {
+      _showWarning('Silakan pilih kantor cabang pendaftaran.');
+      return;
+    }
+
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.register(
       name: name,
@@ -173,7 +240,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       nik: nik,
       noHp: phone,
       alamat: address.isNotEmpty ? address : null,
-      cabang: _selectedCabang,
+      cabangId: _selectedCabangModel!.id,
+      cabang: _selectedCabangModel!.name,
       fotoWajah: _fotoWajah,
       fotoKtp: _fotoKtp,
     );
@@ -256,6 +324,566 @@ class _RegisterScreenState extends State<RegisterScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+    );
+  }
+
+  /// Modal Bottom Sheet Search Dropdown untuk Memilih Provinsi
+  void _openProvinceSearchModal() {
+    if (_provinces.isEmpty && _isLoadingProvinces) {
+      _showWarning('Sedang memuat data provinsi, mohon tunggu sebentar...');
+      return;
+    }
+
+    final searchController = TextEditingController();
+    List<String> filteredList = List.from(_provinces);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.82,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0E7955).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.map_rounded, color: Color(0xFF0E7955), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Pilih Provinsi Cabang',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                                Text(
+                                  'Pilih provinsi lokasi kantor cabang KSPPS PASTI',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            onPressed: () => Navigator.pop(sheetContext),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Search Input Field
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TextField(
+                          controller: searchController,
+                          autofocus: false,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                          decoration: InputDecoration(
+                            hintText: 'Cari provinsi (misal: Kalimantan, Jawa)...',
+                            hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.normal),
+                            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+                            suffixIcon: searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF94A3B8)),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setModalState(() {
+                                        filteredList = List.from(_provinces);
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onChanged: (query) {
+                            setModalState(() {
+                              if (query.trim().isEmpty) {
+                                filteredList = List.from(_provinces);
+                              } else {
+                                final q = query.trim().toLowerCase();
+                                filteredList = _provinces
+                                    .where((p) => p.toLowerCase().contains(q))
+                                    .toList();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Counter
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Menampilkan ${filteredList.length} provinsi',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // List View
+                    Expanded(
+                      child: filteredList.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Provinsi tidak ditemukan',
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Coba kata kunci pencarian yang lain.',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              itemCount: filteredList.length,
+                              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                              itemBuilder: (context, index) {
+                                final prov = filteredList[index];
+                                final isSelected = prov == _selectedProvinceCabang;
+
+                                return InkWell(
+                                  onTap: () {
+                                    Navigator.pop(sheetContext);
+                                    if (_selectedProvinceCabang != prov) {
+                                      setState(() {
+                                        _selectedProvinceCabang = prov;
+                                        _selectedCabangModel = null;
+                                      });
+                                      _loadCabangsByProvince(prov);
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xFFF0FDF4) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.location_on_outlined,
+                                          size: 18,
+                                          color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF94A3B8),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            prov,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                              color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          const Icon(Icons.check_circle_rounded, color: Color(0xFF0E7955), size: 18)
+                                        else
+                                          const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 18),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Modal Bottom Sheet Search Dropdown untuk Memilih Cabang di Provinsi Terpilih
+  void _openCabangSearchModal() {
+    if (_selectedProvinceCabang == null) {
+      _showWarning('Silakan pilih provinsi terlebih dahulu.');
+      return;
+    }
+
+    if (_isLoadingCabangs) {
+      _showWarning('Sedang memuat data cabang, mohon tunggu sebentar...');
+      return;
+    }
+
+    final searchController = TextEditingController();
+    List<CabangModel> filteredList = List.from(_cabangsInProvince);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0E7955).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0E7955), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Pilih Kantor Cabang',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                                Text(
+                                  'Wilayah: $_selectedProvinceCabang',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            onPressed: () => Navigator.pop(sheetContext),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Search Input Field
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TextField(
+                          controller: searchController,
+                          autofocus: false,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama cabang, kode, kota, atau alamat...',
+                            hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.normal),
+                            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+                            suffixIcon: searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF94A3B8)),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setModalState(() {
+                                        filteredList = List.from(_cabangsInProvince);
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onChanged: (query) {
+                            setModalState(() {
+                              if (query.trim().isEmpty) {
+                                filteredList = List.from(_cabangsInProvince);
+                              } else {
+                                final q = query.trim().toLowerCase();
+                                filteredList = _cabangsInProvince.where((c) {
+                                  final nameMatch = c.name.toLowerCase().contains(q);
+                                  final codeMatch = c.code.toLowerCase().contains(q);
+                                  final cityMatch = (c.city ?? '').toLowerCase().contains(q);
+                                  final addrMatch = (c.address ?? '').toLowerCase().contains(q);
+                                  return nameMatch || codeMatch || cityMatch || addrMatch;
+                                }).toList();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Counter
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Tersedia ${filteredList.length} kantor cabang',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // List View Cabang
+                    Expanded(
+                      child: filteredList.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.store_mall_directory_outlined, size: 48, color: Colors.grey.shade400),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Kantor cabang tidak ditemukan',
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Tidak ada cabang yang cocok dengan pencarian Anda.',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                              itemCount: filteredList.length,
+                              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                              itemBuilder: (context, index) {
+                                final cabang = filteredList[index];
+                                final isSelected = _selectedCabangModel?.id == cabang.id;
+
+                                return InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCabangModel = cabang;
+                                    });
+                                    Navigator.pop(sheetContext);
+                                  },
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xFFF0FDF4) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 2),
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFF1F5F9),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.storefront_rounded,
+                                            size: 16,
+                                            color: isSelected ? Colors.white : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      cabang.name,
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF1E293B),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (cabang.code.isNotEmpty) ...[
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFF0E7955).withOpacity(0.08),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        cabang.code,
+                                                        style: const TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Color(0xFF0E7955),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              if (cabang.displayLocation.isNotEmpty) ...[
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.location_on_outlined, size: 12, color: Colors.grey.shade500),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        cabang.displayLocation,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.grey.shade700,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                              if (cabang.address != null && cabang.address!.isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  cabang.address!,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        if (isSelected)
+                                          const Icon(Icons.check_circle_rounded, color: Color(0xFF0E7955), size: 20)
+                                        else
+                                          const Icon(Icons.circle_outlined, color: Color(0xFFCBD5E1), size: 18),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -418,36 +1046,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 18),
 
-              _buildLabel('Cabang Pendaftaran'),
+              // SECTION PEMILIHAN CABANG (PROVINSI DULU -> LALU DATA CABANG TERDAFTAR)
+              _buildLabel('Provinsi Kantor Cabang *'),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCabang,
-                    isExpanded: true,
-                    dropdownColor: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
-                    items: ['Pusat', 'Semarang Barat', 'Kudus', 'Solo'].map((String val) {
-                      return DropdownMenuItem<String>(
-                        value: val,
-                        child: Text(
-                          'Cabang $val',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: isLoading ? null : (v) {
-                      if (v != null) setState(() => _selectedCabang = v);
-                    },
-                  ),
-                ),
+              _buildDropdownSelector(
+                label: _selectedProvinceCabang ?? 'Pilih Provinsi Kantor Cabang',
+                hasValue: _selectedProvinceCabang != null,
+                icon: Icons.map_outlined,
+                isLoading: _isLoadingProvinces,
+                enabled: !isLoading,
+                onTap: _openProvinceSearchModal,
+              ),
+              const SizedBox(height: 18),
+
+              _buildLabel('Kantor Cabang Terdaftar *'),
+              const SizedBox(height: 8),
+              _buildDropdownSelector(
+                label: _selectedCabangModel != null
+                    ? _selectedCabangModel!.name
+                    : (_selectedProvinceCabang == null
+                        ? 'Pilih provinsi terlebih dahulu'
+                        : (_isLoadingCabangs
+                            ? 'Memuat daftar cabang...'
+                            : 'Pilih Kantor Cabang (${_cabangsInProvince.length} cabang)')),
+                subtitle: _selectedCabangModel != null
+                    ? '${_selectedCabangModel!.code} • ${_selectedCabangModel!.displayLocation}'
+                    : null,
+                hasValue: _selectedCabangModel != null,
+                icon: Icons.account_balance_outlined,
+                isLoading: _isLoadingCabangs,
+                enabled: !isLoading && _selectedProvinceCabang != null && !_isLoadingCabangs,
+                isLocked: _selectedProvinceCabang == null,
+                onTap: _openCabangSearchModal,
               ),
               const SizedBox(height: 36),
 
@@ -508,6 +1138,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Text(
       text,
       style: const TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.bold, fontSize: 13),
+    );
+  }
+
+  /// Custom Selector Card untuk Searchable Dropdown
+  Widget _buildDropdownSelector({
+    required String label,
+    String? subtitle,
+    required bool hasValue,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isLoading = false,
+    bool enabled = true,
+    bool isLocked = false,
+  }) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: enabled
+              ? (hasValue ? const Color(0xFFF0FDF4).withOpacity(0.4) : const Color(0xFFF8FAFC))
+              : const Color(0xFFF1F5F9).withOpacity(0.7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasValue ? const Color(0xFF0E7955).withOpacity(0.5) : const Color(0xFFE2E8F0),
+            width: hasValue ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.01),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: hasValue
+                  ? const Color(0xFF0E7955)
+                  : (isLocked ? const Color(0xFFCBD5E1) : const Color(0xFF94A3B8)),
+              size: 20,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: hasValue ? FontWeight.bold : FontWeight.w500,
+                      color: hasValue
+                          ? const Color(0xFF1E293B)
+                          : (isLocked ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    ),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF0E7955),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isLoading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0E7955))),
+              )
+            else if (isLocked)
+              const Icon(Icons.lock_outline_rounded, color: Color(0xFFCBD5E1), size: 18)
+            else if (hasValue)
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF0E7955), size: 20)
+            else
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 22),
+          ],
+        ),
+      ),
     );
   }
 

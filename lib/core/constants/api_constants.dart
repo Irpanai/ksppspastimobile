@@ -7,8 +7,8 @@ class ApiConstants {
   // For real device: Use your machine's LAN IP, e.g. 'http://192.168.1.xxx:8000/api'
   
   // static const String defaultLocalhostUrl = 'http://localhost:8000/api';
-  // static const String defaultLocalhostUrl = 'https://app.zoy.web.id/api';
-  static const String defaultLocalhostUrl = 'https://demo.ksppspasti.com/api';
+  static const String defaultLocalhostUrl = 'https://app.zoy.web.id/api';
+  // static const String defaultLocalhostUrl = 'https://demo.ksppspasti.com/api';
   static const String androidEmulatorUrl = 'https://demo.ksppspasti.com/api';
 
   // Active Base URL
@@ -133,4 +133,9 @@ class ApiConstants {
   // Promo & Info Koperasi Endpoints
   static const String promos = '/promos';
   static String promoDetail(int id) => '/promos/$id';
+
+  // Master Data Cabang Endpoints
+  static const String cabangs = '/cabangs';
+  static const String cabangProvinces = '/cabangs/provinces';
+  static String cabangDetail(dynamic id) => '/cabangs/$id';
 }
