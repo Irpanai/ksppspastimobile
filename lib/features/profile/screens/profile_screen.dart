@@ -22,6 +22,9 @@ import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
 import '../../auth/screens/forgot_password_screen.dart';
+import '../../auth/models/cabang_model.dart';
+import '../../auth/services/cabang_service.dart';
+import '../../auth/widgets/cabang_map_modal.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -44,6 +47,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context.read<AuthProvider>().fetchProfile(),
       context.read<ProfileProvider>().fetchProfileDetail(refresh: true),
     ]);
+  }
+
+  Future<void> _openCabangMapModal(BuildContext context, {String? targetCabangName}) async {
+    try {
+      final allCabangs = await CabangService.getAllCabangs();
+      if (!context.mounted) return;
+
+      CabangModel? initialCabang;
+      if (targetCabangName != null && targetCabangName.trim().isNotEmpty) {
+        final lowerTarget = targetCabangName.trim().toLowerCase();
+        for (final c in allCabangs) {
+          if (c.name.toLowerCase().contains(lowerTarget) ||
+              lowerTarget.contains(c.name.toLowerCase()) ||
+              lowerTarget.contains(c.code.toLowerCase())) {
+            initialCabang = c;
+            break;
+          }
+        }
+      }
+
+      CabangMapModal.show(
+        context: context,
+        allCabangs: allCabangs,
+        initialSelectedCabang: initialCabang,
+        initialProvince: initialCabang?.province,
+      );
+    } catch (e) {
+      debugPrint('[ProfileScreen] Error opening branch map: $e');
+    }
   }
 
   @override
@@ -185,27 +217,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           if (cabang.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _openCabangMapModal(context, targetCabangName: cabang),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.business_rounded, color: Colors.white70, size: 13),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    cabang,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
                                   ),
-                                ],
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.business_rounded, color: Colors.white70, size: 13),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        cabang,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white60, size: 9),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                         ],
@@ -429,6 +470,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Column(
                               children: [
                                 _buildMenuRow(
+                                  Icons.storefront_rounded,
+                                  'Jaringan Kantor Cabang & CS',
+                                  subtitle: 'Peta satelit 26 cabang & kontak WhatsApp CS',
+                                  iconColor: Theme.of(context).colorScheme.primary,
+                                  onTap: () => _openCabangMapModal(context, targetCabangName: cabang),
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
                                   Icons.help_outline_rounded,
                                   'Pusat Bantuan',
                                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen())),
@@ -560,11 +609,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuRow(IconData icon, String title, {Widget? trailing, VoidCallback? onTap, Color? iconColor, Color? textColor}) {
+  Widget _buildMenuRow(
+    IconData icon,
+    String title, {
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+    Color? iconColor,
+    Color? textColor,
+  }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Icon(icon, color: iconColor ?? const Color(0xFF64748B), size: 22),
       title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: textColor ?? const Color(0xFF334155))),
+      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))) : null,
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
       onTap: onTap ?? () {},
     );

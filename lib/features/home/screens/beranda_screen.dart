@@ -5,7 +5,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/dashboard_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
-import '../widgets/ppob_menu.dart';
+import '../widgets/cabang_location_banner.dart';
 import '../widgets/promo_carousel.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/sijaka_portfolio_card.dart';
@@ -115,7 +115,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     const BalanceCard(),
                     const SizedBox(height: 32),
                     const QuickActionsGrid(),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 24),
+                    const CabangLocationBanner(),
+                    const SizedBox(height: 28),
                     // const PPOBMenu(), // Dihide sementara karena belum selesai
                     // const SizedBox(height: 24),
                     const PromoCarousel(),

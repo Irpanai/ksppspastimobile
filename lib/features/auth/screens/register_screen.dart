@@ -6,11 +6,13 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/premium_header.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/cabang_service.dart';
+import '../widgets/cabang_map_modal.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -199,6 +201,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => _isDetectingLocation = false);
       }
     }
+  }
+
+  /// Membuka lokasi titik koordinat cabang di aplikasi Google Maps
+  Future<void> _openBranchLocationInMaps(CabangModel cabang) async {
+    Uri url;
+    if (cabang.latitude != null && cabang.longitude != null) {
+      url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${cabang.latitude},${cabang.longitude}',
+      );
+    } else {
+      final query = Uri.encodeComponent('${cabang.name} ${cabang.city ?? ''} ${cabang.address ?? ''}');
+      url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    }
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url);
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error opening maps: $e');
+      _showWarning('Tidak dapat membuka peta Google Maps.');
+    }
+  }
+
+  /// Membuka Modal Peta Interaktif Seluruh Cabang (OpenStreetMap / Citra Satelit)
+  Future<void> _openMapModal() async {
+    final allCabangs = await CabangService.getAllCabangs();
+    final cabangsToDisplay = allCabangs.isNotEmpty ? allCabangs : _cabangsInProvince;
+
+    if (!mounted) return;
+
+    CabangMapModal.show(
+      context: context,
+      allCabangs: cabangsToDisplay,
+      initialSelectedCabang: _selectedCabangModel,
+      initialProvince: _selectedProvinceCabang,
+      userLatitude: _userLatitude,
+      userLongitude: _userLongitude,
+      onSelectCabang: (cabang) {
+        setState(() {
+          _selectedProvinceCabang = cabang.province ?? _selectedProvinceCabang;
+          _selectedCabangModel = cabang;
+        });
+        if (cabang.province != null) {
+          _loadCabangsByProvince(cabang.province!);
+        }
+      },
+    );
   }
 
   Future<void> _pickKtp() async {
@@ -848,17 +900,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'Tersedia ${filteredList.length} kantor cabang',
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
                           ),
-                          if (_userLatitude != null && _userLongitude != null)
-                            const Row(
-                              children: [
-                                Icon(Icons.near_me_rounded, size: 13, color: Color(0xFF166534)),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Jarak dihitung',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                          Row(
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  _openMapModal();
+                                },
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.map_rounded, size: 12, color: Color(0xFF1D4ED8)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Buka Peta',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 6),
+                              if (_userLatitude != null && _userLongitude != null)
+                                const Row(
+                                  children: [
+                                    Icon(Icons.near_me_rounded, size: 13, color: Color(0xFF166534)),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'GPS Aktif',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                    ),
+                                  ],
+                                )
+                              else
+                                InkWell(
+                                  onTap: () async {
+                                    Navigator.pop(sheetContext);
+                                    await _detectNearestCabang();
+                                    _openCabangSearchModal();
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCFCE7),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.my_location_rounded, size: 12, color: Color(0xFF166534)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'GPS',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -895,6 +1004,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               itemBuilder: (context, index) {
                                 final cabang = filteredList[index];
                                 final isSelected = _selectedCabangModel?.id == cabang.id;
+                                final isNearest = initialList.isNotEmpty &&
+                                    initialList.first.id == cabang.id &&
+                                    cabang.distanceInKm != null;
 
                                 return InkWell(
                                   onTap: () {
@@ -931,20 +1043,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Row(
+                                              Wrap(
+                                                spacing: 6,
+                                                runSpacing: 4,
+                                                crossAxisAlignment: WrapCrossAlignment.center,
                                                 children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      cabang.name,
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF1E293B),
-                                                      ),
+                                                  Text(
+                                                    cabang.name,
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF1E293B),
                                                     ),
                                                   ),
-                                                  if (cabang.formattedDistance != null) ...[
-                                                    const SizedBox(width: 6),
+                                                  if (isNearest)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFFEF3C7),
+                                                        borderRadius: BorderRadius.circular(5),
+                                                        border: Border.all(color: const Color(0xFFFCD34D)),
+                                                      ),
+                                                      child: const Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Icon(Icons.star_rounded, size: 10, color: Color(0xFFB45309)),
+                                                          SizedBox(width: 2),
+                                                          Text(
+                                                            'TERDEKAT',
+                                                            style: TextStyle(
+                                                              fontSize: 9.5,
+                                                              fontWeight: FontWeight.w900,
+                                                              color: Color(0xFFB45309),
+                                                              letterSpacing: 0.3,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  if (cabang.formattedDistance != null)
                                                     Container(
                                                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                                       decoration: BoxDecoration(
@@ -960,7 +1097,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                         ),
                                                       ),
                                                     ),
-                                                  ],
                                                 ],
                                               ),
                                               const SizedBox(height: 3),
@@ -998,7 +1134,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          icon: const Icon(Icons.map_outlined, color: Color(0xFF059669), size: 19),
+                                          tooltip: 'Lihat di Peta',
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                          onPressed: () => _openBranchLocationInMaps(cabang),
+                                        ),
+                                        const SizedBox(width: 4),
                                         if (isSelected)
                                           Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary, size: 20)
                                         else
@@ -1265,6 +1409,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         isLocked: _selectedProvinceCabang == null,
                         onTap: _openCabangSearchModal,
                       ),
+                      if (_selectedCabangModel != null)
+                        _buildSelectedCabangCard(_selectedCabangModel!),
                     ]),
                     const SizedBox(height: 32),
 
@@ -1630,6 +1776,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: _openMapModal,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF047857),
+              side: const BorderSide(color: Color(0xFF86EFAC)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              minimumSize: const Size(48, 36),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_rounded, size: 14),
+                SizedBox(width: 3),
+                Text('Peta', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
           ElevatedButton(
             onPressed: _isDetectingLocation ? null : _detectNearestCabang,
             style: ElevatedButton.styleFrom(
@@ -1739,4 +1904,232 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+
+  /// Kartu Pratinjau Cabang Terdaftar & Navigasi Peta Google Maps
+  Widget _buildSelectedCabangCard(CabangModel cabang) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF16A34A).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Badge
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF166534),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_rounded, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'CABANG PENDAFTARAN ANDA',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (cabang.formattedDistance != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.near_me_rounded, color: Color(0xFF166534), size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        '📍 ${cabang.formattedDistance}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF166534),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Nama Cabang & Kode
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cabang.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Kode: ${cabang.code} • ${cabang.displayLocation}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF047857),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (cabang.address != null && cabang.address!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF059669)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    cabang.address!,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          if (cabang.phone != null && cabang.phone!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.phone_rounded, size: 15, color: Color(0xFF059669)),
+                const SizedBox(width: 6),
+                Text(
+                  cabang.phone!,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ],
+
+          // Mini Map Visual Interaktif
+          if (cabang.latitude != null && cabang.longitude != null) ...[
+            const SizedBox(height: 10),
+            CabangMiniMap(
+              cabang: cabang,
+              userLatitude: _userLatitude,
+              userLongitude: _userLongitude,
+              onExpand: _openMapModal,
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFBBF7D0)),
+          const SizedBox(height: 10),
+
+          // Keterangan status pendaftaran
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFF059669)),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Rekening simpanan & buku anggota Anda nantinya akan diterbitkan serta dikelola oleh kantor cabang ini.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF065F46), height: 1.3, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Tombol Aksi: Buka Peta Interaktif & Rute Google Maps
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _openMapModal,
+                  icon: const Icon(Icons.map_rounded, size: 16),
+                  label: const Text(
+                    'Peta Interaktif',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openBranchLocationInMaps(cabang),
+                  icon: const Icon(Icons.navigation_rounded, size: 16, color: Color(0xFF047857)),
+                  label: const Text(
+                    'Rute Maps',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF86EFAC), width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
+
