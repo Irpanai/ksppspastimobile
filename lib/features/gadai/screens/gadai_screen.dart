@@ -11,7 +11,7 @@ class GadaiScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const PremiumHeader(title: 'Transaksi Gadai', showBackButton: false),
+          const PremiumHeader(title: 'Transaksi Rahn', showBackButton: false),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 120),
@@ -53,7 +53,7 @@ class GadaiScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Total Pinjaman Gadai',
+                              'Total Pinjaman Rahn',
                               style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                             const SizedBox(height: 8),
@@ -82,7 +82,7 @@ class GadaiScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text('Gadai Aktif', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                    child: Text('Rahn Aktif', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
                   ),
                   const SizedBox(height: 16),
                   const Padding(
@@ -139,7 +139,7 @@ class GadaiScreen extends StatelessWidget {
           backgroundColor: Theme.of(context).colorScheme.primary,
           elevation: 4,
           icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Ajukan Gadai', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          label: const Text('Ajukan Rahn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );

@@ -6,7 +6,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../sijaka/screens/sijaka_submission_screen.dart';
 import '../providers/payment_provider.dart';
-import 'midtrans_webview_screen.dart';
+import 'doku_webview_screen.dart';
 
 class TopUpScreen extends StatefulWidget {
   final String? initialType; // 'sukarela', 'wajib', 'simpanan_wajib', 'pokok', 'sijaka'
@@ -233,7 +233,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
       final success = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (context) => MidtransWebViewScreen(snapResponse: result),
+          builder: (context) => DokuWebViewScreen(paymentResponse: result),
         ),
       );
 
@@ -1100,7 +1100,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Metode Pembayaran Digital Midtrans',
+                  'Metode Pembayaran Digital DOKU Checkout',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
                 ),
                 SizedBox(height: 4),

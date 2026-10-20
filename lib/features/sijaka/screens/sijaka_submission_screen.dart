@@ -6,7 +6,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../payment/providers/payment_provider.dart';
-import '../../payment/screens/midtrans_webview_screen.dart';
+import '../../payment/screens/doku_webview_screen.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
@@ -249,7 +249,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => MidtransWebViewScreen(snapResponse: snapResponse),
+            builder: (_) => DokuWebViewScreen(paymentResponse: snapResponse),
           ),
         );
       } else if (paymentProvider.errorMessage != null) {
@@ -1287,7 +1287,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
                     Text(
-                      'Lanjut ke Pembayaran Midtrans',
+                      'Lanjut ke Pembayaran DOKU',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

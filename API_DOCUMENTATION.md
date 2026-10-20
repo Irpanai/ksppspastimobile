@@ -560,16 +560,16 @@ Mendapatkan rincian detail bilyet Sijaka tertentu beserta riwayat pembagian nisb
 
 ---
 
-## 💳 6. Payment Gateway Midtrans (`/payment`)
+## 💳 6. Payment Gateway DOKU Checkout & Midtrans (`/payment`)
 
-Modul integrasi pembayaran digital mandiri (Virtual Account Bank, QRIS, GoPay, ShopeePay) menggunakan Midtrans Snap API.
+Modul integrasi pembayaran digital mandiri (Virtual Account BSI, Mandiri, BCA, BRI, BNI, Permata, QRIS, e-Wallet) menggunakan **DOKU Checkout API** (dengan fallback Midtrans Snap).
 
-### 6.1 Generate Snap Token
+### 6.1 Generate Payment Checkout URL (DOKU Checkout)
 
 Membuat pesanan pembayaran digital baru untuk Setor Simpanan Wajib, Simpanan Pokok, Top-Up Sukarela, atau Pembukaan Sijaka.
 
 - **Method**: `POST`
-- **URL Path**: `/payment/snap-token`
+- **URL Path**: `/payment/checkout` (atau `/payment/snap-token`)
 - **Auth Required**: Ya (`Bearer <token>`)
 
 #### Request Body (`application/json`):
@@ -577,7 +577,7 @@ Membuat pesanan pembayaran digital baru untuk Setor Simpanan Wajib, Simpanan Pok
 | Field | Tipe | Wajib | Keterangan | Contoh |
 | :--- | :--- | :--- | :--- | :--- |
 | `type` | `string` | Ya | `simpanan_wajib`, `simpanan_pokok`, `simpanan_sukarela`, `pembukaan_sijaka` | `simpanan_wajib` |
-| `nominal` | `integer` | Ya | Nominal pembayaran (Min. Rp 1.000) | `50000` |
+| `nominal` | `integer` | Ya | Nominal pembayaran (Min. Rp 10.000) | `50000` |
 | `bulan` | `integer` | Ya (jika `simpanan_wajib`) | Periode bulan simpanan wajib (1-12) | `9` |
 | `tahun` | `integer` | Ya (jika `simpanan_wajib`) | Periode tahun simpanan wajib | `2026` |
 | `sijaka_produk_id` | `integer` | Ya (jika `pembukaan_sijaka`) | ID Produk Sijaka yang dipilih | `1` |
@@ -599,19 +599,21 @@ Membuat pesanan pembayaran digital baru untuk Setor Simpanan Wajib, Simpanan Pok
 ```json
 {
   "success": true,
-  "message": "Snap Token berhasil dibuat.",
+  "message": "Tautan pembayaran DOKU Checkout berhasil dibuat.",
   "data": {
-    "order_id": "PASTI-WJB-260921143000-123",
-    "snap_token": "d76c3f30-891a-4c46-9d8a-123456789abc",
-    "snap_redirect_url": "https://app.sandbox.midtrans.com/snap/v3/redirection/d76c3f30-891a-4c46-9d8a-123456789abc",
+    "order_id": "KSPPS-SIMPANAN_WAJIB-12-20261020111500-A1B2",
+    "payment_url": "https://jokul.doku.com/checkout/link/eyJhbGciOi...",
+    "snap_redirect_url": "https://jokul.doku.com/checkout/link/eyJhbGciOi...",
     "nominal": 50000,
     "nominal_format": "Rp 50.000",
     "type": "simpanan_wajib",
     "status": "pending",
-    "client_key": "Mid-client-2Cc2SpmfT0nBrHqF",
-    "created_at": "2026-09-21T14:30:00+08:00"
+    "gateway": "doku",
+    "client_id": "BRN-0297-1791864278671",
+    "created_at": "2026-10-20T11:15:00+08:00"
   }
 }
+```
 #### Kemungkinan Status Error:
 - **422 Unprocessable Entity**: 
   - Mencoba membayar bulan sebelum tanggal pendaftaran: `"Anda baru terdaftar pada bulan {Bulan Daftar}. Tidak dapat membayar simpanan wajib untuk bulan sebelumnya ({Bulan Input})."`
@@ -684,6 +686,56 @@ Endpoint publik yang dipanggil secara otomatis oleh server Midtrans saat terjadi
 ```
 
 > **Catatan:** Saat status `settlement`, sistem backend secara otomatis menambah saldo simpanan anggota dan mencatat Jurnal Akuntansi.
+
+---
+
+### 6.4 DOKU Webhook Notification Callback (HTTP Notification)
+
+Endpoint publik yang dipanggil secara otomatis oleh server DOKU saat nasabah menyelesaikan transaksi (Virtual Account, QRIS, e-Wallet).
+
+- **Method**: `POST`
+- **URL Path**: `/payment/doku-notification`
+- **Auth Required**: Tidak (Verifikasi Header `Signature` HMAC-SHA256 dari DOKU)
+- **Header Masuk dari DOKU**:
+  - `Client-Id`: DOKU Client ID
+  - `Request-Id`: UUID Unik
+  - `Request-Timestamp`: Waktu UTC format ISO8601
+  - `Signature`: `HMACSHA256={base64_hmac}`
+
+#### Contoh Payload Masuk dari DOKU (`application/json`):
+```json
+{
+  "order": {
+    "invoice_number": "KSPPS-SIMPANAN_WAJIB-12-20261020111500-A1B2",
+    "amount": 50000.00,
+    "currency": "IDR"
+  },
+  "transaction": {
+    "status": "SUCCESS",
+    "date": "2026-10-20T11:18:00Z",
+    "original_request_id": "c1f73b9e-...",
+    "payment_channel": "VIRTUAL_ACCOUNT_BSI",
+    "payment_code": "88090012345678"
+  },
+  "customer": {
+    "id": "ANGGOTA-12",
+    "name": "Budi Santoso",
+    "email": "budi@gmail.com"
+  }
+}
+```
+
+#### Respon Server KSPPS ke DOKU (200 OK):
+```json
+{
+  "success": true,
+  "message": "Notifikasi DOKU berhasil diproses.",
+  "data": {
+    "order_id": "KSPPS-SIMPANAN_WAJIB-12-20261020111500-A1B2",
+    "status": "settlement"
+  }
+}
+```
 
 ---
 

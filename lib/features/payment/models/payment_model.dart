@@ -4,24 +4,30 @@ class SnapTokenResponse {
   final String orderId;
   final String snapToken;
   final String snapRedirectUrl;
+  final String paymentUrl;
   final num nominal;
   final String nominalFormat;
   final String type;
   final String status;
   final String? clientKey;
+  final String? clientId;
+  final String gateway;
   final String? createdAt;
 
   SnapTokenResponse({
     required this.orderId,
     required this.snapToken,
     required this.snapRedirectUrl,
+    String? paymentUrl,
     required this.nominal,
     required this.nominalFormat,
     required this.type,
     required this.status,
     this.clientKey,
+    this.clientId,
+    this.gateway = 'doku',
     this.createdAt,
-  });
+  }) : paymentUrl = paymentUrl ?? snapRedirectUrl;
 
   factory SnapTokenResponse.fromJson(Map<String, dynamic> json) {
     num parseNominal(dynamic val) {
@@ -31,15 +37,20 @@ class SnapTokenResponse {
     }
 
     final nom = parseNominal(json['nominal']);
+    final redirectUrl = json['payment_url']?.toString() ?? json['snap_redirect_url']?.toString() ?? '';
+
     return SnapTokenResponse(
       orderId: json['order_id']?.toString() ?? '',
-      snapToken: json['snap_token']?.toString() ?? '',
-      snapRedirectUrl: json['snap_redirect_url']?.toString() ?? '',
+      snapToken: json['snap_token']?.toString() ?? json['order_id']?.toString() ?? '',
+      snapRedirectUrl: redirectUrl,
+      paymentUrl: redirectUrl,
       nominal: nom,
       nominalFormat: json['nominal_format']?.toString() ?? AppCurrency.format(nom),
       type: json['type']?.toString() ?? 'simpanan_sukarela',
       status: json['status']?.toString() ?? 'pending',
       clientKey: json['client_key']?.toString(),
+      clientId: json['client_id']?.toString(),
+      gateway: json['gateway']?.toString() ?? (json['payment_url'] != null ? 'doku' : 'midtrans'),
       createdAt: json['created_at']?.toString(),
     );
   }
@@ -49,15 +60,21 @@ class SnapTokenResponse {
       'order_id': orderId,
       'snap_token': snapToken,
       'snap_redirect_url': snapRedirectUrl,
+      'payment_url': paymentUrl,
       'nominal': nominal,
       'nominal_format': nominalFormat,
       'type': type,
       'status': status,
       'client_key': clientKey,
+      'client_id': clientId,
+      'gateway': gateway,
       'created_at': createdAt,
     };
   }
 }
+
+/// Alias typedef for DOKU Checkout
+typedef PaymentCheckoutResponse = SnapTokenResponse;
 
 class PaymentStatusResponse {
   final String orderId;

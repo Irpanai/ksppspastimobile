@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../auth/services/cabang_service.dart';
 import '../../auth/widgets/cabang_map_modal.dart';
 
-/// Banner Pintas Jaringan Kantor Cabang KSPPS PASTI untuk Dashboard Utama
+/// Banner Pintas Sebaran Kantor Cabang KSPPS PASTI untuk Dashboard Utama
 class CabangLocationBanner extends StatefulWidget {
   const CabangLocationBanner({super.key});
 
@@ -13,6 +13,24 @@ class CabangLocationBanner extends StatefulWidget {
 
 class _CabangLocationBannerState extends State<CabangLocationBanner> {
   bool _isLoading = false;
+  int? _branchCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranchCount();
+  }
+
+  Future<void> _loadBranchCount() async {
+    try {
+      final allCabangs = await CabangService.getAllCabangs();
+      if (mounted && allCabangs.isNotEmpty) {
+        setState(() {
+          _branchCount = allCabangs.length;
+        });
+      }
+    } catch (_) {}
+  }
 
   Future<void> _openBranchMap(BuildContext context) async {
     setState(() => _isLoading = true);
@@ -35,7 +53,7 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
     } catch (_) {}
 
     try {
-      final allCabangs = await CabangService.getAllCabangs();
+      final allCabangs = await CabangService.getAllCabangs(forceRefresh: true);
 
       if (!context.mounted) return;
 
@@ -123,7 +141,7 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
                       Row(
                         children: [
                           const Text(
-                            'Jaringan Kantor Cabang',
+                            'Sebaran Kantor Cabang',
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -138,7 +156,7 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '26 Cabang',
+                              _branchCount != null ? '$_branchCount Cabang' : '101 Cabang',
                               style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,

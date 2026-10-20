@@ -310,7 +310,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           _buildGridCard(
                             context,
-                            title: 'Transaksi Gadai',
+                            title: 'Rahn',
                             subtitle: 'Pinjaman & agunan',
                             icon: Icons.handshake_outlined,
                             iconColor: const Color(0xFFD97706),
@@ -471,8 +471,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 _buildMenuRow(
                                   Icons.storefront_rounded,
-                                  'Jaringan Kantor Cabang & CS',
-                                  subtitle: 'Peta satelit 26 cabang & kontak WhatsApp CS',
+                                  'Sebaran Kantor Cabang',
+                                  subtitle: 'Peta satelit cabang & kontak WhatsApp CS',
                                   iconColor: Theme.of(context).colorScheme.primary,
                                   onTap: () => _openCabangMapModal(context, targetCabangName: cabang),
                                 ),
