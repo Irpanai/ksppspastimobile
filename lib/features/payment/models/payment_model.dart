@@ -13,6 +13,18 @@ class SnapTokenResponse {
   final String? clientId;
   final String gateway;
   final String? createdAt;
+  final String paymentMode;
+  final String paymentMethod;
+  final String? bank;
+  final String? bankName;
+  final String? vaNumber;
+  final String? expiredDate;
+  final Map<String, dynamic>? instructions;
+  final String? howToPayPage;
+
+  final bool isDirectQris;
+  final String? qrString;
+  final String? nmid;
 
   SnapTokenResponse({
     required this.orderId,
@@ -27,7 +39,21 @@ class SnapTokenResponse {
     this.clientId,
     this.gateway = 'doku',
     this.createdAt,
+    this.paymentMode = 'checkout_url',
+    this.paymentMethod = 'checkout',
+    this.bank,
+    this.bankName,
+    this.vaNumber,
+    this.expiredDate,
+    this.instructions,
+    this.howToPayPage,
+    this.isDirectQris = false,
+    this.qrString,
+    this.nmid,
   }) : paymentUrl = paymentUrl ?? snapRedirectUrl;
+
+  bool get isDirectVa =>
+      paymentMode == 'direct_va' || (vaNumber != null && vaNumber!.isNotEmpty);
 
   factory SnapTokenResponse.fromJson(Map<String, dynamic> json) {
     num parseNominal(dynamic val) {
@@ -38,6 +64,11 @@ class SnapTokenResponse {
 
     final nom = parseNominal(json['nominal']);
     final redirectUrl = json['payment_url']?.toString() ?? json['snap_redirect_url']?.toString() ?? '';
+    final qrStr = json['qr_string']?.toString();
+    final isQris = json['is_direct_qris'] == true ||
+        json['payment_mode'] == 'direct_qris' ||
+        json['payment_method'] == 'qris' ||
+        (qrStr != null && qrStr.isNotEmpty);
 
     return SnapTokenResponse(
       orderId: json['order_id']?.toString() ?? '',
@@ -52,6 +83,17 @@ class SnapTokenResponse {
       clientId: json['client_id']?.toString(),
       gateway: json['gateway']?.toString() ?? (json['payment_url'] != null ? 'doku' : 'midtrans'),
       createdAt: json['created_at']?.toString(),
+      paymentMode: json['payment_mode']?.toString() ?? (isQris ? 'direct_qris' : 'checkout_url'),
+      paymentMethod: json['payment_method']?.toString() ?? (isQris ? 'qris' : 'checkout'),
+      bank: json['bank']?.toString(),
+      bankName: json['bank_name']?.toString(),
+      vaNumber: json['va_number']?.toString(),
+      expiredDate: json['expired_date']?.toString(),
+      instructions: json['instructions'] is Map ? Map<String, dynamic>.from(json['instructions'] as Map) : null,
+      howToPayPage: json['how_to_pay_page']?.toString(),
+      isDirectQris: isQris,
+      qrString: qrStr,
+      nmid: json['nmid']?.toString(),
     );
   }
 
@@ -69,6 +111,17 @@ class SnapTokenResponse {
       'client_id': clientId,
       'gateway': gateway,
       'created_at': createdAt,
+      'payment_mode': paymentMode,
+      'payment_method': paymentMethod,
+      'bank': bank,
+      'bank_name': bankName,
+      'va_number': vaNumber,
+      'expired_date': expiredDate,
+      'instructions': instructions,
+      'how_to_pay_page': howToPayPage,
+      'is_direct_qris': isDirectQris,
+      'qr_string': qrString,
+      'nmid': nmid,
     };
   }
 }

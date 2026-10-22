@@ -7,6 +7,8 @@ import '../../home/providers/dashboard_provider.dart';
 import '../../sijaka/screens/sijaka_submission_screen.dart';
 import '../providers/payment_provider.dart';
 import 'doku_webview_screen.dart';
+import 'native_payment_detail_screen.dart';
+import 'native_qris_screen.dart';
 
 class TopUpScreen extends StatefulWidget {
   final String? initialType; // 'sukarela', 'wajib', 'simpanan_wajib', 'pokok', 'sijaka'
@@ -38,6 +40,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
   late int _wajibEndMonth;
   late int _wajibYear;
   bool _isBatchWajib = true; // Default batch mode up to December
+  String _selectedPaymentMethod = 'bca'; // Default: BCA Virtual Account (Native)
 
   final List<int> _presetNominalsSukarela = [
     25000,
@@ -85,6 +88,19 @@ class _TopUpScreenState extends State<TopUpScreen> {
       _selectedType = 'simpanan_sukarela';
       _amountController.text = AppCurrency.format(100000).replaceAll('Rp ', '');
     }
+
+    // Ambil kanal pembayaran dinamis yang aktif dari Admin
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PaymentProvider>().fetchPaymentChannels().then((_) {
+        if (!mounted) return;
+        final channels = context.read<PaymentProvider>().activeChannels.where((c) => c.isActive).toList();
+        if (channels.isNotEmpty && !channels.any((c) => c.code == _selectedPaymentMethod)) {
+          setState(() {
+            _selectedPaymentMethod = channels.first.code;
+          });
+        }
+      });
+    });
   }
 
   @override
@@ -219,10 +235,24 @@ class _TopUpScreenState extends State<TopUpScreen> {
       return;
     }
 
+    final activeChannels = context.read<PaymentProvider>().activeChannels.where((c) => c.isActive).toList();
+    if (activeChannels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tidak ada metode pembayaran yang aktif saat ini.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final paymentProvider = context.read<PaymentProvider>();
     final result = await paymentProvider.createPayment(
       type: _selectedType,
       nominal: amount,
+      paymentMethod: _selectedPaymentMethod,
+      bank: _selectedPaymentMethod != 'checkout' ? _selectedPaymentMethod : null,
       bulan: _selectedType == 'simpanan_wajib' ? _wajibStartMonth : null,
       tahun: _selectedType == 'simpanan_wajib' ? _wajibYear : null,
     );
@@ -230,10 +260,16 @@ class _TopUpScreenState extends State<TopUpScreen> {
     if (!mounted) return;
 
     if (result != null) {
+      final Widget targetScreen = result.isDirectQris
+          ? NativeQrisScreen(paymentResponse: result)
+          : (result.isDirectVa
+              ? NativePaymentDetailScreen(paymentResponse: result)
+              : DokuWebViewScreen(paymentResponse: result));
+
       final success = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (context) => DokuWebViewScreen(paymentResponse: result),
+          builder: (context) => targetScreen,
         ),
       );
 
@@ -1083,36 +1119,186 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   Widget _buildPaymentMethodNotice() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.verified_user_rounded, color: Color(0xFF2563EB), size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Metode Pembayaran Digital DOKU Checkout',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Mendukung QRIS (BCA, Mandiri, BRI, BNI, GoPay, ShopeePay, Dana) dan Virtual Account Bank 24 Jam dengan verifikasi instan.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF3B82F6), height: 1.4),
-                ),
-              ],
+    final providerChannels = context.watch<PaymentProvider>().activeChannels;
+    final channels = providerChannels.where((c) => c.isActive).toList();
+
+    if (channels.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFCA5A5)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Saat ini seluruh kanal pembayaran online sedang dalam pemeliharaan sistem. Silakan coba beberapa saat lagi atau hubungi kantor KSPPS PASTI.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF991B1B), height: 1.4),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              'PILIH METODE PEMBAYARAN',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              'Otomatis 24 Jam',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F766E),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: channels.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final m = channels[index];
+            final isSelected = _selectedPaymentMethod == m.code;
+            final tagColor = m.tagColor;
+
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedPaymentMethod = m.code;
+                });
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFF0FDF4) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFE2E8F0),
+                    width: isSelected ? 1.8 : 1.0,
+                  ),
+                  boxShadow: [
+                    if (isSelected)
+                      BoxShadow(
+                        color: const Color(0xFF0F766E).withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: tagColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        m.icon,
+                        color: tagColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  m.name,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    fontSize: 13,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              if (m.badge != null && m.badge!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (m.code == 'checkout')
+                                        ? const Color(0xFFE0F2FE)
+                                        : const Color(0xFFDCFCE7),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    m.badge!,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: (m.code == 'checkout')
+                                          ? const Color(0xFF0284C7)
+                                          : const Color(0xFF15803D),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            m.description ?? 'Transfer instan otomatis 24 jam',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF94A3B8),
+                          width: 2,
+                        ),
+                        color: isSelected ? const Color(0xFF0F766E) : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, size: 13, color: Colors.white)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

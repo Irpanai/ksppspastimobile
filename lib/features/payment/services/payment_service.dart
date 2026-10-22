@@ -1,5 +1,6 @@
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../models/payment_channel_model.dart';
 import '../models/payment_model.dart';
 
 class PaymentService {
@@ -7,6 +8,8 @@ class PaymentService {
   Future<SnapTokenResponse> createSnapToken({
     required String type,
     required int nominal,
+    String? paymentMethod,
+    String? bank,
     int? bulan,
     int? tahun,
     int? sijakaProdukId,
@@ -22,6 +25,13 @@ class PaymentService {
       'type': type,
       'nominal': nominal,
     };
+
+    if (paymentMethod != null && paymentMethod.isNotEmpty) {
+      body['payment_method'] = paymentMethod;
+    }
+    if (bank != null && bank.isNotEmpty) {
+      body['bank'] = bank;
+    }
 
     if (type == 'simpanan_wajib') {
       if (bulan != null) body['bulan'] = bulan;
@@ -101,5 +111,29 @@ class PaymentService {
     );
 
     return response.data ?? [];
+  }
+
+  /// Get Active Payment Channels configured by Admin
+  Future<List<PaymentChannelModel>> getPaymentChannels() async {
+    try {
+      final response = await ApiClient.get<List<PaymentChannelModel>>(
+        ApiConstants.paymentChannels,
+        withAuth: true,
+        fromJsonT: (data) {
+          if (data is List) {
+            return data.map((e) => PaymentChannelModel.fromJson(e as Map<String, dynamic>)).toList();
+          } else if (data is Map && data['data'] is List) {
+            return (data['data'] as List).map((e) => PaymentChannelModel.fromJson(e as Map<String, dynamic>)).toList();
+          }
+          return [];
+        },
+      );
+
+      if (response.data != null && response.data!.isNotEmpty) {
+        return response.data!;
+      }
+    } catch (_) {}
+
+    return PaymentChannelModel.defaultChannels;
   }
 }

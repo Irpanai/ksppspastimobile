@@ -125,6 +125,7 @@ class ApiConstants {
   static const String pinChange = '/member/pin/change';
 
   // Payment Gateway Endpoints (DOKU Checkout & Midtrans)
+  static const String paymentChannels = '/payment/channels';
   static const String paymentCheckout = '/payment/checkout';
   static const String snapToken = '/payment/checkout';
   static String paymentStatus(String orderId) => '/payment/status/$orderId';
