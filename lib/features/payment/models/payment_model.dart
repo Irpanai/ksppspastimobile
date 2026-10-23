@@ -1,4 +1,4 @@
-import '../../../../core/utils/currency_formatter.dart';
+﻿import '../../../../core/utils/currency_formatter.dart';
 
 class SnapTokenResponse {
   final String orderId;
@@ -54,6 +54,31 @@ class SnapTokenResponse {
 
   bool get isDirectVa =>
       paymentMode == 'direct_va' || (vaNumber != null && vaNumber!.isNotEmpty);
+
+  String get displayPaymentMethod {
+    if (isDirectQris) return 'QRIS Nasional';
+    if (isDirectVa) {
+      if (bankName != null && bankName!.isNotEmpty) return bankName!;
+      if (bank != null && bank!.isNotEmpty) return ' Virtual Account';
+      return 'Virtual Account';
+    }
+    return 'DOKU Checkout';
+  }
+
+  String get displayType {
+    switch (type.toLowerCase()) {
+      case 'simpanan_sukarela':
+        return 'Simpanan Sukarela';
+      case 'simpanan_wajib':
+        return 'Simpanan Wajib';
+      case 'simpanan_pokok':
+        return 'Simpanan Pokok';
+      case 'pembukaan_sijaka':
+        return 'Deposito SIJAKA';
+      default:
+        return type.replaceAll('_', ' ').toUpperCase();
+    }
+  }
 
   factory SnapTokenResponse.fromJson(Map<String, dynamic> json) {
     num parseNominal(dynamic val) {
@@ -152,6 +177,7 @@ class PaymentStatusResponse {
     this.paidAt,
   });
 
+  bool get isSettled => isSettlement;
   bool get isSettlement => status.toLowerCase() == 'settlement' || status.toLowerCase() == 'capture' || status.toLowerCase() == 'success' || status.toLowerCase() == 'paid';
   bool get isPending => status.toLowerCase() == 'pending';
   bool get isExpiredOrCancelled => status.toLowerCase() == 'expire' || status.toLowerCase() == 'cancel' || status.toLowerCase() == 'deny';

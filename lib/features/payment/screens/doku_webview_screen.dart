@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
@@ -86,7 +88,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
               final url = request.url;
               final uri = Uri.tryParse(url);
 
-              // 1. Tangani deep-link e-Wallet & Banking Apps (GoPay, ShopeePay, OVO, DANA, BSI Mobile, intent://)
+              // Tangani deep-link e-Wallet & Banking Apps
               if (uri != null &&
                   !uri.scheme.startsWith('http') &&
                   !uri.scheme.startsWith('https')) {
@@ -100,7 +102,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                 }
               }
 
-              // 2. Deteksi Halaman Selesai Pembayaran
+              // Deteksi Halaman Selesai Pembayaran
               _checkUrlForStatus(url);
               return NavigationDecision.navigate;
             },
@@ -226,7 +228,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                         ? 'Selesaikan pembayaran melalui channel yang Anda pilih di DOKU Checkout.'
                         : 'Transaksi gagal atau dibatalkan oleh pengguna.'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
               ),
               const SizedBox(height: 18),
               Container(
@@ -244,7 +246,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                         const Text('Nominal:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                         Text(
                           AppCurrency.format(status.nominal),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
                         ),
                       ],
                     ),
@@ -254,10 +256,10 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                       children: [
                         const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                         Text(
-                          status.orderId.length > 18
-                              ? '${status.orderId.substring(0, 18)}...'
+                          status.orderId.length > 20
+                              ? '${status.orderId.substring(0, 20)}...'
                               : status.orderId,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B), fontFamily: 'monospace'),
                         ),
                       ],
                     ),
@@ -269,7 +271,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                           const Text('Channel:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                           Text(
                             status.paymentChannel!.toUpperCase(),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0E7955)),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
                           ),
                         ],
                       ),
@@ -288,15 +290,14 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isSuccess
-                        ? Theme.of(context).colorScheme.primary
-                        : const Color(0xFF64748B),
+                    backgroundColor: const Color(0xFF388E3C),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
                   ),
                   child: Text(
-                    isSuccess ? 'Kembali ke Dashboard' : 'Tutup',
+                    isSuccess ? 'Kembali ke Beranda' : 'Tutup',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
@@ -310,7 +311,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    const primaryColor = Color(0xFF388E3C);
 
     return PopScope(
       canPop: false,
@@ -322,31 +323,16 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
           return;
         }
 
-        final shouldPop = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Batalkan Transaksi?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            content: const Text(
-              'Apakah Anda yakin ingin keluar dari halaman pembayaran? Anda tetap dapat melanjutkan pembayaran sebelum batas waktu berakhir.',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Lanjutkan Bayar', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDC2626),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Keluar'),
-              ),
-            ],
-          ),
+        final shouldPop = await AppDialog.showConfirmation(
+          context,
+          title: 'Tinggalkan Pembayaran?',
+          message: 'Apakah Anda yakin ingin keluar dari halaman pembayaran? Anda tetap dapat melanjutkan pembayaran sebelum batas waktu berakhir.',
+          confirmText: 'Keluar',
+          cancelText: 'Lanjutkan Bayar',
+          isDestructive: false,
+          icon: Icons.info_outline_rounded,
+          iconColor: const Color(0xFF475569),
+          iconBgColor: const Color(0xFFF1F5F9),
         );
 
         if (shouldPop == true && context.mounted) {
@@ -354,107 +340,151 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Text(
-                    'DOKU Checkout',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  SizedBox(width: 6),
-                  Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 14),
-                ],
-              ),
-              Text(
-                'Order ID: ${widget.paymentResponse.orderId}',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E293B),
-          elevation: 1,
-          shadowColor: Colors.black12,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Muat Ulang',
-              onPressed: () {
-                _controller?.reload();
-                _triggerStatusCheck(silent: true);
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.open_in_browser_rounded),
-              tooltip: 'Buka di Browser',
-              onPressed: _openInExternalBrowser,
-            ),
-          ],
-        ),
-        body: Stack(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Column(
           children: [
-            if (kIsWeb)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.payment_rounded, size: 64, color: primaryColor),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Pembayaran Digital DOKU Checkout',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Silakan klik tombol di bawah untuk membuka halaman pembayaran DOKU di browser Anda.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _openInExternalBrowser,
-                        icon: const Icon(Icons.open_in_new_rounded),
-                        label: const Text('Buka Halaman DOKU'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            PremiumHeader(
+              title: 'DOKU Checkout',
+              showBackButton: true,
+              onBackPressed: () => Navigator.maybePop(context),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                  tooltip: 'Muat Ulang',
+                  onPressed: () {
+                    _controller?.reload();
+                    _triggerStatusCheck(silent: true);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white),
+                  tooltip: 'Buka di Browser',
+                  onPressed: _openInExternalBrowser,
+                ),
+              ],
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  if (kIsWeb)
+                    Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFDCFCE7),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.security_rounded, size: 38, color: Color(0xFF16A34A)),
+                              ),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'DOKU Hosted Checkout',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E293B)),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Portal pembayaran digital terenkripsi resmi KSPPS PASTI. Klik tombol di bawah untuk membuka halaman pembayaran.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.4),
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Total Tagihan:', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                                    Text(
+                                      widget.paymentResponse.nominalFormat,
+                                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: primaryColor),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton.icon(
+                                  onPressed: _openInExternalBrowser,
+                                  icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                                  label: const Text('Buka Portal DOKU', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _triggerStatusCheck(silent: false),
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  label: const Text('Cek Status Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: primaryColor,
+                                    side: const BorderSide(color: primaryColor),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton(
-                        onPressed: () => _triggerStatusCheck(silent: false),
-                        child: const Text('Cek Status Pembayaran'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (_controller != null)
-              WebViewWidget(controller: _controller!)
-            else
-              const Center(child: Text('Gagal memuat WebView')),
+                    )
+                  else if (_controller != null)
+                    WebViewWidget(controller: _controller!)
+                  else
+                    const Center(child: Text('Gagal memuat WebView')),
 
-            // Loading Progress Bar
-            if (_isLoadingWeb && !kIsWeb)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  value: _loadingProgress > 0 ? _loadingProgress : null,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                  minHeight: 3.5,
-                ),
+                  // Loading Progress Bar
+                  if (_isLoadingWeb && !kIsWeb)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(
+                        value: _loadingProgress > 0 ? _loadingProgress : null,
+                        backgroundColor: Colors.transparent,
+                        valueColor: const AlwaysStoppedAnimation<Color>(primaryColor),
+                        minHeight: 3.5,
+                      ),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
         bottomNavigationBar: SafeArea(
@@ -482,7 +512,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                       const SizedBox(height: 2),
                       Text(
                         widget.paymentResponse.nominalFormat,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: primaryColor,
@@ -500,6 +530,7 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    elevation: 0,
                   ),
                 ),
               ],

@@ -39,8 +39,28 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
       final urlString = '${ApiConstants.baseUrl}/sijaka-docs/nisbah-pdf/${widget.item.id}${token != null && token.isNotEmpty ? '?token=$token' : ''}';
       final uri = Uri.parse(urlString);
 
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+            bool opened = false;
+      try {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+
+      if (!opened) {
+        try {
+          opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      }
+
+      if (!opened) {
+        try {
+          opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+        } catch (_) {}
+      }
+
+      if (!opened && await canLaunchUrl(uri)) {
+        opened = await launchUrl(uri);
+      }
+
+      if (opened) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -58,7 +78,7 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
           );
         }
       } else {
-        throw Exception('Tidak dapat membuka URL dokumen PDF.');
+        throw Exception('Tidak dapat membuka dokumen. Pastikan browser atau aplikasi pembaca PDF tersedia di perangkat.');
       }
     } catch (e) {
       if (mounted) {

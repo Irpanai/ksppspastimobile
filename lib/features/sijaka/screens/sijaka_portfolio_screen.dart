@@ -962,8 +962,34 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
       final urlString = '${ApiConstants.baseUrl}/sijaka-docs/$bilyetId/$endpoint${token != null && token.isNotEmpty ? '?token=$token' : ''}';
       final uri = Uri.parse(urlString);
 
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+            bool opened = false;
+      // 1. Coba externalApplication (browser atau aplikasi pembaca PDF di HP)
+      try {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+
+      // 2. Fallback coba platformDefault
+      if (!opened) {
+        try {
+          opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      }
+
+      // 3. Fallback coba inAppBrowserView
+      if (!opened) {
+        try {
+          opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+        } catch (_) {}
+      }
+
+      // 4. Fallback coba canLaunchUrl
+      if (!opened) {
+        if (await canLaunchUrl(uri)) {
+          opened = await launchUrl(uri);
+        }
+      }
+
+      if (opened) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -981,7 +1007,7 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
           );
         }
       } else {
-        throw Exception('Tidak dapat membuka URL dokumen.');
+        throw Exception('Tidak dapat membuka dokumen. Pastikan browser atau aplikasi pembaca PDF tersedia di perangkat.');
       }
     } catch (e) {
       if (mounted) {

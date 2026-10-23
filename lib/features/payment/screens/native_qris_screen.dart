@@ -7,12 +7,13 @@ import 'package:gal/gal.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
-import 'doku_webview_screen.dart';
 
 class NativeQrisScreen extends StatefulWidget {
   final SnapTokenResponse paymentResponse;
@@ -119,23 +120,20 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
         _showSuccessDialog(status);
       } else if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pembayaran QRIS belum terdeteksi. Silakan selesaikan pembayaran di aplikasi m-Banking/e-Wallet Anda lalu coba lagi.'),
-            backgroundColor: Color(0xFFD97706),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppDialog.showWarning(
+          context,
+          title: 'Pembayaran Belum Terdeteksi',
+          message: 'Pembayaran QRIS belum terdeteksi. Silakan selesaikan pembayaran di aplikasi m-Banking atau e-Wallet Anda lalu coba lagi.',
         );
       }
     } catch (e) {
       if (!mounted) return;
       if (!silent) {
         setState(() => _isChecking = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memeriksa status: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Memeriksa Status',
+          message: 'Terjadi kendala saat memeriksa status pembayaran: ${e.toString()}',
         );
       }
     }
@@ -192,7 +190,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                       const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                       Text(
                         AppCurrency.format(status.nominal),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
                       ),
                     ],
                   ),
@@ -201,7 +199,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      const Text('QRIS Nasional', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                      const Text('QRIS Nasional', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -228,7 +226,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   Navigator.pop(context, true);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F766E),
+                  backgroundColor: const Color(0xFF388E3C),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -350,7 +348,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
             Text('$label berhasil disalin'),
           ],
         ),
-        backgroundColor: const Color(0xFF0F766E),
+        backgroundColor: const Color(0xFF388E3C),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
@@ -374,28 +372,28 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     final qrData = res.qrString ?? '';
     final nmid = res.nmid ?? 'ID2026102056853';
 
+    // Warna aksen QRIS dinamis dari pengaturan web (tag_color), default resmi merah QRIS
+    Color qrisColor = const Color(0xFFDC2626);
+    try {
+      final channels = context.watch<PaymentProvider>().activeChannels;
+      final matched = channels.firstWhere((c) => c.code.toLowerCase() == 'qris');
+      qrisColor = matched.tagColor;
+    } catch (_) {}
+
     return PopScope(
       canPop: _hasSettled,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldLeave = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Tinggalkan Halaman QRIS?'),
-            content: const Text(
-              'Pembayaran Anda masih pending. Anda tetap dapat menyelesaikan pembayaran sebelum batas waktu berakhir.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Tetap di Sini'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Keluar', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+        final shouldLeave = await AppDialog.showConfirmation(
+          context,
+          title: 'Tinggalkan Halaman QRIS?',
+          message: 'Pembayaran Anda masih dalam status menunggu. Anda tetap dapat menyelesaikan pembayaran sebelum batas waktu berakhir.',
+          confirmText: 'Keluar',
+          cancelText: 'Tetap di Sini',
+          isDestructive: false,
+          icon: Icons.qr_code_scanner_rounded,
+          iconColor: const Color(0xFF475569),
+          iconBgColor: const Color(0xFFF1F5F9),
         );
         if (shouldLeave == true && context.mounted) {
           Navigator.pop(context, false);
@@ -403,30 +401,28 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text(
-            'Pembayaran QRIS',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E293B),
-          actions: [
-            IconButton(
-              onPressed: _isDownloading ? null : _downloadQr,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFDC2626)),
-                    )
-                  : const Icon(Icons.file_download_outlined, color: Color(0xFFDC2626)),
-              tooltip: 'Download QR ke Galeri',
+        body: Column(
+          children: [
+            PremiumHeader(
+              title: 'Pembayaran QRIS',
+              showBackButton: true,
+              onBackPressed: () => Navigator.maybePop(context),
+              actions: [
+                IconButton(
+                  onPressed: _isDownloading ? null : _downloadQr,
+                  icon: _isDownloading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.file_download_outlined, color: Colors.white),
+                  tooltip: 'Download QR ke Galeri',
+                ),
+              ],
             ),
-          ],
-        ),
-        body: SingleChildScrollView(
+            Expanded(
+              child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -510,12 +506,12 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Header QRIS
+                      // Header QRIS (Warna aksen dari pengaturan web)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDC2626),
-                          borderRadius: BorderRadius.only(
+                        decoration: BoxDecoration(
+                          color: qrisColor,
+                          borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(24),
                             topRight: Radius.circular(24),
                           ),
@@ -646,15 +642,15 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Rincian Nominal
+                      // Rincian Nominal (Aksen QRIS)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDFA),
+                            color: const Color(0xFFFEF2F2),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFF99F6E4)),
+                            border: Border.all(color: qrisColor.withValues(alpha: 0.25)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -662,21 +658,21 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Nominal Tagihan', style: TextStyle(fontSize: 12, color: Color(0xFF0F766E), fontWeight: FontWeight.w500)),
+                                  Text('Nominal Tagihan', style: TextStyle(fontSize: 12, color: qrisColor, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 2),
                                   Text(
                                     res.nominalFormat.isNotEmpty ? res.nominalFormat : AppCurrency.format(res.nominal),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0F766E),
+                                      color: qrisColor,
                                     ),
                                   ),
                                 ],
                               ),
                               IconButton(
                                 onPressed: () => _copyToClipboard(res.nominal.toInt().toString(), 'Nominal'),
-                                icon: const Icon(Icons.copy_rounded, color: Color(0xFF0F766E)),
+                                icon: Icon(Icons.copy_rounded, color: qrisColor),
                                 tooltip: 'Salin Nominal',
                               ),
                             ],
@@ -714,7 +710,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDC2626),
+                        backgroundColor: qrisColor,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -791,7 +787,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
                     initiallyExpanded: true,
-                    leading: const Icon(Icons.help_outline_rounded, color: Color(0xFFDC2626)),
+                    leading: Icon(Icons.help_outline_rounded, color: qrisColor),
                     title: const Text(
                       'Panduan Cara Pembayaran',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B)),
@@ -803,30 +799,35 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                           children: [
                             _buildInstructionStep(
                               step: '1',
+                              accentColor: qrisColor,
                               title: 'Buka Aplikasi Pembayaran',
                               desc: 'Buka BCA mobile, Livin\' Mandiri, BRImo, BSI Mobile, GoPay, OVO, Dana, atau ShopeePay Anda.',
                             ),
                             const SizedBox(height: 10),
                             _buildInstructionStep(
                               step: '2',
+                              accentColor: qrisColor,
                               title: 'Pilih Menu Scan QRIS / Bayar',
                               desc: 'Pilih menu Bayar / Scan QR pada aplikasi Anda.',
                             ),
                             const SizedBox(height: 10),
                             _buildInstructionStep(
                               step: '3',
+                              accentColor: qrisColor,
                               title: 'Pindai Kode QR / Upload Gambar',
                               desc: 'Arahkan kamera ke kode QR di layar ini, atau tekan tombol "Download QR" lalu unggah gambar QR dari Galeri aplikasi perbankan Anda.',
                             ),
                             const SizedBox(height: 10),
                             _buildInstructionStep(
                               step: '4',
+                              accentColor: qrisColor,
                               title: 'Periksa & Masukkan PIN',
                               desc: 'Pastikan nama penerima "KSPPS PASTI" dan nominal tagihan sesuai, lalu masukkan PIN transaksi Anda.',
                             ),
                             const SizedBox(height: 10),
                             _buildInstructionStep(
                               step: '5',
+                              accentColor: qrisColor,
                               title: 'Verifikasi Otomatis',
                               desc: 'Setelah pembayaran selesai di m-Banking Anda, layar ini akan otomatis mendeteksi dan menyelesaikan setoran.',
                             ),
@@ -857,45 +858,26 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
+                    backgroundColor: qrisColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
-
-              // Opsi fallback buka halaman DOKU jika diperlukan
-              if (res.paymentUrl.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DokuWebViewScreen(paymentResponse: res),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.open_in_browser_rounded, size: 18, color: Color(0xFF64748B)),
-                    label: const Text(
-                      'Buka Halaman DOKU Checkout',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                    ),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 20),
+const SizedBox(height: 20),
             ],
           ),
         ),
       ),
-    );
+    ],
+  ),
+),
+);
   }
 
-  Widget _buildInstructionStep({required String step, required String title, required String desc}) {
+  Widget _buildInstructionStep({required String step, required String title, required String desc, Color? accentColor}) {
+    final effectiveColor = accentColor ?? const Color(0xFFDC2626);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -903,13 +885,13 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
           width: 24,
           height: 24,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFEE2E2),
+          decoration: BoxDecoration(
+            color: effectiveColor.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Text(
             step,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: effectiveColor),
           ),
         ),
         const SizedBox(width: 12),

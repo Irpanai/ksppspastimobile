@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -28,37 +29,15 @@ class PinVerificationDialog extends StatefulWidget {
 
     // Jika user belum mengatur PIN, arahkan ke pembuatan PIN terlebih dahulu
     if (user != null && !user.hasPin) {
-      final shouldCreate = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.shield_outlined, color: Color(0xFF0E7955)),
-              SizedBox(width: 8),
-              Text('PIN Belum Dibuat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: const Text(
-            'Untuk keamanan transaksi finansial, Anda wajib membuat 6 digit PIN terlebih dahulu.',
-            style: TextStyle(color: Color(0xFF64748B), height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8))),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0E7955),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Buat PIN Sekarang'),
-            ),
-          ],
-        ),
+      final shouldCreate = await AppDialog.showConfirmation(
+        context,
+        title: 'PIN Belum Dibuat',
+        message: 'Untuk keamanan transaksi finansial, Anda wajib membuat 6 digit PIN terlebih dahulu.',
+        confirmText: 'Buat PIN Sekarang',
+        cancelText: 'Batal',
+        icon: Icons.shield_outlined,
+        iconColor: const Color(0xFF0E7955),
+        iconBgColor: const Color(0xFFE8F5E9),
       );
 
       if (shouldCreate == true && context.mounted) {
@@ -96,37 +75,15 @@ class PinVerificationDialog extends StatefulWidget {
 
     // Jika user belum mengatur PIN, arahkan ke pembuatan PIN terlebih dahulu
     if (user != null && !user.hasPin) {
-      final shouldCreate = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.shield_outlined, color: Color(0xFF0E7955)),
-              SizedBox(width: 8),
-              Text('PIN Belum Dibuat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: const Text(
-            'Untuk keamanan akun, Anda wajib membuat 6 digit PIN terlebih dahulu.',
-            style: TextStyle(color: Color(0xFF64748B), height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8))),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0E7955),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Buat PIN Sekarang'),
-            ),
-          ],
-        ),
+      final shouldCreate = await AppDialog.showConfirmation(
+        context,
+        title: 'PIN Belum Dibuat',
+        message: 'Untuk keamanan akun, Anda wajib membuat 6 digit PIN terlebih dahulu.',
+        confirmText: 'Buat PIN Sekarang',
+        cancelText: 'Batal',
+        icon: Icons.shield_outlined,
+        iconColor: const Color(0xFF0E7955),
+        iconBgColor: const Color(0xFFE8F5E9),
       );
 
       if (shouldCreate == true && context.mounted) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -470,10 +471,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Column(
                               children: [
                                 _buildMenuRow(
-                                  Icons.storefront_rounded,
+                                  Icons.storefront_outlined,
                                   'Sebaran Kantor Cabang',
-                                  subtitle: 'Peta satelit cabang & kontak WhatsApp CS',
-                                  iconColor: Theme.of(context).colorScheme.primary,
                                   onTap: () => _openCabangMapModal(context, targetCabangName: cabang),
                                 ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
@@ -628,55 +627,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Keluar Aplikasi', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Apakah Anda yakin ingin keluar dari akun Anda? Anda harus login kembali untuk bertransaksi.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B))),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-
-              try {
-                context.read<DashboardProvider>().reset();
-                context.read<SavingsProvider>().reset();
-                context.read<SijakaProvider>().reset();
-                context.read<HistoryProvider>().reset();
-                context.read<ProfileProvider>().reset();
-              } catch (_) {}
-
-              await context.read<AuthProvider>().logout();
-
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Berhasil keluar dari akun'),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
-          )
-        ],
-      ),
+  void _showLogoutDialog(BuildContext context) async {
+    final shouldLogout = await AppDialog.showConfirmation(
+      context,
+      title: 'Keluar Aplikasi?',
+      message: 'Apakah Anda yakin ingin keluar dari akun Anda? Anda harus login kembali untuk bertransaksi.',
+      confirmText: 'Keluar',
+      cancelText: 'Batal',
+      isDestructive: true,
+      icon: Icons.logout_rounded,
+      iconColor: const Color(0xFFDC2626),
+      iconBgColor: const Color(0xFFFEE2E2),
     );
+
+    if (shouldLogout && context.mounted) {
+      try {
+        context.read<DashboardProvider>().reset();
+        context.read<SavingsProvider>().reset();
+        context.read<SijakaProvider>().reset();
+        context.read<HistoryProvider>().reset();
+        context.read<ProfileProvider>().reset();
+      } catch (_) {}
+
+      await context.read<AuthProvider>().logout();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Berhasil keluar dari akun'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildDefaultAvatar(String name) {

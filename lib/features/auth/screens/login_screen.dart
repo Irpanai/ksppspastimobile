@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../providers/auth_provider.dart';
@@ -54,39 +55,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _loginEmailController.text.trim();
     final password = _loginPasswordController.text;
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Silakan masukkan email Anda.', style: TextStyle(fontWeight: FontWeight.w500))),
-            ],
-          ),
-          backgroundColor: const Color(0xFFF59E0B), // Amber for warning
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
-        ),
+      AppDialog.showWarning(
+        context,
+        title: 'Data Belum Lengkap',
+        message: 'Silakan masukkan alamat email akun Anda.',
       );
       return;
     }
 
     if (password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Silakan masukkan password akun Anda.', style: TextStyle(fontWeight: FontWeight.w500))),
-            ],
-          ),
-          backgroundColor: const Color(0xFFF59E0B), // Amber for warning
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
-        ),
+      AppDialog.showWarning(
+        context,
+        title: 'Data Belum Lengkap',
+        message: 'Silakan masukkan password akun Anda.',
       );
       return;
     }
@@ -151,25 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // ketika AuthStatus berubah menjadi authenticated.
     } else {
       final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-                child: const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(errorMsg, style: const TextStyle(fontWeight: FontWeight.w500))),
-            ],
-          ),
-          backgroundColor: const Color(0xFFEF4444), // Red for error
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 150, left: 16, right: 16),
-          duration: const Duration(seconds: 4),
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Masuk',
+        message: errorMsg,
       );
     }
   }
@@ -184,159 +150,168 @@ class _LoginScreenState extends State<LoginScreen> {
           physics: const ClampingScrollPhysics(),
           child: Column(
             children: [
-              // Hero Header Section (Premium Photorealistic Design)
+              // Hero Header Section (Compact, Elevated, Seamless)
               Container(
-                height: 380,
                 width: double.infinity,
-                decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(40),
-                    bottomRight: Radius.circular(40),
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(32),
+                    bottomRight: Radius.circular(32),
                   ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.secondary,
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 24),
-                          // Logo Section
-                          Center(
-                            child: Container(
-                              height: 80,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))
-                                ],
-                              ),
-                              child: Image.asset(
-                                'assets/images/logo-kspps-pasti.png',
-                                fit: BoxFit.contain,
-                                gaplessPlayback: true,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            _isLogin ? 'Selamat Datang\nKembali!' : 'Bergabung\nBersama Kami!',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.w900,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Logo Section
+                        Center(
+                          child: Container(
+                            height: 54,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            decoration: BoxDecoration(
                               color: Colors.white,
-                              height: 1.1,
-                              letterSpacing: -1,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ],
+                            ),
+                            child: Image.asset(
+                              'assets/images/logo-kspps-pasti.png',
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _isLogin ? 'Silakan masuk dengan akun nasabah Anda.' : 'Lengkapi data Anda untuk mendaftar.',
-                            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          _isLogin ? 'Selamat Datang Kembali!' : 'Bergabung Bersama Kami!',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
                           ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _isLogin ? 'Silakan masuk dengan akun nasabah Anda.' : 'Lengkapi data Anda untuk mendaftar.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              
+
               // Interactive Slider and Forms
               Padding(
-                padding: const EdgeInsets.all(32.0),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
                 child: Column(
                   children: [
                     // Slider (Masuk / Daftar)
                     Container(
-                      height: 56,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isLogin = true),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _isLogin ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(28),
-                                boxShadow: _isLogin
-                                    ? [BoxShadow(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
-                                    : [],
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Masuk',
-                                style: TextStyle(
-                                  color: _isLogin ? Colors.white : const Color(0xFF64748B),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isLogin = true),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _isLogin ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: _isLogin
+                                      ? [
+                                          BoxShadow(
+                                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : [],
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Masuk',
+                                  style: TextStyle(
+                                    color: _isLogin ? Colors.white : const Color(0xFF64748B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'Daftar',
-                                style: TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'Daftar',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 16),
 
-                  _buildLoginForm(),
-                  
-                  const SizedBox(height: 48),
-                ],
+                    _buildLoginForm(),
+                    
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -349,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel('Email Nasabah'),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         _buildTextField(
           controller: _loginEmailController,
           hint: 'nasabah@ksppspasti.com',
@@ -357,10 +332,10 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: TextInputType.emailAddress,
           enabled: !isLoading,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
 
         _buildLabel('Password'),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         _buildTextField(
           controller: _loginPasswordController,
           hint: '••••••••',
@@ -384,39 +359,46 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             },
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text('Lupa Password?', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+            child: Text(
+              'Lupa Password?',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         Row(
           children: [
             Expanded(
               child: SizedBox(
-                height: 60,
+                height: 52,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _submitLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
-                    shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 3,
+                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                   ),
                   child: isLoading
                       ? const SizedBox(
-                          height: 24,
-                          width: 24,
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
                             color: Colors.white,
-                            strokeWidth: 2.5,
+                            strokeWidth: 2.2,
                           ),
                         )
-                      : const Text('Masuk Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text('Masuk Sekarang', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 ),
               ),
             ),
@@ -426,7 +408,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _submitRegister() async {
+    Future<void> _submitRegister() async {
     final name = _regNameController.text.trim();
     final nik = _regNikController.text.trim();
     final phone = _regPhoneController.text.trim();

@@ -8,6 +8,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/premium_header.dart';
+import '../../../core/utils/ktp_ocr_helper.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
@@ -254,14 +255,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _pickKtp() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _fotoKtp = File(pickedFile.path);
-        _fotoKtpBytes = bytes;
-      });
-      _scanOcr(pickedFile);
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 90,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _fotoKtp = File(pickedFile.path);
+          _fotoKtpBytes = bytes;
+        });
+        _scanOcr(pickedFile);
+      }
+    } catch (e) {
+      _showWarning('Gagal membuka kamera KTP. Pastikan izin kamera telah diberikan.');
     }
   }
 
@@ -278,44 +287,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
 
-      String text = recognizedText.text;
-      String? nik;
-      String? nama;
+      final ocrResult = KtpOcrHelper.parse(recognizedText);
 
-      // Parse NIK (16 digit angka)
-      final nikRegExp = RegExp(r'(?:NIK|N I K|KIK|NIK:|KTP)[\W_]*(\d{16})', caseSensitive: false);
-      final nikMatch = nikRegExp.firstMatch(text);
-      if (nikMatch != null) {
-        nik = nikMatch.group(1);
-      } else {
-        final angkaRegExp = RegExp(r'\b(\d{16})\b');
-        final angkaMatch = angkaRegExp.firstMatch(text);
-        if (angkaMatch != null) {
-          nik = angkaMatch.group(1);
-        }
-      }
+      final String? nik = ocrResult.nik;
+      final String? nama = ocrResult.nama;
 
-      // Parse Nama
-      final namaRegExp = RegExp(r'Nama[\W_]*([A-Z\s]+)', caseSensitive: false);
-      final namaMatch = namaRegExp.firstMatch(text);
-      if (namaMatch != null) {
-        nama = namaMatch.group(1)?.trim();
-        if (nama != null && nama.contains('TEMPAT')) {
-          nama = nama.split('TEMPAT')[0].trim();
-        }
-      }
-
-      if (nik != null) {
+      if (nik != null && nik.isNotEmpty) {
         _nikController.text = nik;
       }
       if (nama != null && nama.isNotEmpty) {
         _nameController.text = nama;
       }
 
-      if (nik != null || nama != null) {
-        _showSuccess('KTP berhasil dipindai dengan AI OCR!');
+      if (nik != null && nama != null) {
+        _showSuccess('KTP berhasil dipindai! NIK dan Nama terisi otomatis.');
+      } else if (nik != null) {
+        _showSuccess('NIK ($nik) berhasil terbaca. Silakan lengkapi Nama Anda.');
+      } else if (nama != null) {
+        _showSuccess('Nama ($nama) berhasil terbaca. Silakan lengkapi NIK Anda.');
       } else {
-        _showWarning('Foto KTP tersimpan. Mohon lengkapi NIK/Nama secara manual.');
+        _showWarning('Foto KTP tersimpan. AI belum dapat mendeteksi NIK/Nama dengan jelas, mohon isi manual.');
       }
 
       textRecognizer.close();
@@ -327,22 +318,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _pickWajah() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.camera,
-      preferredCameraDevice: CameraDevice.front,
-      imageQuality: 80,
-    );
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _fotoWajah = File(pickedFile.path);
-        _fotoWajahBytes = bytes;
-      });
-      _showSuccess('Foto wajah berhasil diambil.');
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _fotoWajah = File(pickedFile.path);
+          _fotoWajahBytes = bytes;
+        });
+        _showSuccess('Foto selfie wajah berhasil diambil.');
+      }
+    } catch (e) {
+      _showWarning('Gagal membuka kamera depan. Pastikan izin kamera telah diberikan.');
     }
   }
 
-  Future<void> _submitRegister() async {
+    Future<void> _submitRegister() async {
     final name = _nameController.text.trim();
     final nik = _nikController.text.trim();
     final phone = _phoneController.text.trim();

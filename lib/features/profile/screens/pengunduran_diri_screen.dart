@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -41,65 +42,16 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
   }
 
   Future<void> _submitPengunduran() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Konfirmasi Akhir',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E293B)),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Apakah Anda benar-benar yakin ingin mengajukan pengunduran diri dari keanggotaan KSPPS PASTI?\n\nTindakan ini akan memproses pencairan hak simpanan dan menonaktifkan seluruh layanan koperasi Anda.',
-          style: TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.5),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Ya, Ajukan', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    final confirm = await AppDialog.showConfirmation(
+      context,
+      title: 'Konfirmasi Pengunduran Diri',
+      message: 'Apakah Anda benar-benar yakin ingin mengajukan pengunduran diri dari keanggotaan KSPPS PASTI?\n\nTindakan ini akan memproses pencairan hak simpanan dan menonaktifkan seluruh layanan koperasi Anda.',
+      confirmText: 'Ya, Ajukan',
+      cancelText: 'Batal',
+      isDestructive: true,
+      icon: Icons.warning_amber_rounded,
+      iconColor: const Color(0xFFDC2626),
+      iconBgColor: const Color(0xFFFEE2E2),
     );
 
     if (confirm != true) return;

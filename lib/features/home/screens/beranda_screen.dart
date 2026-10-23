@@ -13,6 +13,9 @@ import '../widgets/sijaka_portfolio_card.dart';
 import '../widgets/tunggakan_modal_dialog.dart';
 
 import '../widgets/wajib_simpanan_modal_dialog.dart';
+import '../../payment/models/payment_model.dart';
+import '../../payment/providers/payment_provider.dart';
+import '../../payment/widgets/pending_payments_modal.dart';
 
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
@@ -77,8 +80,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardProvider = context.watch<DashboardProvider>();
+    final paymentProvider = context.watch<PaymentProvider>();
     final anggota = dashboardProvider.dashboardData?.anggota;
     final isMenunggak = anggota != null && (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
+    final pendingPayments = paymentProvider.pendingPayments;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -109,6 +114,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     _buildCustomAppBar(context),
                     if (dashboardProvider.errorMessage != null)
                       _buildErrorBanner(context, dashboardProvider.errorMessage!),
+                    if (pendingPayments.isNotEmpty)
+                      _buildPendingPaymentBanner(context, pendingPayments),
                     if (isMenunggak)
                       _buildTunggakanWarningBanner(context, anggota),
                     const SizedBox(height: 24),
@@ -130,6 +137,82 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ],
           ),
         ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingPaymentBanner(BuildContext context, List<SnapTokenResponse> pendingList) {
+    if (pendingList.isEmpty) return const SizedBox.shrink();
+    final first = pendingList.first;
+    final count = pendingList.length;
+
+    final title = count > 1 ? 'Ada $count Pembayaran Menunggu' : 'Menunggu Pembayaran';
+    final subtitle = count > 1
+        ? '${first.displayPaymentMethod} dan ${count - 1} lainnya • Ketuk untuk lihat'
+        : '${first.displayPaymentMethod} • ${first.nominalFormat}';
+
+    return InkWell(
+      onTap: () => PendingPaymentsModal.show(context),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB), // Warm amber background
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFD97706).withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEF3C7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.timer_outlined, color: Color(0xFFD97706), size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF92400E),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => PendingPaymentsModal.show(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF388E3C),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Text('Buka', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );

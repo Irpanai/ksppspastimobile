@@ -75,6 +75,24 @@ class DigitalCoopApp extends StatelessWidget {
           surface: const Color(0xFFF8FAFC),
         ),
         fontFamily: 'Roboto',
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          titleTextStyle: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0F172A),
+          ),
+          contentTextStyle: const TextStyle(
+            fontSize: 13.5,
+            color: Color(0xFF64748B),
+            height: 1.5,
+          ),
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: darkGreen,
           foregroundColor: Colors.white,

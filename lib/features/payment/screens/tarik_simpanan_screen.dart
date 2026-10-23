@@ -9,6 +9,7 @@ import '../../savings/models/penarikan_model.dart';
 import '../../savings/services/savings_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/pin_verification_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 
@@ -235,22 +236,20 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   void _submitTarik() async {
     final amount = _parsedAmount;
     if (amount < 50000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Minimal penarikan adalah Rp 50.000'), backgroundColor: Colors.red),
+      AppDialog.showWarning(
+        context,
+        title: 'Nominal Penarikan',
+        message: 'Minimal penarikan saldo adalah Rp 50.000.',
       );
       return;
     }
 
     // 1. Cek apakah ada pengajuan aktif yang masih pending
     if (_hasActivePending) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Anda masih memiliki pengajuan penarikan sebesar ${_activePendingPengajuan!.nominalFormat} yang sedang Menunggu Transfer. Mohon tunggu proses pencairan selesai.',
-          ),
-          backgroundColor: Colors.amber.shade900,
-          duration: const Duration(seconds: 4),
-        ),
+      AppDialog.showWarning(
+        context,
+        title: 'Pengajuan Masih Berjalan',
+        message: 'Anda masih memiliki pengajuan penarikan sebesar ${_activePendingPengajuan!.nominalFormat} yang sedang Menunggu Transfer. Mohon tunggu proses pencairan selesai.',
       );
       return;
     }
@@ -271,30 +270,38 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       final String msg = pendingForSelected > 0
           ? 'Saldo tidak mencukupi. Saldo rekening: ${AppCurrency.format(realBalance)}, tertahan menunggu transfer: ${AppCurrency.format(pendingForSelected)}. Sisa bisa ditarik: ${AppCurrency.format(maxAvailable)}'
           : 'Saldo tidak mencukupi. Saldo tersedia: ${AppCurrency.format(realBalance)}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      AppDialog.showWarning(
+        context,
+        title: 'Saldo Tidak Mencukupi',
+        message: msg,
       );
       return;
     }
 
     final finalBank = _finalBankName;
     if (finalBank.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama bank tujuan wajib diisi'), backgroundColor: Colors.red),
+      AppDialog.showWarning(
+        context,
+        title: 'Data Belum Lengkap',
+        message: 'Silakan pilih atau masukkan nama bank tujuan.',
       );
       return;
     }
 
     if (_accountNoController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nomor rekening tujuan wajib diisi'), backgroundColor: Colors.red),
+      AppDialog.showWarning(
+        context,
+        title: 'Data Belum Lengkap',
+        message: 'Nomor rekening bank tujuan wajib diisi.',
       );
       return;
     }
 
     if (_accountNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama pemilik rekening tujuan wajib diisi'), backgroundColor: Colors.red),
+      AppDialog.showWarning(
+        context,
+        title: 'Data Belum Lengkap',
+        message: 'Nama pemilik rekening bank tujuan sesuai buku tabungan wajib diisi.',
       );
       return;
     }
@@ -331,15 +338,19 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        AppDialog.showError(
+          context,
+          title: 'Pengajuan Gagal',
+          message: e.message,
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengajukan penarikan: ${e.toString()}'), backgroundColor: Colors.red),
+        AppDialog.showError(
+          context,
+          title: 'Pengajuan Gagal',
+          message: 'Terjadi kendala saat mengajukan penarikan: ${e.toString()}',
         );
       }
     }
