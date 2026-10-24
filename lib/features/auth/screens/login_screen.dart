@@ -285,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Bottom Group: Registration Link & Security Badge
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                        padding: EdgeInsets.fromLTRB(24, 12, 24, 24 + MediaQuery.of(context).padding.bottom),
                         child: Column(
                           children: [
                             // Belum punya akun? Daftar Sekarang

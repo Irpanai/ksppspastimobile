@@ -281,11 +281,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 : 'Lupa Password',
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
               child: _buildCurrentStepWidget(),
             ),
           ),
+        ),
         ],
       ),
     );

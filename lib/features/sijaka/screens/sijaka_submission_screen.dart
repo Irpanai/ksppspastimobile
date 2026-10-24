@@ -310,33 +310,37 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   );
                 }
 
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeroBanner(),
-                        const SizedBox(height: 24),
-                        _buildProductSelectionSection(activeProdukList),
-                        const SizedBox(height: 24),
-                        _buildSimulationSection(),
-                        const SizedBox(height: 24),
-                        _buildNominalInputSection(),
-                        const SizedBox(height: 20),
-                        _buildMetodeBagiHasilSection(),
-                        const SizedBox(height: 20),
-                        _buildPencairanSection(),
-                        const SizedBox(height: 20),
-                        _buildAhliWarisSection(),
-                        const SizedBox(height: 24),
-                        _buildTermsAndConditions(),
-                        const SizedBox(height: 24),
-                        _buildSubmitButton(),
-                        const SizedBox(height: 40),
-                      ],
+                return SafeArea(
+                  top: false,
+                  bottom: true,
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeroBanner(),
+                          const SizedBox(height: 24),
+                          _buildProductSelectionSection(activeProdukList),
+                          const SizedBox(height: 24),
+                          _buildSimulationSection(),
+                          const SizedBox(height: 24),
+                          _buildNominalInputSection(),
+                          const SizedBox(height: 20),
+                          _buildMetodeBagiHasilSection(),
+                          const SizedBox(height: 20),
+                          _buildPencairanSection(),
+                          const SizedBox(height: 20),
+                          _buildAhliWarisSection(),
+                          const SizedBox(height: 24),
+                          _buildTermsAndConditions(),
+                          const SizedBox(height: 24),
+                          _buildSubmitButton(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
                   ),
                 );

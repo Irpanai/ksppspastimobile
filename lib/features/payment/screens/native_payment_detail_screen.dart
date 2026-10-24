@@ -460,46 +460,53 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: bankColor.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      bankKey.toUpperCase(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                        color: bankColor,
-                                        letterSpacing: 0.5,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: bankColor.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        bankKey.toUpperCase(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                          color: bankColor,
+                                          letterSpacing: 0.5,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    bankName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Color(0xFF1E293B),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        bankName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: const Color(0xFFFDE68A)),
                                 ),
                                 child: const Text(
                                   'Menunggu Transfer',
                                   style: TextStyle(
-                                    fontSize: 10.5,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFFB45309),
                                   ),
@@ -533,10 +540,10 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                                   child: SelectableText(
                                     vaNumber,
                                     style: const TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                       color: Color(0xFF0F172A),
-                                      letterSpacing: 1.5,
+                                      letterSpacing: 0.8,
                                       fontFamily: 'monospace',
                                     ),
                                   ),
@@ -804,25 +811,34 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
 
   Widget _buildDetailRow(String label, String value, {bool isVerified = false}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B))),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isVerified) ...[
-              const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 16),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                color: isVerified ? const Color(0xFF16A34A) : const Color(0xFF0F172A),
+        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (isVerified) ...[
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 15),
+                const SizedBox(width: 5),
+              ],
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isVerified ? const Color(0xFF16A34A) : const Color(0xFF0F172A),
+                    fontFamily: label.contains('Order') ? 'monospace' : null,
+                  ),
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

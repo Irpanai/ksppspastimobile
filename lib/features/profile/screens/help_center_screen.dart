@@ -58,9 +58,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         children: [
           const PremiumHeader(title: 'Pusat Bantuan'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Hero Card Banner
@@ -251,6 +255,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

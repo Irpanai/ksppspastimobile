@@ -422,9 +422,13 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
               ],
             ),
             Expanded(
-              child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+              child: SafeArea(
+                top: false,
+                bottom: true,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+                  child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Banner Countdown Timer
@@ -754,16 +758,20 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Nomor Transaksi (Order ID)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        const SizedBox(height: 4),
-                        Text(
-                          res.orderId,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF1E293B)),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Nomor Transaksi (Order ID)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          const SizedBox(height: 4),
+                          Text(
+                            res.orderId,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF1E293B)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
                       onPressed: () => _copyToClipboard(res.orderId, 'Order ID'),
@@ -870,6 +878,7 @@ const SizedBox(height: 20),
           ),
         ),
       ),
+    ),
     ],
   ),
 ),

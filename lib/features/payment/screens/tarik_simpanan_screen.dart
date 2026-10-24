@@ -794,15 +794,17 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
         ),
 
         // Bottom Bar
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
-            ],
-          ),
-          child: Row(
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
+              ],
+            ),
+            child: Row(
             children: [
               Expanded(
                 child: Column(
@@ -839,6 +841,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
             ],
           ),
         ),
+      ),
       ],
     );
   }

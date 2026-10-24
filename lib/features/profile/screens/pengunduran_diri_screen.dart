@@ -122,16 +122,19 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
 
           // Konten Body
           Expanded(
-            child: isLoading && status == null
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0E7955)),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () => provider.fetchPengunduranStatus(),
-                    color: const Color(0xFF0E7955),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: isLoading && status == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF0E7955)),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => provider.fetchPengunduranStatus(),
+                      color: const Color(0xFF0E7955),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -169,6 +172,7 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
                       ),
                     ),
                   ),
+            ),
           ),
         ],
       ),

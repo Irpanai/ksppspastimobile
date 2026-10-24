@@ -140,12 +140,16 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
                     children: [
                       Row(
                         children: [
-                          const Text(
-                            'Sebaran Kantor Cabang',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
+                          const Flexible(
+                            child: Text(
+                              'Sebaran Kantor Cabang',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 6),

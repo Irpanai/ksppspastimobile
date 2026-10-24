@@ -23,35 +23,68 @@ class KtpOcrHelper {
     '74', '75', '76', '81', '82', '91', '92', '94'
   };
 
-  // Kata kunci label/sistem KTP yang bukan merupakan nama orang
-  static const List<String> _ktpKeywords = [
-    'PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA',
-    'NIK', 'N1K', 'N I K', 'KIK', 'KTP', 'NAMA', 'NARNA',
-    'TEMPAT', 'TGL', 'LAHIR', 'JENIS', 'KELAMIN', 'GOL',
-    'DARAH', 'ALAMAT', 'RT', 'RW', 'KEL', 'DESA', 'KECAMATAN',
-    'AGAMA', 'STATUS', 'PERKAWINAN', 'PEKERJAAN', 'KEWARGANEGARAAN',
-    'WNI', 'WNA', 'BERLAKU', 'HINGGA', 'SEUMUR', 'HIDUP',
-    'ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU',
-    'LAKI-LAKI', 'PEREMPUAN', 'BELUM', 'KAWIN', 'CERAI',
-    'PEGAWAI', 'SWASTA', 'WIRASWASTA', 'PELAJAR', 'MAHASISWA',
-    'BURUH', 'PETANI', 'PETERNAK', 'PEDAGANG', 'TNI', 'POLRI', 'PNS'
-  ];
+  // Frasa KTP yang PASTI BUKAN nama orang (blacklist lengkap)
+  static const Set<String> _blacklistedPhrases = {
+    // Header & Wilayah
+    'PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA', 'REPUBLIK INDONESIA',
+    'DAERAH KHUSUS', 'IBUKOTA', 'DKI JAKARTA', 'JAWA BARAT', 'JAWA TENGAH',
+    'JAWA TIMUR', 'SUMATERA', 'KALIMANTAN', 'SULAWESI', 'PAPUA', 'BALI',
+    // Label Field
+    'NIK', 'N1K', 'N I K', 'KIK', 'KTP', 'NAMA', 'NARNA', 'NAME', 'MAMA',
+    'TEMPAT', 'TGL LAHIR', 'TEMPAT TGL LAHIR', 'TEMPAT LAHIR', 'TANGGAL LAHIR',
+    'JENIS KELAMIN', 'GOL DARAH', 'GOLONGAN DARAH', 'ALAMAT', 'RT RW', 'RT', 'RW',
+    'KEL DESA', 'KELURAHAN', 'DESA', 'KECAMATAN', 'AGAMA', 'STATUS PERKAWINAN',
+    'STATUS', 'PERKAWINAN', 'PEKERJAAN', 'KEWARGANEGARAAN', 'BERLAKU HINGGA',
+    'BERLAKU', 'HINGGA',
+    // Nilai Agama
+    'ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDHA', 'BUDDHA', 'KONGHUCU',
+    // Nilai Status Perkawinan
+    'BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', 'CERAI MATI', 'JANDA', 'DUDA',
+    // Nilai Jenis Kelamin
+    'LAKI LAKI', 'LAKI-LAKI', 'LAKILAKI', 'PEREMPUAN',
+    // Nilai Masa Berlaku
+    'SEUMUR HIDUP', 'SEUMUR', 'HIDUP',
+    // Nilai Kewarganegaraan
+    'WNI', 'WNA',
+    // Nilai Pekerjaan Umum di KTP
+    'KARYAWAN SWASTA', 'PEGAWAI NEGERI', 'PEGAWAI NEGERI SIPIL', 'PNS',
+    'WIRASWASTA', 'PELAJAR MAHASISWA', 'PELAJAR', 'MAHASISWA',
+    'PETANI PEKEBUN', 'PETANI', 'PETERNAK', 'NELAYAN', 'BURUH HARIAN',
+    'BURUH HARIAN LEPAS', 'PEMBANTU RUMAH TANGGA', 'TNI', 'POLRI', 'POLISI',
+    'PENSIUNAN', 'BELUM TIDAK BEKERJA', 'MENGURUS RUMAH TANGGA', 'PEDAGANG',
+    'TIDAK BEKERJA', 'BELUM BEKERJA', 'SWASTA', 'BURUH'
+  };
 
-  /// Memproses recognizedText dari ML Kit untuk mengekstrak NIK dan Nama secara cerdas
+  // Kata-kata satuan yang jika semuanya ada di frase, maka bukan nama
+  static const Set<String> _blacklistedWords = {
+    'PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA', 'KTP', 'NIK',
+    'NAMA', 'NARNA', 'NAME', 'TEMPAT', 'TGL', 'LAHIR', 'JENIS', 'KELAMIN',
+    'GOL', 'DARAH', 'ALAMAT', 'RT', 'RW', 'KEL', 'DESA', 'KEC', 'KECAMATAN',
+    'AGAMA', 'STATUS', 'PERKAWINAN', 'PEKERJAAN', 'KEWARGANEGARAAN', 'BERLAKU',
+    'HINGGA', 'SEUMUR', 'HIDUP', 'ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU',
+    'BUDDHA', 'BUDHA', 'KONGHUCU', 'BELUM', 'KAWIN', 'CERAI', 'LAKI',
+    'PEREMPUAN', 'WNI', 'WNA', 'SWASTA', 'PNS', 'PIRASWASTA', 'WIRASWASTA',
+    'KARYAWAN', 'PEGAWAI', 'PELAJAR', 'MAHASISWA', 'PETANI', 'BURUH'
+  };
+
+  /// Memproses recognizedText dari ML Kit untuk mengekstrak NIK dan Nama secara cerdas & presisi
   static KtpOcrResult parse(RecognizedText recognizedText) {
-    final List<String> lines = [];
+    final List<TextLine> allLines = [];
+    final List<String> lineTexts = [];
+
     for (final block in recognizedText.blocks) {
       for (final line in block.lines) {
         final text = line.text.trim();
         if (text.isNotEmpty) {
-          lines.add(text);
+          allLines.add(line);
+          lineTexts.add(text);
         }
       }
     }
 
     final rawText = recognizedText.text;
-    final nik = _extractNik(lines, rawText);
-    final nama = _extractNama(lines, rawText, nik);
+    final nik = _extractNik(lineTexts, rawText);
+    final nama = _extractNama(allLines, lineTexts, rawText, nik);
 
     return KtpOcrResult(
       nik: nik,
@@ -122,8 +155,11 @@ class KtpOcrHelper {
     return buffer.toString();
   }
 
+  // ==========================================
+  // LOGIKA EKSTRAKSI NIK
+  // ==========================================
   static String? _extractNik(List<String> lines, String rawText) {
-    // 1. Cek langsung baris yang memiliki kata kunci NIK / N1K / KIK
+    // 1. Cek langsung baris yang memiliki label NIK
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
       final upper = line.toUpperCase();
@@ -132,7 +168,7 @@ class KtpOcrHelper {
           upper.contains('N1K') ||
           upper.contains('N I K') ||
           upper.contains('KIK')) {
-        
+
         // Coba di baris yang sama
         final candidate = _cleanLineToNik(line);
         if (candidate != null) return candidate;
@@ -164,7 +200,6 @@ class KtpOcrHelper {
       if (cleaned.length == 16) {
         if (_isValidProvince(cleaned)) return cleaned;
       } else if (cleaned.length > 16) {
-        // Cari substring 16 digit yang diawali kode provinsi valid
         for (int j = 0; j <= cleaned.length - 16; j++) {
           final sub = cleaned.substring(j, j + 16);
           if (_isValidProvince(sub)) return sub;
@@ -172,7 +207,7 @@ class KtpOcrHelper {
       }
     }
 
-    // 4. Fallback pola berjarak (misal: 3201 0244 0592 0001 atau 3201-0244-0592-0001)
+    // 4. Pola angka berjarak (misal: 3201 0244 0592 0001)
     final spacedMatches = RegExp(r'(\d{2,6}[\s\-\.]{1,2}\d{2,6}[\s\-\.]{1,2}\d{2,6}[\s\-\.]{0,2}\d{0,6})')
         .allMatches(rawText);
     for (final m in spacedMatches) {
@@ -191,7 +226,6 @@ class KtpOcrHelper {
   }
 
   static String? _cleanLineToNik(String line) {
-    // Hapus label "NIK", "N1K", "N I K", "KIK", ":", dll
     final cleaned = line.replaceAll(
       RegExp(r'(?:NIK|N1K|N I K|KIK|KTP|:)[\W_]*', caseSensitive: false),
       ' ',
@@ -216,59 +250,52 @@ class KtpOcrHelper {
     return _validProvinceCodes.contains(prov);
   }
 
-  static String? _extractNama(List<String> lines, String rawText, String? foundNik) {
-    // 1. Cari baris yang mengandung "Nama" / "NAMA" / "Narna"
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      final upper = line.toUpperCase();
+  // ==========================================
+  // LOGIKA EKSTRAKSI NAMA (AKURAT & PRESET BEBAS ERROR)
+  // ==========================================
+  static String? _extractNama(
+    List<TextLine> allLines,
+    List<String> lineTexts,
+    String rawText,
+    String? foundNik,
+  ) {
+    // -------------------------------------------------------------
+    // STRATEGI 1: Bounding Box Horizontal Alignment (Paling Akurat di ML Kit)
+    // Mencari baris label "NAMA" di kolom kiri, lalu mencari teks di kolom kanan
+    // yang berada di baris horizontal yang sama (Y-level sejajar).
+    // -------------------------------------------------------------
+    for (final labelLine in allLines) {
+      final upper = labelLine.text.trim().toUpperCase();
+      if (_isNamaLabel(upper)) {
+        final labelBox = labelLine.boundingBox;
+        final labelCenterY = (labelBox.top + labelBox.bottom) / 2;
+        final labelHeight = labelBox.height;
 
-      if (upper.startsWith('NAMA') ||
-          upper.startsWith('NARNA') ||
-          upper.startsWith('NAME') ||
-          upper.contains('NAMA :') ||
-          upper.contains('NAMA:') ||
-          upper.contains('NARNA :')) {
+        TextLine? bestMatch;
+        double minDistanceX = double.infinity;
 
-        String candidate = '';
-        if (line.contains(':')) {
-          candidate = line.substring(line.indexOf(':') + 1).trim();
-        } else {
-          candidate = line.replaceFirst(
-            RegExp(r'^(?:NAMA|NARNA|NAME|NAM A|N A M A)[\W_]*', caseSensitive: false),
-            '',
-          ).trim();
-        }
+        for (final candLine in allLines) {
+          if (candLine == labelLine) continue;
 
-        candidate = _cleanCandidateNama(candidate);
+          final candBox = candLine.boundingBox;
+          final candCenterY = (candBox.top + candBox.bottom) / 2;
 
-        // Jika valid di baris yang sama, langsung kembalikan
-        if (_isValidNama(candidate)) {
-          return candidate;
-        }
-
-        // Jika barisnya hanya berisi "Nama :" (kosong), cek baris berikutnya!
-        if (i + 1 < lines.length) {
-          final nextCandidate = _cleanCandidateNama(lines[i + 1]);
-          if (_isValidNama(nextCandidate)) {
-            return nextCandidate;
+          // Harus berada di sebelah kanan label NAMA
+          if (candBox.left > labelBox.left + 15) {
+            // Harus sejajar secara vertikal (toleransi ~70% dari tinggi baris)
+            final diffY = (candCenterY - labelCenterY).abs();
+            if (diffY < (labelHeight * 0.75 + 10)) {
+              final diffX = candBox.left - labelBox.right;
+              if (diffX < minDistanceX) {
+                minDistanceX = diffX;
+                bestMatch = candLine;
+              }
+            }
           }
         }
-      }
-    }
 
-    // 2. Heuristik Posisi: Pada KTP, Nama berada 1-2 baris tepat di bawah NIK!
-    if (foundNik != null) {
-      int nikIndex = -1;
-      for (int i = 0; i < lines.length; i++) {
-        if (lines[i].contains(foundNik) || normalizeOcrDigits(lines[i]).contains(foundNik)) {
-          nikIndex = i;
-          break;
-        }
-      }
-
-      if (nikIndex != -1) {
-        for (int i = nikIndex + 1; i <= nikIndex + 2 && i < lines.length; i++) {
-          final candidate = _cleanCandidateNama(lines[i]);
+        if (bestMatch != null) {
+          final candidate = _cleanCandidateNama(bestMatch.text);
           if (_isValidNama(candidate)) {
             return candidate;
           }
@@ -276,16 +303,106 @@ class KtpOcrHelper {
       }
     }
 
-    // 3. Fallback Regex baris nama (huruf kapital 2 kata atau lebih yang bukan label KTP)
-    for (final line in lines) {
+    // -------------------------------------------------------------
+    // STRATEGI 2: Teks Nama Berada di Baris yang Sama dengan Label
+    // Contoh: "Nama : AHMAD FAUZI" atau "Nama: BUDI SANTOSO"
+    // -------------------------------------------------------------
+    for (int i = 0; i < lineTexts.length; i++) {
+      final line = lineTexts[i];
+      final upper = line.toUpperCase();
+
+      if (_containsNamaLabel(upper)) {
+        String candidate = '';
+
+        // Jika ada tanda pemisah titik dua (':')
+        if (line.contains(':')) {
+          candidate = line.substring(line.indexOf(':') + 1).trim();
+        } else {
+          // Hapus awalan label NAMA
+          candidate = line.replaceFirst(
+            RegExp(r'^(?:NAMA|NARNA|NAME|MAMA|NAM A|N AMA|HAMA)[\s\:\;\-\.]*', caseSensitive: false),
+            '',
+          ).trim();
+        }
+
+        candidate = _cleanCandidateNama(candidate);
+        if (_isValidNama(candidate)) {
+          return candidate;
+        }
+
+        // Jika barisnya hanya berisi label NAMA (nilainya di baris berikutnya)
+        if (i + 1 < lineTexts.length) {
+          final nextLine = lineTexts[i + 1];
+          String nextCandidate = nextLine;
+          if (nextCandidate.startsWith(':')) {
+            nextCandidate = nextCandidate.substring(1).trim();
+          }
+          nextCandidate = _cleanCandidateNama(nextCandidate);
+          if (_isValidNama(nextCandidate)) {
+            return nextCandidate;
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // STRATEGI 3: Heuristik Urutan KTP (Tepat di Bawah NIK & Sebelum Tempat Lahir)
+    // Pada KTP, NAMA selalu terletak di antara NIK dan Tempat/Tgl Lahir.
+    // -------------------------------------------------------------
+    if (foundNik != null) {
+      int nikIndex = -1;
+      for (int i = 0; i < lineTexts.length; i++) {
+        if (lineTexts[i].contains(foundNik) ||
+            normalizeOcrDigits(lineTexts[i]).contains(foundNik)) {
+          nikIndex = i;
+          break;
+        }
+      }
+
+      if (nikIndex != -1) {
+        for (int i = nikIndex + 1; i <= nikIndex + 3 && i < lineTexts.length; i++) {
+          final line = lineTexts[i];
+          final upper = line.toUpperCase();
+
+          // Lewati jika ini adalah label nama itu sendiri
+          if (_isNamaLabel(upper)) continue;
+          // Lewati jika ini baris Tempat/Tgl Lahir
+          if (upper.contains('TEMPAT') || upper.contains('LAHIR') || upper.contains('TGL')) {
+            break; // Sudah melewati area nama
+          }
+
+          String candidate = line;
+          if (candidate.startsWith(':')) {
+            candidate = candidate.substring(1).trim();
+          }
+          candidate = _cleanCandidateNama(candidate);
+          if (_isValidNama(candidate)) {
+            return candidate;
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // STRATEGI 4: Scan Baris yang Memiliki Format Nama Manusia Valid
+    // (Wajib terdiri dari 2 kata atau lebih, hanya huruf, dan bebas blacklist)
+    // -------------------------------------------------------------
+    for (final line in lineTexts) {
       final candidate = _cleanCandidateNama(line);
       if (_isValidNama(candidate)) {
         final words = candidate.split(' ').where((w) => w.length >= 2).toList();
-        if (words.length >= 2 &&
-            !candidate.contains('PROVINSI') &&
-            !candidate.contains('KABUPATEN') &&
-            !candidate.contains('KOTA')) {
-          return candidate;
+        if (words.length >= 2 && words.length <= 5) {
+          // Pastikan tidak ada kata yang terdaftar di blacklist KTP
+          bool hasBlacklistedWord = false;
+          for (final word in words) {
+            if (_blacklistedWords.contains(word)) {
+              hasBlacklistedWord = true;
+              break;
+            }
+          }
+          if (!hasBlacklistedWord) {
+            return candidate;
+          }
         }
       }
     }
@@ -293,62 +410,118 @@ class KtpOcrHelper {
     return null;
   }
 
+  /// Cek apakah baris merupakan label "NAMA"
+  static bool _isNamaLabel(String upper) {
+    final clean = upper.replaceAll(RegExp(r'[\W_]+'), ' ').trim();
+    return clean == 'NAMA' ||
+        clean == 'NARNA' ||
+        clean == 'NAME' ||
+        clean == 'MAMA' ||
+        clean == 'NAM A' ||
+        clean == 'N AMA' ||
+        clean == 'HAMA' ||
+        clean == 'MARNA' ||
+        clean.startsWith('NAMA ') ||
+        clean.startsWith('NARNA ');
+  }
+
+  /// Cek apakah baris mengandung label "NAMA"
+  static bool _containsNamaLabel(String upper) {
+    return upper.contains('NAMA') ||
+        upper.contains('NARNA') ||
+        upper.contains('NAME') ||
+        upper.contains('MAMA') ||
+        upper.contains('NAM A') ||
+        upper.contains('N AMA');
+  }
+
+  /// Membersihkan kandidat nama dari noise OCR, simbol, dan label yang menempel
   static String _cleanCandidateNama(String raw) {
-    String text = raw;
+    String text = raw.trim();
 
-    // Potong jika menempel dengan field berikutnya (Tempat/Tgl Lahir, Jenis Kelamin, dll)
-    final stopWords = [
-      'TEMPAT', 'TMP', 'TGL', 'LAHIR', 'JENIS', 'KELAMIN',
-      'GOL', 'DARAH', 'ALAMAT', 'AGAMA', 'STATUS', 'RT/RW', 'RT', 'RW',
-      'KEL/DESA', 'KECAMATAN', 'PEKERJAAN', 'KEWARGANEGARAAN'
-    ];
+    // 1. Potong field berikutnya jika menempel di baris yang sama
+    // PENTING: Gunakan batas kata (\b) agar tidak memotong nama seperti:
+    // KARTINI (bukan RT), PURWANTO (bukan RW), SITOMPUL (bukan TMP), HARTONO (bukan RT)
+    final stopWordsRegex = RegExp(
+      r'\b(?:TEMPAT|TMP|TGL|LAHIR|JENIS|KELAMIN|GOL|DARAH|ALAMAT|AGAMA|STATUS|PERKAWINAN|PEKERJAAN|KEWARGANEGARAAN|BERLAKU|RT\s*\/\s*RW)\b',
+      caseSensitive: false,
+    );
 
-    for (final sw in stopWords) {
-      final idx = text.toUpperCase().indexOf(sw);
-      if (idx != -1) {
-        text = text.substring(0, idx);
-      }
+    final match = stopWordsRegex.firstMatch(text);
+    if (match != null) {
+      text = text.substring(0, match.start);
     }
 
-    // Hapus simbol/angka di awal
-    text = text.replaceAll(RegExp(r'^[\W\d_]+'), '');
-    // Hapus simbol/angka di akhir
-    text = text.replaceAll(RegExp(r'[\W\d_]+$'), '');
-    // Hapus kata NAMA jika masih tersisa
-    text = text.replaceFirst(RegExp(r'^(?:NAMA|NARNA|NAME)[\W_]*', caseSensitive: false), '');
+    // 2. Hapus simbol awalan seperti ':', '-', '.', '|', tanda kutip, atau angka
+    text = text.replaceAll(RegExp(r'^[\s\:\;\-\.\|\!\?\_\d\(\)\[\]\/\\]+'), '');
 
-    // Pertahankan hanya huruf alfabet, spasi, titik (singkatan), petik satu (nama arab/daerah), dan tanda hubung
+    // 3. Hapus kata NAMA jika masih tersisa di awal
+    text = text.replaceFirst(
+      RegExp(r'^(?:NAMA|NARNA|NAME|MAMA|NAM A|N AMA)[\s\:\;\-\.]*', caseSensitive: false),
+      '',
+    );
+
+    // 4. Hapus simbol akhiran
+    text = text.replaceAll(RegExp(r'[\s\:\;\-\.\|\!\?\_\d\(\)\[\]\/\\]+$'), '');
+
+    // 5. Hanya izinkan huruf alfabet, spasi, titik (singkatan nama), dan petik satu (nama arab/daerah)
     text = text.replaceAll(RegExp(r"[^a-zA-Z\s\.'\-]"), ' ');
-    // Rapikan spasi ganda
+
+    // 6. Rapikan spasi ganda
     text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 7. Bersihkan titik atau karakter liar di awal kata
+    text = text.replaceAll(RegExp(r'^\.+'), '').trim();
 
     return text.toUpperCase();
   }
 
-  static bool _isValidNama(String name) {
-    final clean = name.trim();
+  /// Memvalidasi apakah kandidat nama benar-benar nama manusia yang masuk akal
+  static bool _isValidNama(String candidate) {
+    final clean = candidate.trim().toUpperCase();
+
+    // 1. Panjang nama minimal 3 karakter, maksimal 50 karakter
     if (clean.length < 3 || clean.length > 50) return false;
 
-    // Wajib ada huruf vokal
-    if (!RegExp(r'[AEIOUaeiou]').hasMatch(clean)) return false;
+    // 2. NAMA ASLI TIDAK PERNAH MENGANDUNG ANGKA
+    if (RegExp(r'\d').hasMatch(clean)) return false;
 
-    // Tidak boleh hanya kata kunci label KTP
-    final upper = clean.toUpperCase();
-    for (final kw in _ktpKeywords) {
-      if (upper == kw) return false;
+    // 3. Wajib memiliki setidaknya satu huruf vokal (A, E, I, O, U)
+    if (!RegExp(r'[AEIOU]').hasMatch(clean)) return false;
+
+    // 4. Tidak boleh cocok dengan daftar kata/frasa terlarang KTP (Status, Agama, Wilayah, dll)
+    final normalized = clean.replaceAll(RegExp(r'[\W_]+'), ' ').trim();
+    if (_blacklistedPhrases.contains(normalized)) return false;
+
+    // 5. Cek apakah seluruh kata dalam nama ada di blacklist
+    final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return false;
+
+    if (words.every((w) => _blacklistedWords.contains(w))) {
+      return false; // Contoh: "BELUM KAWIN", "SEUMUR HIDUP", "LAKI LAKI"
     }
 
-    // Tidak boleh berupa header wilayah
-    if (upper.startsWith('PROVINSI') ||
-        upper.startsWith('KABUPATEN') ||
-        upper.startsWith('KOTA') ||
-        upper.startsWith('REPUBLIK') ||
-        upper.startsWith('INDONESIA')) {
+    // 6. Nama tidak boleh diawali dengan kata-kata header wilayah administratif
+    if (normalized.startsWith('PROVINSI') ||
+        normalized.startsWith('KABUPATEN') ||
+        normalized.startsWith('KOTA') ||
+        normalized.startsWith('REPUBLIK') ||
+        normalized.startsWith('INDONESIA') ||
+        normalized.startsWith('KECAMATAN') ||
+        normalized.startsWith('KELURAHAN') ||
+        normalized.startsWith('DESA') ||
+        normalized.startsWith('DUSUN')) {
       return false;
     }
 
-    // Harus mengandung karakter alfabet
-    if (!RegExp(r'[A-Za-z]').hasMatch(clean)) return false;
+    // 7. Nama tidak boleh berformat alamat (misal: "JL", "JALAN", "BLOK", "NO")
+    if (normalized.startsWith('JL ') ||
+        normalized.startsWith('JALAN ') ||
+        normalized.startsWith('BLOK ') ||
+        normalized.contains(' RT ') ||
+        normalized.contains(' RW ')) {
+      return false;
+    }
 
     return true;
   }

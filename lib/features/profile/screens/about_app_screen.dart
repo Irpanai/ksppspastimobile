@@ -12,9 +12,13 @@ class AboutAppScreen extends StatelessWidget {
         children: [
           const PremiumHeader(title: 'Tentang Aplikasi'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                child: Column(
                 children: [
                   // Logo & Brand Header Card
                   Container(
@@ -241,6 +245,7 @@ class AboutAppScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

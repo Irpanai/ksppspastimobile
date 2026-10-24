@@ -101,9 +101,12 @@ class _AddressDataScreenState extends State<AddressDataScreen> {
         children: [
           const PremiumHeader(title: 'Alamat Domisili', showBackButton: true),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              physics: const ClampingScrollPhysics(),
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -145,11 +148,13 @@ class _AddressDataScreenState extends State<AddressDataScreen> {
                             : const Text('Simpan Perubahan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
           ),
+        ),
         ],
       ),
     );

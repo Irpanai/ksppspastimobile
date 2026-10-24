@@ -1173,9 +1173,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             showBackButton: true,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              physics: const ClampingScrollPhysics(),
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -1460,6 +1463,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

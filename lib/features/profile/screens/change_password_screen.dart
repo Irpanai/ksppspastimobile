@@ -164,9 +164,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         children: [
           const PremiumHeader(title: 'Ganti Password'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+                child: Column(
                 children: [
                   _buildTextField(
                     label: 'Password Lama',
@@ -228,6 +232,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

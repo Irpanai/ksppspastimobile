@@ -216,10 +216,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           const PremiumHeader(title: 'Edit Data Profil'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              physics: const ClampingScrollPhysics(),
-              child: Form(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,6 +368,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

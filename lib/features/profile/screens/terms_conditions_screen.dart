@@ -12,9 +12,13 @@ class TermsConditionsScreen extends StatelessWidget {
         children: [
           const PremiumHeader(title: 'Syarat & Ketentuan'),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Top Hero Notice Card
@@ -176,6 +180,7 @@ class TermsConditionsScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

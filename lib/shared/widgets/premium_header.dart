@@ -70,18 +70,29 @@ class PremiumHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-              Align(
-                alignment: Alignment.center,
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+              Builder(
+                builder: (context) {
+                  final double leftSpace = shouldShowBack ? 52.0 : 16.0;
+                  final double rightSpace = (actions != null && actions!.isNotEmpty)
+                      ? (actions!.length * 48.0 + 8.0)
+                      : 16.0;
+                  final double sidePadding = leftSpace > rightSpace ? leftSpace : rightSpace;
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: sidePadding),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.3,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                },
               ),
               if (actions != null)
                 Align(
