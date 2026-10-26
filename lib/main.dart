@@ -96,7 +96,7 @@ class DigitalCoopApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: darkGreen,
           foregroundColor: Colors.white,
-          centerTitle: false,
+          centerTitle: true,
           elevation: 0,
         ),
       ),

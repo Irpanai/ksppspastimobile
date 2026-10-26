@@ -3,7 +3,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../widgets/gadai_transaction_card.dart';
 
 class GadaiScreen extends StatelessWidget {
-  const GadaiScreen({Key? key}) : super(key: key);
+  const GadaiScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +11,7 @@ class GadaiScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const PremiumHeader(title: 'Transaksi Rahn', showBackButton: false),
+          const PremiumHeader(title: 'Transaksi Rahn', showBackButton: true),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 120),

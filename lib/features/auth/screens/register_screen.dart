@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/premium_header.dart';
 import '../../../core/utils/ktp_ocr_helper.dart';
+import 'kyc_camera_screen.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
@@ -55,7 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _fotoKtpBytes;
   Uint8List? _fotoWajahBytes;
   bool _isOcrLoading = false;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -256,18 +256,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _pickKtp() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
-        imageQuality: 90,
+      final File? file = await Navigator.push<File>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const KycCameraScreen(mode: KycCameraMode.ktp),
+        ),
       );
-      if (pickedFile != null) {
-        final bytes = await pickedFile.readAsBytes();
+      if (file != null) {
+        final bytes = await file.readAsBytes();
         setState(() {
-          _fotoKtp = File(pickedFile.path);
+          _fotoKtp = file;
           _fotoKtpBytes = bytes;
         });
-        _scanOcr(pickedFile);
+        _scanOcr(XFile(file.path));
       }
     } catch (e) {
       _showWarning('Gagal membuka kamera KTP. Pastikan izin kamera telah diberikan.');
@@ -319,15 +320,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _pickWajah() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        imageQuality: 85,
+      final File? file = await Navigator.push<File>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const KycCameraScreen(mode: KycCameraMode.selfie),
+        ),
       );
-      if (pickedFile != null) {
-        final bytes = await pickedFile.readAsBytes();
+      if (file != null) {
+        final bytes = await file.readAsBytes();
         setState(() {
-          _fotoWajah = File(pickedFile.path);
+          _fotoWajah = file;
           _fotoWajahBytes = bytes;
         });
         _showSuccess('Foto selfie wajah berhasil diambil.');

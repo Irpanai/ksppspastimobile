@@ -71,7 +71,7 @@ class PendingPaymentsModal extends StatelessWidget {
     final confirm = await AppDialog.showConfirmation(
       context,
       title: 'Batalkan Transaksi?',
-      message: 'Apakah Anda yakin ingin membatalkan transaksi  sebesar  (Order ID: )?',
+      message: 'Apakah Anda yakin ingin membatalkan transaksi sebesar ${payment.nominalFormat}?',
       confirmText: 'Ya, Batalkan',
       cancelText: 'Kembali',
       isDestructive: true,
@@ -149,7 +149,7 @@ class PendingPaymentsModal extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        ' transaksi belum selesai',
+                        '${payments.length} transaksi belum selesai',
                         style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                     ],
@@ -321,7 +321,7 @@ class PendingPaymentsModal extends StatelessWidget {
                                   child: Row(
                                     children: [
                                       Text(
-                                        'VA: ',
+                                        'VA: ${item.vaNumber}',
                                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
                                       ),
                                       const SizedBox(width: 4),
