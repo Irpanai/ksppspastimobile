@@ -1926,36 +1926,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Badge
+          // Header Badge (Responsive without overflow)
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF166534),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_rounded, color: Colors.white, size: 12),
-                    SizedBox(width: 4),
-                    Text(
-                      'CABANG PENDAFTARAN ANDA',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF166534),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified_rounded, color: Colors.white, size: 12),
+                      SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'CABANG PENDAFTARAN ANDA',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (cabang.formattedDistance != null)
+              if (cabang.formattedDistance != null) ...[
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
@@ -1964,12 +1972,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.near_me_rounded, color: Color(0xFF166534), size: 12),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.near_me_rounded, color: Color(0xFF166534), size: 11),
+                      const SizedBox(width: 3),
                       Text(
-                        '📍 ${cabang.formattedDistance}',
+                        cabang.formattedDistance!,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF166534),
                         ),
@@ -1977,6 +1985,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

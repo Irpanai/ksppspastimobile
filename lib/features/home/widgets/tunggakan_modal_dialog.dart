@@ -5,17 +5,19 @@ import '../models/dashboard_model.dart';
 
 class TunggakanModalDialog extends StatelessWidget {
   final DashboardAnggota anggota;
+  final num saldoPokok;
 
   const TunggakanModalDialog({
     super.key,
     required this.anggota,
+    this.saldoPokok = 0,
   }) : super();
 
-  static Future<void> show(BuildContext context, DashboardAnggota anggota) {
+  static Future<void> show(BuildContext context, DashboardAnggota anggota, [num saldoPokok = 0]) {
     return showDialog<void>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => TunggakanModalDialog(anggota: anggota),
+      builder: (ctx) => TunggakanModalDialog(anggota: anggota, saldoPokok: saldoPokok),
     );
   }
 
@@ -154,11 +156,15 @@ class TunggakanModalDialog extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                             ),
                             TextSpan(
-                              text: jumlahBulan > 0
-                                  ? 'Anda memiliki kewajiban Simpanan Wajib yang belum terbayar sebanyak '
-                                  : 'Anda memiliki kewajiban Simpanan Wajib yang belum terselesaikan.',
+                              text: saldoPokok == 0
+                                  ? (jumlahBulan > 0
+                                      ? 'Anda memiliki kewajiban Simpanan Pokok awal dan $jumlahBulan bulan Simpanan Wajib yang belum terbayar.'
+                                      : 'Anda memiliki kewajiban Simpanan Pokok awal yang belum terbayar.')
+                                  : (jumlahBulan > 0
+                                      ? 'Anda memiliki kewajiban Simpanan Wajib yang belum terbayar sebanyak '
+                                      : 'Anda memiliki kewajiban Simpanan Wajib yang belum terselesaikan.'),
                             ),
-                            if (jumlahBulan > 0)
+                            if (saldoPokok != 0 && jumlahBulan > 0)
                               TextSpan(
                                 text: '$jumlahBulan bulan.',
                                 style: const TextStyle(
@@ -171,7 +177,44 @@ class TunggakanModalDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
 
-                      // Months Box
+                      // Months Box / Rincian Kewajiban
+                      if (saldoPokok == 0) ...[
+                        const Text(
+                          'Kewajiban Simpanan Pokok:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E40AF),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet_rounded, size: 16, color: Color(0xFF2563EB)),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Simpanan Pokok Awal (Wajib)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                                ),
+                              ),
+                              Text(
+                                'Rp 100.000',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       if (list.isNotEmpty) ...[
                         const Text(
                           'Rincian Bulan Tunggakan:',
@@ -247,21 +290,21 @@ class TunggakanModalDialog extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Total Tunggakan',
+                                const Text(
+                                  'Total Kewajiban',
                                   style: TextStyle(fontSize: 11.5, color: Color(0xFF7C2D12), fontWeight: FontWeight.w500),
                                 ),
                                 Text(
-                                  'Simpanan Wajib',
-                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF9A3412)),
+                                  saldoPokok == 0 ? 'Simpanan Pokok & Wajib' : 'Simpanan Wajib',
+                                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF9A3412)),
                                 ),
                               ],
                             ),
                             Text(
-                              AppCurrency.format(totalNominal),
+                              AppCurrency.format(totalNominal + (saldoPokok == 0 ? 100000 : 0)),
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../promo/models/promo_model.dart';
 import '../../promo/providers/promo_provider.dart';
 import '../../promo/screens/promo_screen.dart';
 
@@ -10,14 +11,64 @@ class PromoCarousel extends StatelessWidget {
   Widget build(BuildContext context) {
     final promoProvider = context.watch<PromoProvider>();
     final livePromos = promoProvider.promos;
+    final isLoading = promoProvider.isLoading;
 
-    final fallbackTitles = [
-      'Buka Simpanan Sijaka, Nikmati Nisbah Ekstra!',
-      'Info: Penyesuaian Jam Operasional Layanan',
-      'Promo Pembiayaan Umroh Tanpa Margin',
-    ];
+    // Jika sedang loading pertama kali dan belum ada data
+    if (isLoading && livePromos.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Info & Promo Koperasi',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                Text(
+                  'Lihat Semua',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 160,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              itemCount: 2,
+              itemBuilder: (context, index) {
+                return Container(
+                  width: 300,
+                  margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B5E20)),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
 
-    final itemCount = livePromos.isNotEmpty ? livePromos.length : fallbackTitles.length;
+    // Jika tidak ada data dari Web API
+    if (livePromos.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,12 +105,12 @@ class PromoCarousel extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: itemCount,
+            itemCount: livePromos.length,
             itemBuilder: (context, index) {
-              final isLive = livePromos.isNotEmpty;
-              final title = isLive ? livePromos[index].judul : fallbackTitles[index];
-              final bannerUrl = isLive ? livePromos[index].gambarBanner : null;
-              final isPromo = isLive ? livePromos[index].isPromo : true;
+              final promo = livePromos[index];
+              final title = promo.judul;
+              final bannerUrl = promo.gambarBanner;
+              final isPromo = promo.isPromo;
 
               return Container(
                 width: 300,
@@ -78,7 +129,7 @@ class PromoCarousel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   child: Stack(
                     children: [
-                      // Base gradient background (always present as fallback)
+                      // Base gradient background
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
@@ -104,7 +155,7 @@ class PromoCarousel extends StatelessWidget {
                         ),
                       ),
 
-                      // Live Banner Image from API/Web jika ada
+                      // Live Banner Image from Web API jika ada
                       if (bannerUrl != null && bannerUrl.isNotEmpty)
                         Positioned.fill(
                           child: Image.network(
@@ -117,7 +168,7 @@ class PromoCarousel extends StatelessWidget {
                           ),
                         ),
 
-                      // Dark bottom gradient overlay for maximum readability
+                      // Dark bottom gradient overlay
                       Positioned(
                         bottom: 0,
                         left: 0,
@@ -180,7 +231,7 @@ class PromoCarousel extends StatelessWidget {
                         ),
                       ),
 
-                      // Title Text
+                      // Title Text from Web API
                       Positioned(
                         bottom: 14,
                         left: 16,

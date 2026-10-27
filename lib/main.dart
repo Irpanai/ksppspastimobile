@@ -7,6 +7,7 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/history/providers/history_provider.dart';
 import 'features/home/providers/dashboard_provider.dart';
 import 'features/main_nav/screens/main_nav_screen.dart';
+import 'features/notification/providers/notification_provider.dart';
 import 'features/payment/providers/payment_provider.dart';
 import 'features/profile/providers/profile_provider.dart';
 import 'features/promo/providers/promo_provider.dart';
@@ -33,6 +34,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProvider(create: (_) => PromoProvider()..fetchPromos()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()..fetchNotifications()),
       ],
       child: const DigitalCoopApp(),
     ),

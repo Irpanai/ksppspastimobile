@@ -7,6 +7,9 @@ import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/cabang_location_banner.dart';
 import '../widgets/promo_carousel.dart';
+import '../../promo/providers/promo_provider.dart';
+import '../../notification/providers/notification_provider.dart';
+import '../../notification/screens/notification_screen.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/sijaka_portfolio_card.dart';
 
@@ -61,7 +64,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
       dashboardProvider.markTunggakanDialogShown();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          TunggakanModalDialog.show(context, anggota);
+          TunggakanModalDialog.show(context, anggota, saldoPokok);
         }
       });
     }
@@ -71,6 +74,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
     await Future.wait([
       context.read<DashboardProvider>().fetchDashboard(refresh: true),
       context.read<AuthProvider>().fetchProfile(),
+      context.read<PromoProvider>().fetchPromos(refresh: true),
+      context.read<NotificationProvider>().fetchNotifications(refresh: true),
     ]);
     if (mounted) {
       _checkAndShowTunggakanPopup();
@@ -82,6 +87,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final dashboardProvider = context.watch<DashboardProvider>();
     final paymentProvider = context.watch<PaymentProvider>();
     final anggota = dashboardProvider.dashboardData?.anggota;
+    final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
     final isMenunggak = anggota != null && (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
     final pendingPayments = paymentProvider.pendingPayments;
 
@@ -116,8 +122,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                       _buildErrorBanner(context, dashboardProvider.errorMessage!),
                     if (pendingPayments.isNotEmpty)
                       _buildPendingPaymentBanner(context, pendingPayments),
+                    if (saldoPokok == 0)
+                      _buildSimpananPokokBanner(context),
                     if (isMenunggak)
-                      _buildTunggakanWarningBanner(context, anggota),
+                      _buildTunggakanWarningBanner(context, anggota, saldoPokok),
                     const SizedBox(height: 24),
                     const BalanceCard(),
                     const SizedBox(height: 32),
@@ -218,7 +226,72 @@ class _BerandaScreenState extends State<BerandaScreen> {
     );
   }
 
-  Widget _buildTunggakanWarningBanner(BuildContext context, DashboardAnggota anggota) {
+  Widget _buildSimpananPokokBanner(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF), // Soft Blue
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFDBEAFE),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.priority_high_rounded, color: Color(0xFF0284C7), size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kewajiban: Simpanan Pokok',
+                  style: TextStyle(
+                    color: Color(0xFF1E40AF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Anda diwajibkan membayar Simpanan Pokok awal.',
+                  style: TextStyle(color: Color(0xFF1D4ED8), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => WajibSimpananModalDialog.show(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0284C7),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Bayar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTunggakanWarningBanner(BuildContext context, DashboardAnggota anggota, [num saldoPokok = 0]) {
     final bulanCount = anggota.jumlahBulanMenunggak > 0
         ? anggota.jumlahBulanMenunggak
         : anggota.tunggakanWajib.length;
@@ -272,7 +345,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () => TunggakanModalDialog.show(context, anggota),
+            onPressed: () => TunggakanModalDialog.show(context, anggota, saldoPokok),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD97706),
               foregroundColor: Colors.white,
@@ -406,37 +479,50 @@ class _BerandaScreenState extends State<BerandaScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-                  onPressed: () {},
-                ),
-              ),
-              Positioned(
-                right: 3,
-                top: 3,
-                child: Container(
-                  height: 9,
-                  width: 9,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Theme.of(context).colorScheme.secondary, width: 1.5),
+          Builder(
+            builder: (ctx) {
+              final notifProvider = ctx.watch<NotificationProvider>();
+              final unreadCount = notifProvider.unreadCount;
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+                      onPressed: () {
+                        Navigator.push(
+                          ctx,
+                          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              )
-            ],
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 3,
+                      top: 3,
+                      child: Container(
+                        height: 9,
+                        width: 9,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Theme.of(ctx).colorScheme.secondary, width: 1.5),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),

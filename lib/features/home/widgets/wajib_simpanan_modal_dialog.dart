@@ -28,18 +28,28 @@ class WajibSimpananModalDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon header
+            // Icon header (Informasi tanda seru yang ramah dan elegan)
             Container(
-              padding: const EdgeInsets.all(16),
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
+                color: const Color(0xFFE0F2FE), // Light sky info blue
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFCA5A5), width: 1.5),
+                border: Border.all(color: const Color(0xFFBAE6FD), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.warning_amber_rounded,
-                color: Color(0xFFEF4444),
-                size: 40,
+              child: const Center(
+                child: Icon(
+                  Icons.priority_high_rounded,
+                  color: Color(0xFF0284C7),
+                  size: 38,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -56,7 +66,7 @@ class WajibSimpananModalDialog extends StatelessWidget {
             const SizedBox(height: 12),
             // Description
             const Text(
-              'Untuk mengaktifkan fitur layanan KSPPS INOVASI PASTI NUSANTARA secara penuh, Anda diwajibkan untuk mengisi Simpanan Pokok dan Simpanan Wajib terlebih dahulu.',
+              'Anda diwajibkan untuk membayar Simpanan Pokok dan Simpanan Wajib terlebih dahulu untuk mengaktifkan seluruh fitur layanan KSPPS INOVASI PASTI NUSANTARA.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,

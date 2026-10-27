@@ -143,4 +143,10 @@ class ApiConstants {
   static const String cabangs = '/cabangs';
   static const String cabangProvinces = '/cabangs/provinces';
   static String cabangDetail(dynamic id) => '/cabangs/$id';
+
+  // Notifikasi Anggota
+  static const String memberNotifications = '/member/notifications';
+  static const String memberNotificationReadAll = '/member/notifications/read-all';
+  static String memberNotificationRead(int id) => '/member/notifications/$id/read';
+  static String memberNotificationDelete(int id) => '/member/notifications/$id';
 }

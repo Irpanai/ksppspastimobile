@@ -241,6 +241,33 @@ class ApiClient {
     }
   }
 
+  static Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    dynamic body,
+    bool withAuth = true,
+    T Function(dynamic json)? fromJsonT,
+    Duration? timeout,
+  }) async {
+    try {
+      final uri = _buildUri(endpoint);
+      final headers = await _getHeaders(withAuth: withAuth);
+      final encodedBody = body != null ? jsonEncode(body) : null;
+
+      final response = await _client
+          .delete(uri, headers: headers, body: encodedBody)
+          .timeout(timeout ?? const Duration(seconds: 15));
+
+      return _processResponse<T>(response, fromJsonT);
+    } on SocketException {
+      throw ApiException(message: 'Tidak dapat terhubung ke server backend.');
+    } on http.ClientException {
+      throw ApiException(message: 'Gagal menghubungi server. Periksa koneksi jaringan Anda.');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'Terjadi kesalahan: ' + e.toString());
+    }
+  }
+
   static ApiResponse<T> _processResponse<T>(
     http.Response response,
     T Function(dynamic json)? fromJsonT,
