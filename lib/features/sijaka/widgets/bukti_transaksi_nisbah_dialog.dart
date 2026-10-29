@@ -174,20 +174,24 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
             children: [
               // Dialog Static Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Preview Bukti Transaksi Nisbah',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                    const Expanded(
+                      child: Text(
+                        'Preview Bukti Transaksi Nisbah',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 24),
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B), size: 22),
                       onPressed: () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -202,36 +206,42 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     children: [
-                      // Header Image and Logo INSIDE the scroll view
-                      Stack(
-                        children: [
-                          Image.asset(
-                            'assets/images/header transaksi nisbah.png',
-                            width: double.infinity,
-                            fit: BoxFit.fitWidth,
-                          ),
-                          Positioned(
-                            top: 10,
-                            left: 32,
-                            child: Image.asset(
-                              'assets/images/logo billyet.png',
-                              height: 75,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ],
+                      // Header Image and Logo INSIDE the scroll view (proportional scaling)
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final headerWidth = constraints.maxWidth;
+                          final headerHeight = headerWidth * (163 / 602);
+                          return Stack(
+                            children: [
+                              Image.asset(
+                                'assets/images/header transaksi nisbah.png',
+                                width: headerWidth,
+                                fit: BoxFit.fitWidth,
+                              ),
+                              Positioned(
+                                top: headerHeight * 0.08,
+                                left: headerWidth * 0.05,
+                                height: headerHeight * 0.42,
+                                child: Image.asset(
+                                  'assets/images/logo billyet.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
 
                             const SizedBox(height: 16),
                             // Badge "TRANSAKSI BERHASIL" with lines
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 48),
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
                               child: Row(
                                 children: [
                                   const Expanded(child: Divider(color: Color(0xFF10B981), thickness: 0.5)),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 12),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(20),
@@ -247,7 +257,7 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 12),
                                   const Expanded(child: Divider(color: Color(0xFF10B981), thickness: 0.5)),
                                 ],
                               ),

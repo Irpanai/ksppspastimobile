@@ -3,9 +3,10 @@ import '../../home/screens/beranda_screen.dart';
 import '../../savings/screens/simpanan_screen.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../gadai/screens/gadai_screen.dart';
 
 class MainNavScreen extends StatefulWidget {
-  const MainNavScreen({Key? key}) : super(key: key);
+  const MainNavScreen({super.key});
 
   @override
   State<MainNavScreen> createState() => _MainNavScreenState();
@@ -19,6 +20,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
     const SimpananScreen(),
     const SijakaPortfolioScreen(showBackButton: false),
     const ProfileScreen(),
+    const GadaiScreen(showBackButton: false),
   ];
 
   final List<Map<String, dynamic>> _navItems = [
@@ -30,6 +32,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isRahnSelected = _currentIndex == 4;
+
     return Scaffold(
       extendBody: true, 
       body: _screens[_currentIndex],
@@ -38,18 +42,18 @@ class _MainNavScreenState extends State<MainNavScreen> {
           height: 90, // Total space for the navbar and overlapping button
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Stack(
-            alignment: Alignment.center, // Center everything so the big button overflows top and bottom equally
+            alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
               // White Pill Background
               Container(
-                height: 65, // Slightly thinner pill to emphasize the button size
+                height: 65,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(35),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -78,7 +82,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                         ],
                       ),
                     ),
-                    // Ruang kosong untuk tombol QRIS di tengah
+                    // Ruang kosong untuk tombol Rahn di tengah
                     const SizedBox(width: 76),
                     // Kanan
                     Expanded(
@@ -104,29 +108,59 @@ class _MainNavScreenState extends State<MainNavScreen> {
                   ],
                 ),
               ),
-              // Floating Pembiayaan Button raksasa di tengah
+
+              // Floating Rahn Button di tengah - Direct ke Menu Rahn
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur Rahn / Pinjaman (Pembiayaan) segera hadir!')),
-                  );
+                  setState(() => _currentIndex = 4);
                 },
-                child: Container(
-                  height: 76, // Ukuran disesuaikan
-                  width: 76,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  height: isRahnSelected ? 78 : 74,
+                  width: isRahnSelected ? 78 : 74,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary, // Tema Hijau
+                    gradient: isRahnSelected
+                        ? const LinearGradient(
+                            colors: [Color(0xFF047857), Color(0xFF10B981)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isRahnSelected ? null : Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFF8FAFC), width: 6), // Border tebal agar seolah memotong navbar dengan warna background app
+                    border: Border.all(
+                      color: isRahnSelected ? const Color(0xFF86EFAC) : const Color(0xFFF8FAFC),
+                      width: isRahnSelected ? 4 : 6,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                        blurRadius: 10,
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: isRahnSelected ? 0.55 : 0.35),
+                        blurRadius: isRahnSelected ? 16 : 10,
                         offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.handshake_rounded,
+                        color: Colors.white,
+                        size: isRahnSelected ? 29 : 27,
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Rahn',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -155,7 +189,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
             curve: Curves.easeOutBack,
             child: Icon(
               isSelected ? item['activeIcon'] : item['icon'],
-              color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF94A3B8), // Sleek grey
+              color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF94A3B8),
               size: 26, 
             ),
           ),
@@ -180,4 +214,3 @@ class _MainNavScreenState extends State<MainNavScreen> {
     );
   }
 }
-

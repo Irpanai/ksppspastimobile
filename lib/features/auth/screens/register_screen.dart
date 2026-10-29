@@ -7,9 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../shared/widgets/premium_header.dart';
 import '../../../core/utils/ktp_ocr_helper.dart';
 import 'kyc_camera_screen.dart';
+import 'login_screen.dart';
 import '../../main_nav/screens/main_nav_screen.dart';
 import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
@@ -17,7 +17,14 @@ import '../services/cabang_service.dart';
 import '../widgets/cabang_map_modal.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final VoidCallback? onSwitchToLogin;
+  final bool isEmbedded;
+
+  const RegisterScreen({
+    super.key,
+    this.onSwitchToLogin,
+    this.isEmbedded = false,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -56,6 +63,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _fotoKtpBytes;
   Uint8List? _fotoWajahBytes;
   bool _isOcrLoading = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/images/logo-kspps-pasti.png'), context);
+  }
 
   @override
   void initState() {
@@ -1163,26 +1176,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isEmbedded) {
+      return const LoginScreen(initialIsRegister: true);
+    }
+
     final authProvider = context.watch<AuthProvider>();
     final isLoading = authProvider.isLoading;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
-        children: [
-          const PremiumHeader(
-            title: 'Daftar Anggota Baru',
-            showBackButton: true,
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: true,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
-                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-              child: Form(
-                key: _formKey,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+      child: Form(
+        key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1441,7 +1445,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Link Masuk
                     Center(
                       child: TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (widget.onSwitchToLogin != null) {
+                            widget.onSwitchToLogin!();
+                          } else if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        },
                         child: RichText(
                           text: TextSpan(
                             text: 'Sudah punya akun? ',
@@ -1463,11 +1473,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-        ],
-      ),
     );
   }
 
@@ -1727,92 +1732,114 @@ class _RegisterScreenState extends State<RegisterScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFA7F3D0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF047857).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 18),
+                child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Cari Cabang Terdekat',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _nearestCabangDetectedMessage != null
+                          ? 'Terpilih: $_nearestCabangDetectedMessage'
+                          : 'Aktifkan GPS untuk memilih cabang paling dekat dengan Anda secara otomatis.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: _nearestCabangDetectedMessage != null
+                            ? const Color(0xFF047857)
+                            : const Color(0xFF065F46).withValues(alpha: 0.85),
+                        fontWeight: _nearestCabangDetectedMessage != null ? FontWeight.w600 : FontWeight.normal,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Cari Cabang Terdekat',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF065F46),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openMapModal,
+                  icon: const Icon(Icons.map_rounded, size: 16),
+                  label: const Text('Buka Peta', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF047857),
+                    side: const BorderSide(color: Color(0xFF86EFAC), width: 1.2),
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    minimumSize: const Size(0, 38),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _nearestCabangDetectedMessage != null
-                      ? 'Terpilih: $_nearestCabangDetectedMessage'
-                      : 'Aktifkan GPS untuk memilih cabang paling dekat dengan Anda secara otomatis.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _nearestCabangDetectedMessage != null
-                        ? const Color(0xFF047857)
-                        : const Color(0xFF065F46).withValues(alpha: 0.8),
-                    fontWeight: _nearestCabangDetectedMessage != null ? FontWeight.w600 : FontWeight.normal,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isDetectingLocation ? null : _detectNearestCabang,
+                  icon: _isDetectingLocation
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.near_me_rounded, size: 16),
+                  label: Text(
+                    _isDetectingLocation ? 'Mencari...' : 'Deteksi GPS',
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    minimumSize: const Size(0, 38),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 1,
+                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: _openMapModal,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF047857),
-              side: const BorderSide(color: Color(0xFF86EFAC)),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              minimumSize: const Size(48, 36),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.map_rounded, size: 14),
-                SizedBox(width: 3),
-                Text('Peta', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          ElevatedButton(
-            onPressed: _isDetectingLocation ? null : _detectNearestCabang,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(60, 36),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            child: _isDetectingLocation
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Deteksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         ],
       ),
