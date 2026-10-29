@@ -99,6 +99,82 @@ class AppDialog {
     );
   }
 
+  /// Show centered modern Coming Soon / Info Dialog
+  static Future<T?> showComingSoon<T>(
+    BuildContext context, {
+    String title = 'Segera Hadir',
+    String featureName = 'Layanan Rahn (Gadai Syariah)',
+    String? message,
+    String buttonText = 'Mengerti',
+    VoidCallback? onConfirm,
+    bool barrierDismissible = true,
+  }) {
+    final displayMessage = message ??
+        'Fitur $featureName saat ini sedang dalam tahap pengembangan dan integrasi sistem. Nantikan kemudahan layanan pembiayaan gadai syariah ini dalam waktu dekat!';
+
+    return _showAnimatedDialog<T>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      child: _AppDialogContent(
+        icon: Icons.hourglass_top_rounded,
+        iconColor: const Color(0xFFD97706),
+        iconBgColor: const Color(0xFFFEF3C7),
+        iconBorderColor: const Color(0xFFFDE68A),
+        title: title,
+        message: displayMessage,
+        customContent: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.handshake_outlined, size: 16, color: Color(0xFF047857)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  featureName,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Coming Soon',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        primaryButtonText: buttonText,
+        primaryButtonColor: const Color(0xFF047857),
+        onPrimaryPressed: () {
+          Navigator.of(context, rootNavigator: true).pop();
+          if (onConfirm != null) onConfirm();
+        },
+      ),
+    );
+  }
+
   /// Show centered modern Confirmation Dialog
   /// Returns bool: true if user confirms, false if cancelled.
   static Future<bool> showConfirmation(

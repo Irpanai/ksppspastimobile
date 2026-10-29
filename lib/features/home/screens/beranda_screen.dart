@@ -233,12 +233,12 @@ class _BerandaScreenState extends State<BerandaScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF), // Soft Blue
+        color: const Color(0xFFF0FDF4), // Soft Emerald
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+            color: const Color(0xFF047857).withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -249,10 +249,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: const BoxDecoration(
-              color: Color(0xFFDBEAFE),
+              color: Color(0xFFDCFCE7),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.priority_high_rounded, color: Color(0xFF0284C7), size: 20),
+            child: const Icon(Icons.priority_high_rounded, color: Color(0xFF047857), size: 20),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -262,7 +262,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 Text(
                   'Kewajiban: Simpanan Pokok',
                   style: TextStyle(
-                    color: Color(0xFF1E40AF),
+                    color: Color(0xFF065F46),
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -270,7 +270,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 SizedBox(height: 2),
                 Text(
                   'Anda diwajibkan membayar Simpanan Pokok awal.',
-                  style: TextStyle(color: Color(0xFF1D4ED8), fontSize: 11),
+                  style: TextStyle(color: Color(0xFF047857), fontSize: 11),
                 ),
               ],
             ),
@@ -278,7 +278,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
           ElevatedButton(
             onPressed: () => WajibSimpananModalDialog.show(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0284C7),
+              backgroundColor: const Color(0xFF047857),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               minimumSize: Size.zero,

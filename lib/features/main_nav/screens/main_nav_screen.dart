@@ -4,6 +4,7 @@ import '../../savings/screens/simpanan_screen.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../gadai/screens/gadai_screen.dart';
+import '../../../shared/widgets/app_dialog.dart';
 
 class MainNavScreen extends StatefulWidget {
   const MainNavScreen({super.key});
@@ -38,24 +39,26 @@ class _MainNavScreenState extends State<MainNavScreen> {
       extendBody: true, 
       body: _screens[_currentIndex],
       bottomNavigationBar: SafeArea(
+        bottom: true,
+        top: false,
         child: Container(
-          height: 90, // Total space for the navbar and overlapping button
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          height: 80, // Total space for the navbar and overlapping button (lowered)
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 4), // Diturunkan mendekati tepi bawah
           child: Stack(
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
               // White Pill Background
               Container(
-                height: 65,
+                height: 62,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(35),
+                  borderRadius: BorderRadius.circular(32),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -112,7 +115,11 @@ class _MainNavScreenState extends State<MainNavScreen> {
               // Floating Rahn Button di tengah - Direct ke Menu Rahn
               GestureDetector(
                 onTap: () {
-                  setState(() => _currentIndex = 4);
+                  AppDialog.showComingSoon(
+                    context,
+                    title: 'Segera Hadir',
+                    featureName: 'Layanan Rahn (Gadai Syariah)',
+                  );
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),

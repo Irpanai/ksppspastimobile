@@ -3,7 +3,6 @@ import '../../../../shared/widgets/app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../gadai/screens/gadai_screen.dart';
 import '../../history/providers/history_provider.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../home/providers/dashboard_provider.dart';
@@ -328,14 +327,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildGridCard(
                             context,
                             title: 'Rahn',
-                            subtitle: 'Pinjaman & agunan',
+                            subtitle: 'Segera hadir',
                             icon: Icons.handshake_outlined,
                             iconColor: const Color(0xFFD97706),
                             iconBgColor: const Color(0xFFFFFBEB),
+                            badgeText: 'Coming Soon',
                             onTap: () {
-                              Navigator.push(
+                              AppDialog.showComingSoon(
                                 context,
-                                MaterialPageRoute(builder: (context) => const GadaiScreen()),
+                                title: 'Segera Hadir',
+                                featureName: 'Layanan Rahn (Gadai Syariah)',
                               );
                             },
                           ),
@@ -563,6 +564,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required Color iconColor,
     required Color iconBgColor,
+    String? badgeText,
     VoidCallback? onTap,
   }) {
     return GestureDetector(

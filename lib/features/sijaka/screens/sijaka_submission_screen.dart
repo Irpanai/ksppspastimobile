@@ -438,7 +438,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               borderRadius: BorderRadius.circular(14),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFFF0FDF4) : Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -459,110 +459,155 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                       : null,
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Badge Durasi Tenor
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 48,
+                      height: 52,
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFF166534)
                             : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Center(
-                        child: Text(
-                          '${product.tenorBulan}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF1E293B),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${product.tenorBulan}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
+                              height: 1.1,
+                            ),
                           ),
-                        ),
+                          Text(
+                            'Bulan',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? Colors.white70
+                                  : const Color(0xFF64748B),
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
+                    // Detail Produk
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          // Nama Produk (Full Width, tidak terpotong)
+                          Text(
+                            product.namaProduk,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isSelected
+                                  ? const Color(0xFF166534)
+                                  : const Color(0xFF1E293B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 5),
+                          // Badges Nisbah & Total
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
-                              Text(
-                                product.namaProduk,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: isSelected
-                                      ? const Color(0xFF166534)
-                                      : const Color(0xFF1E293B),
-                                ),
-                              ),
-                              const Spacer(),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
+                                  horizontal: 7,
+                                  vertical: 2.5,
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? const Color(0xFFDCFCE7)
-                                      : const Color(0xFFF8FAFC),
+                                      : const Color(0xFFF0FDF4),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     color: isSelected
                                         ? const Color(0xFF86EFAC)
-                                        : const Color(0xFFE2E8F0),
+                                        : const Color(0xFFBBF7D0),
+                                    width: 0.8,
                                   ),
                                 ),
                                 child: Text(
                                   '${product.persenNisbahBulanan}% / bln',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
-                                    color: isSelected
-                                        ? const Color(0xFF166534)
-                                        : const Color(0xFF0F766E),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10.5,
+                                    color: Color(0xFF166534),
                                   ),
                                 ),
                               ),
+                              if (product.persenNisbahTotal > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFDCFCE7)
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Total: ${product.persenNisbahTotal}%',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? const Color(0xFF166534)
+                                          : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 5),
+                          // Minimal Setoran (Aman dari overflow)
                           Row(
                             children: [
                               Icon(
                                 Icons.info_outline_rounded,
                                 size: 12,
-                                color: Colors.grey.shade500,
+                                color: isSelected
+                                    ? const Color(0xFF166534)
+                                    : Colors.grey.shade500,
                               ),
                               const SizedBox(width: 4),
-                              Text(
-                                'Min. Setoran: ${product.formattedMinimalSetoran}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              if (product.persenNisbahTotal > 0) ...[
-                                const Text(' • ',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text(
-                                  'Total: ${product.persenNisbahTotal}%',
+                              Flexible(
+                                child: Text(
+                                  'Min. Setoran: ${product.formattedMinimalSetoran}',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700,
+                                    color: isSelected
+                                        ? const Color(0xFF15803D)
+                                        : Colors.grey.shade600,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // Radio Button
                     Icon(
                       isSelected
                           ? Icons.radio_button_checked
@@ -683,12 +728,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                 Icon(Icons.warning_amber_rounded,
                     size: 14, color: Colors.red.shade600),
                 const SizedBox(width: 4),
-                Text(
-                  'Nominal kurang dari minimal penempatan (${_selectedProduct?.formattedMinimalSetoran})',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.red.shade600,
-                    fontWeight: FontWeight.w500,
+                Flexible(
+                  child: Text(
+                    'Nominal kurang dari minimal penempatan (${_selectedProduct?.formattedMinimalSetoran})',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
                   ),
                 ),
               ],

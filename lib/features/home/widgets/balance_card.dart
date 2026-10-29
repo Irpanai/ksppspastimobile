@@ -40,6 +40,7 @@ class _BalanceCardState extends State<BalanceCard> {
           height: 190,
           child: PageView(
             controller: _pageController,
+            clipBehavior: Clip.none,
             onPageChanged: (int page) {
               setState(() {
                 _currentPage = page;
@@ -133,13 +134,6 @@ class _BalanceCardState extends State<BalanceCard> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: color1.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
