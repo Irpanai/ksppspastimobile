@@ -14,6 +14,10 @@ class AppDialog {
     VoidCallback? onConfirm,
     bool barrierDismissible = true,
   }) {
+    // User request: Jangan munculkan pesan error timeout
+    if (message.trim().isEmpty || message.toLowerCase().contains('timeout')) {
+      return Future.value(null);
+    }
     return _showAnimatedDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
@@ -43,6 +47,9 @@ class AppDialog {
     VoidCallback? onConfirm,
     bool barrierDismissible = true,
   }) {
+    if (message.trim().isEmpty || message.toLowerCase().contains('timeout')) {
+      return Future.value(null);
+    }
     return _showAnimatedDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,

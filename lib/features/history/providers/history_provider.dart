@@ -124,7 +124,7 @@ class HistoryProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isLoading = false;
       notifyListeners();
     } catch (e) {

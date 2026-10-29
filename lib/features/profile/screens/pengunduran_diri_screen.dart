@@ -208,14 +208,17 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
       badgeBg = const Color(0xFFFEF3C7);
       badgeTextColor = const Color(0xFFD97706);
     } else {
-      iconBg = const Color(0xFFDCFCE7);
-      iconColor = const Color(0xFF16A34A);
-      icon = Icons.verified_user_rounded;
-      statusTitle = 'Status: Anggota Aktif';
-      statusSubtitle = 'Keanggotaan Anda terdaftar resmi di KSPPS PASTI';
-      badgeText = 'AKTIF';
-      badgeBg = const Color(0xFFDCFCE7);
-      badgeTextColor = const Color(0xFF16A34A);
+      final isPokokPaid = (status.ringkasanSaldo.saldoPokok) > 0;
+      iconBg = isPokokPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
+      iconColor = isPokokPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706);
+      icon = isPokokPaid ? Icons.verified_user_rounded : Icons.info_outline_rounded;
+      statusTitle = isPokokPaid ? 'Status: Anggota Aktif' : 'Status: Anggota Belum Aktif';
+      statusSubtitle = isPokokPaid
+          ? 'Keanggotaan Anda terdaftar resmi di KSPPS PASTI'
+          : 'Selesaikan pembayaran Simpanan Pokok untuk mengaktifkan keanggotaan';
+      badgeText = isPokokPaid ? 'AKTIF' : 'BELUM AKTIF';
+      badgeBg = isPokokPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
+      badgeTextColor = isPokokPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706);
     }
 
     return Container(

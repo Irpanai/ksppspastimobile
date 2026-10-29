@@ -48,7 +48,7 @@ class ProfileProvider extends ChangeNotifier {
       _profileData = result;
       _errorMessage = null;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
     } catch (e) {
       _errorMessage = 'Gagal memuat profil: ${e.toString()}';
     } finally {
@@ -82,7 +82,7 @@ class ProfileProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isUpdating = false;
       notifyListeners();
       return false;
@@ -114,7 +114,7 @@ class ProfileProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isUpdating = false;
       notifyListeners();
       return false;
@@ -146,7 +146,7 @@ class ProfileProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isUpdating = false;
       notifyListeners();
       return false;
@@ -191,7 +191,7 @@ class ProfileProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isUpdating = false;
       notifyListeners();
       return false;
@@ -214,7 +214,7 @@ class ProfileProvider extends ChangeNotifier {
       _pengunduranStatus = result;
       _errorMessage = null;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
     } catch (e) {
       _errorMessage = 'Gagal memuat status pengunduran diri: ${e.toString()}';
     } finally {
@@ -236,7 +236,7 @@ class ProfileProvider extends ChangeNotifier {
       await fetchPengunduranStatus();
       return true;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
       _isSubmittingPengunduran = false;
       notifyListeners();
       return false;

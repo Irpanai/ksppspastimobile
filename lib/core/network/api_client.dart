@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -10,8 +11,14 @@ class ApiException implements Exception {
   final String message;
   final int? statusCode;
   final dynamic errors;
+  final bool isTimeout;
 
-  ApiException({required this.message, this.statusCode, this.errors});
+  ApiException({
+    required this.message,
+    this.statusCode,
+    this.errors,
+    this.isTimeout = false,
+  });
 
   @override
   String toString() => message;
@@ -65,7 +72,7 @@ class ApiClient {
       final headers = await _getHeaders(withAuth: withAuth);
 
       final response = await _client.get(uri, headers: headers).timeout(
-        timeout ?? const Duration(seconds: 15),
+        timeout ?? const Duration(seconds: 30),
       );
 
       return _processResponse<T>(response, fromJsonT);
@@ -93,7 +100,7 @@ class ApiClient {
 
       final response = await _client
           .post(uri, headers: headers, body: encodedBody)
-          .timeout(timeout ?? const Duration(seconds: 15));
+          .timeout(timeout ?? const Duration(seconds: 30));
 
       return _processResponse<T>(response, fromJsonT);
     } on SocketException {
@@ -228,7 +235,7 @@ class ApiClient {
 
       final response = await _client
           .put(uri, headers: headers, body: encodedBody)
-          .timeout(timeout ?? const Duration(seconds: 15));
+          .timeout(timeout ?? const Duration(seconds: 30));
 
       return _processResponse<T>(response, fromJsonT);
     } on SocketException {
@@ -255,15 +262,20 @@ class ApiClient {
 
       final response = await _client
           .delete(uri, headers: headers, body: encodedBody)
-          .timeout(timeout ?? const Duration(seconds: 15));
+          .timeout(timeout ?? const Duration(seconds: 30));
 
       return _processResponse<T>(response, fromJsonT);
+    } on TimeoutException {
+      throw ApiException(message: '', isTimeout: true);
     } on SocketException {
       throw ApiException(message: 'Tidak dapat terhubung ke server backend.');
     } on http.ClientException {
       throw ApiException(message: 'Gagal menghubungi server. Periksa koneksi jaringan Anda.');
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException || e.toString().toLowerCase().contains('timeout')) {
+        throw ApiException(message: '', isTimeout: true);
+      }
       throw ApiException(message: 'Terjadi kesalahan: ' + e.toString());
     }
   }

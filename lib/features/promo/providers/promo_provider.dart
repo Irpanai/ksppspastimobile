@@ -49,7 +49,7 @@ class PromoProvider extends ChangeNotifier {
       _promos = results;
       _errorMessage = null;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
+      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
     } catch (e) {
       _errorMessage = 'Gagal memuat info & promo: ${e.toString()}';
     } finally {

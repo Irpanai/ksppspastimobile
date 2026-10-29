@@ -118,7 +118,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildCustomAppBar(context),
-                    if (dashboardProvider.errorMessage != null)
+                    if (dashboardProvider.errorMessage != null &&
+                        dashboardProvider.errorMessage!.trim().isNotEmpty &&
+                        !dashboardProvider.errorMessage!.toLowerCase().contains('timeout'))
                       _buildErrorBanner(context, dashboardProvider.errorMessage!),
                     if (pendingPayments.isNotEmpty)
                       _buildPendingPaymentBanner(context, pendingPayments),
@@ -363,6 +365,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
   }
 
   Widget _buildErrorBanner(BuildContext context, String error) {
+    if (error.trim().isEmpty || error.toLowerCase().contains('timeout')) {
+      return const SizedBox.shrink();
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -392,15 +397,23 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
   Widget _buildCustomAppBar(BuildContext context) {
     final authUser = context.watch<AuthProvider>().user;
-    final dashboardAnggota = context.watch<DashboardProvider>().dashboardData?.anggota;
+    final dashboardProvider = context.watch<DashboardProvider>();
+    final dashboardAnggota = dashboardProvider.dashboardData?.anggota;
+    final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
+    final isPokokPaid = saldoPokok > 0;
 
     final displayName = dashboardAnggota?.nama.isNotEmpty == true
         ? dashboardAnggota!.nama
         : (authUser?.name.isNotEmpty == true ? authUser!.name : 'Nasabah');
 
-    final status = dashboardAnggota?.status ?? authUser?.statusKeanggotaan ?? 'Aktif';
+    final rawStatus = (dashboardAnggota?.status ?? authUser?.statusKeanggotaan ?? 'Aktif').trim();
     final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? '';
     final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? 'Pusat';
+
+    // User requirement: Jangan tulis Anggota Aktif jika belum bayar simpanan pokok
+    final String statusDisplay = isPokokPaid
+        ? (rawStatus.toLowerCase() == 'belum_aktif' ? 'BELUM AKTIF' : rawStatus.toUpperCase())
+        : 'BELUM AKTIF';
 
     final photoUrl = authUser?.fullProfilePhotoUrl ?? ApiConstants.resolveImageUrl(authUser?.profilePhotoUrl);
 
@@ -456,19 +469,24 @@ class _BerandaScreenState extends State<BerandaScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: isPokokPaid
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : const Color(0xFFF59E0B).withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(12),
+                          border: isPokokPaid
+                              ? null
+                              : Border.all(color: const Color(0xFFFDE68A), width: 1),
                         ),
                         child: Text(
                           noAnggota.isNotEmpty
-                              ? 'Anggota ${status.toUpperCase()} • $noAnggota'
-                              : 'Anggota ${status.toUpperCase()} • $cabang',
+                              ? 'Anggota $statusDisplay • $noAnggota'
+                              : 'Anggota $statusDisplay • $cabang',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 11,
                             color: Colors.white,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),

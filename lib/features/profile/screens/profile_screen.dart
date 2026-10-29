@@ -83,6 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final profileProvider = context.watch<ProfileProvider>();
+    final dashboardProvider = context.watch<DashboardProvider>();
 
     final user = profileProvider.profileData?.user ?? authProvider.user;
     final anggota = profileProvider.profileData?.anggota ?? user?.anggota;
@@ -92,6 +93,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final noAnggota = anggota?.noAnggota ?? user?.noAnggota ?? 'PASTI-0000';
     final statusKeanggotaan = anggota?.statusKeanggotaan ?? anggota?.status ?? user?.statusKeanggotaan ?? 'Aktif';
     final cabang = anggota?.cabang ?? user?.cabang ?? 'Pusat';
+
+    final saldoPokok = profileProvider.profileData?.ringkasanSaldo?.saldoPokok ??
+        dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
+    final isPokokPaid = saldoPokok > 0;
+
+    // User requirement: Jangan tulis Anggota Aktif jika belum bayar simpanan pokok
+    final String displayStatus = isPokokPaid
+        ? (statusKeanggotaan.toLowerCase() == 'belum_aktif' ? 'BELUM AKTIF' : statusKeanggotaan.toUpperCase())
+        : 'BELUM AKTIF';
     final photoUrl = user?.fullProfilePhotoUrl ?? anggota?.fullFotoUrl ?? ApiConstants.resolveImageUrl(user?.profilePhotoUrl ?? anggota?.foto);
 
     return Scaffold(
@@ -190,9 +200,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: isPokokPaid
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                              border: Border.all(
+                                color: isPokokPaid
+                                    ? Colors.white.withValues(alpha: 0.35)
+                                    : const Color(0xFFFDE68A),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -200,14 +216,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Container(
                                   width: 6,
                                   height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF4ADE80),
+                                  decoration: BoxDecoration(
+                                    color: isPokokPaid ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B),
                                     shape: BoxShape.circle,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Anggota ${statusKeanggotaan.toUpperCase()} • $noAnggota',
+                                  'Anggota $displayStatus • $noAnggota',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,

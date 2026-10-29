@@ -37,7 +37,8 @@ class NotificationProvider extends ChangeNotifier {
       _unreadCount = res.unreadCount;
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      if (!msg.toLowerCase().contains('timeout')) { _errorMessage = msg; }
       if (kDebugMode) {
         print('NotificationProvider fetch error: $e');
       }
