@@ -153,6 +153,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final bgColor = _activeConfig?.backgroundColor ?? const Color(0xFF1B5E20);
     final isSkippable = _activeConfig?.isSkippable ?? true;
+    final fitMode = _activeConfig?.fitMode ?? 'cover';
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -172,13 +173,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 SizedBox.expand(
                   child: Image.file(
                     _imageFile!,
-                    fit: BoxFit.cover,
+                    fit: fitMode == 'contain' ? BoxFit.contain : BoxFit.cover,
                   ),
                 )
               else if (_controller != null && _controller!.value.isInitialized)
                 SizedBox.expand(
                   child: FittedBox(
-                    fit: BoxFit.cover,
+                    fit: fitMode == 'contain' ? BoxFit.contain : BoxFit.cover,
                     child: SizedBox(
                       width: _controller!.value.size.width,
                       height: _controller!.value.size.height,
