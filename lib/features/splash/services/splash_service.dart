@@ -13,6 +13,7 @@ class SplashConfig {
   final Color backgroundColor;
   final bool isSkippable;
   final int durationSeconds;
+  final String fitMode; // 'cover' atau 'contain'
 
   const SplashConfig({
     required this.isCustom,
@@ -21,6 +22,7 @@ class SplashConfig {
     required this.backgroundColor,
     required this.isSkippable,
     required this.durationSeconds,
+    this.fitMode = 'cover',
   });
 
   static Color parseHexColor(String? hexString, {Color fallback = const Color(0xFF1B5E20)}) {
@@ -44,6 +46,7 @@ class SplashService {
   static const String _keyBgColor = 'splash_cached_bg_color';
   static const String _keySkippable = 'splash_cached_is_skippable';
   static const String _keyDuration = 'splash_cached_duration';
+  static const String _keyFitMode = 'splash_cached_fit_mode';
 
   /// Mendapatkan konfigurasi splash aktif dari cache penyimpanan lokal
   static Future<SplashConfig?> getActiveLocalConfig() async {
@@ -58,6 +61,7 @@ class SplashService {
           final bgHex = prefs.getString(_keyBgColor) ?? '#1B5E20';
           final isSkippable = prefs.getBool(_keySkippable) ?? true;
           final duration = prefs.getInt(_keyDuration) ?? 4;
+          final fitMode = prefs.getString(_keyFitMode) ?? 'cover';
 
           return SplashConfig(
             isCustom: true,
@@ -66,6 +70,7 @@ class SplashService {
             backgroundColor: SplashConfig.parseHexColor(bgHex),
             isSkippable: isSkippable,
             durationSeconds: duration,
+            fitMode: fitMode,
           );
         }
       }
@@ -95,6 +100,7 @@ class SplashService {
       final mediaType = data['media_type']?.toString() ?? 'video';
       final bgColorHex = data['background_color']?.toString() ?? '#1B5E20';
       final isSkippable = data['is_skippable'] == true;
+      final fitMode = data['fit_mode']?.toString() ?? 'cover';
       final duration = (data['duration_seconds'] is int)
           ? data['duration_seconds'] as int
           : int.tryParse(data['duration_seconds']?.toString() ?? '4') ?? 4;
@@ -117,6 +123,7 @@ class SplashService {
         await prefs.remove(_keyBgColor);
         await prefs.remove(_keySkippable);
         await prefs.remove(_keyDuration);
+        await prefs.remove(_keyFitMode);
         debugPrint('Splash reset to default bundle asset.');
         return;
       }
@@ -160,6 +167,7 @@ class SplashService {
           await prefs.setString(_keyBgColor, bgColorHex);
           await prefs.setBool(_keySkippable, isSkippable);
           await prefs.setInt(_keyDuration, duration);
+          await prefs.setString(_keyFitMode, fitMode);
 
           debugPrint('Splash media cached successfully at: $newFilePath');
         }
