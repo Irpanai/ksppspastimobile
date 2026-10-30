@@ -519,51 +519,41 @@ class _TopUpScreenState extends State<TopUpScreen> {
   Widget _buildTypeSelector(bool isPokokPaid) {
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildTypeCard(
-                type: 'simpanan_sukarela',
-                title: 'Sirela (Sukarela)',
-                subtitle: 'Bebas setor & tarik',
-                icon: Icons.payments_outlined,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildTypeCard(
-                type: 'simpanan_wajib',
-                title: 'Simpanan Wajib',
-                subtitle: 'Rp 2.500/bln',
-                icon: Icons.calendar_month_outlined,
-              ),
-            ),
-          ],
+        _buildTypeCard(
+          type: 'simpanan_sukarela',
+          title: 'Sirela (Simpanan Sukarela)',
+          subtitle: 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
+          badgeText: 'Fleksibel',
+          icon: Icons.payments_outlined,
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildTypeCard(
-                type: 'simpanan_pokok',
-                title: 'Simpanan Pokok',
-                subtitle: isPokokPaid ? 'Sudah Lunas' : 'Rp 15.000 (1x)',
-                icon: Icons.shield_outlined,
-                isLocked: isPokokPaid,
-                isSuccessBadge: isPokokPaid,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildTypeCard(
-                type: 'pembukaan_sijaka',
-                title: 'Sijaka (Berjangka)',
-                subtitle: 'Bagi hasil bulanan',
-                icon: Icons.pie_chart_outline_rounded,
-                isHighlight: true,
-              ),
-            ),
-          ],
+        _buildTypeCard(
+          type: 'simpanan_wajib',
+          title: 'Simpanan Wajib',
+          subtitle: 'Kewajiban rutin bulanan anggota • Rp 2.500/bulan',
+          badgeText: 'Wajib Bulanan',
+          icon: Icons.calendar_month_outlined,
+        ),
+        const SizedBox(height: 10),
+        _buildTypeCard(
+          type: 'simpanan_pokok',
+          title: 'Simpanan Pokok',
+          subtitle: isPokokPaid
+              ? 'Simpanan pokok awal keanggotaan telah lunas'
+              : 'Kewajiban awal keanggotaan • Rp 15.000 (1x bayar)',
+          badgeText: isPokokPaid ? 'Sudah Lunas' : 'Wajib Awal',
+          icon: Icons.shield_outlined,
+          isLocked: isPokokPaid,
+          isSuccessBadge: isPokokPaid,
+        ),
+        const SizedBox(height: 10),
+        _buildTypeCard(
+          type: 'pembukaan_sijaka',
+          title: 'Sijaka (Simpanan Berjangka)',
+          subtitle: 'Investasi deposito syariah dengan bagi hasil bulanan',
+          badgeText: 'Bagi Hasil',
+          icon: Icons.pie_chart_outline_rounded,
+          isHighlight: true,
         ),
       ],
     );
@@ -574,6 +564,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
+    String? badgeText,
     bool isHighlight = false,
     bool isLocked = false,
     bool isSuccessBadge = false,
@@ -587,11 +578,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: isSelected
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
-                : (isLocked ? const Color(0xFFF1F5F9).withOpacity(0.7) : Colors.white),
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
+                : (isLocked ? const Color(0xFFF8FAFC) : Colors.white),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
@@ -601,7 +592,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isSelected ? 0.04 : 0.01),
+                color: Colors.black.withValues(alpha: isSelected ? 0.04 : 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -610,22 +601,23 @@ class _TopUpScreenState extends State<TopUpScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
+                      : (isLocked ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9)),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  isSuccessBadge ? Icons.check_circle_outline_rounded : icon,
+                  isSuccessBadge ? Icons.check_circle_rounded : icon,
                   color: isSelected
                       ? Colors.white
-                      : const Color(0xFF64748B),
-                  size: 20,
+                      : (isLocked ? const Color(0xFF16A34A) : const Color(0xFF64748B)),
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,32 +628,72 @@ class _TopUpScreenState extends State<TopUpScreen> {
                           child: Text(
                             title,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.bold,
                               color: isSelected
                                   ? Theme.of(context).colorScheme.primary
                                   : const Color(0xFF1E293B),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isLocked)
-                          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF16A34A)),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Icon(Icons.lock_rounded, size: 14, color: Color(0xFF16A34A)),
+                          ),
+                        if (badgeText != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: isSuccessBadge
+                                  ? const Color(0xFFECFDF5)
+                                  : (isSelected ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSuccessBadge
+                                    ? const Color(0xFFA7F3D0)
+                                    : (isSelected ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
+                              ),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isSuccessBadge
+                                    ? const Color(0xFF0E7955)
+                                    : (isSelected ? const Color(0xFF0E7955) : const Color(0xFF64748B)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 10,
-                        color: isSuccessBadge ? const Color(0xFF16A34A) : const Color(0xFF94A3B8),
-                        fontWeight: isSuccessBadge ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 11.5,
+                        color: isSuccessBadge ? const Color(0xFF16A34A) : const Color(0xFF64748B),
+                        height: 1.3,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : const Color(0xFFCBD5E1),
+                    width: isSelected ? 6 : 2,
+                  ),
                 ),
               ),
             ],
@@ -1397,8 +1429,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                                 fontSize: 13.5,
                                 color: Color(0xFF0F172A),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              softWrap: true,
                             ),
                           ),
                           if (selectedChannel.badge != null && selectedChannel.badge!.isNotEmpty) ...[
@@ -1443,8 +1475,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                           fontSize: 11,
                           color: Color(0xFF64748B),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        softWrap: true,
                       ),
                       const SizedBox(height: 5),
                       Wrap(
@@ -1913,8 +1945,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               fontSize: 13,
                               color: const Color(0xFF1E293B),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            softWrap: true,
                           ),
                         ),
                         if (ch.badge != null && ch.badge!.isNotEmpty) ...[
@@ -1949,8 +1981,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                     Text(
                       ch.description ?? 'Transfer instan otomatis 24 jam',
                       style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                      softWrap: true,
                     ),
                   ],
                 ),

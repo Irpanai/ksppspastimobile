@@ -515,8 +515,8 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                                   ? const Color(0xFF166534)
                                   : const Color(0xFF1E293B),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            softWrap: true,
                           ),
                           const SizedBox(height: 5),
                           // Badges Nisbah & Total
@@ -597,8 +597,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                                         ? const Color(0xFF15803D)
                                         : Colors.grey.shade600,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
                                 ),
                               ),
                             ],

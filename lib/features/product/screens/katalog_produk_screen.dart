@@ -74,77 +74,129 @@ class KatalogProdukScreen extends StatelessWidget {
 
   Widget _buildSimpananGrid(BuildContext context) {
     final items = [
-      {'title': 'Sukarela', 'subtitle': 'Wadiah fleksibel', 'icon': Icons.payments_outlined},
-      {'title': 'Pendidikan', 'subtitle': 'Rencana aman', 'icon': Icons.school_outlined},
-      {'title': 'Qurban', 'subtitle': 'Ibadah terencana', 'icon': Icons.pets_outlined},
-      {'title': 'Sijaka', 'subtitle': 'Deposito syariah', 'icon': Icons.trending_up_rounded},
+      {
+        'title': 'Simpanan Sukarela (Sirela)',
+        'subtitle': 'Simpanan fleksibel dengan akad Wadiah Yad Dhamanah. Bebas disetor dan ditarik kapan saja tanpa potongan biaya.',
+        'icon': Icons.payments_outlined,
+        'badge': 'Fleksibel',
+      },
+      {
+        'title': 'Simpanan Pendidikan',
+        'subtitle': 'Perencanaan dana pendidikan masa depan terencana dan aman untuk putra-putri tercinta.',
+        'icon': Icons.school_outlined,
+        'badge': 'Terencana',
+      },
+      {
+        'title': 'Simpanan Qurban',
+        'subtitle': 'Tabungan teratur dan berkah untuk persiapan ibadah qurban Idul Adha tahunan dengan lebih ringan.',
+        'icon': Icons.pets_outlined,
+        'badge': 'Ibadah',
+      },
+      {
+        'title': 'Sijaka (Simpanan Berjangka)',
+        'subtitle': 'Investasi deposito syariah berjangka dengan bagi hasil bulanan kompetitif dan amanah.',
+        'icon': Icons.trending_up_rounded,
+        'badge': 'Bagi Hasil',
+      },
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.15,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return InkWell(
-          onTap: () {
-            if (item['title'] == 'Sijaka') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
-              );
-            }
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+    return Column(
+      children: items.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (item['title'] == 'Sijaka (Simpanan Berjangka)') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4), // Very light green
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    item['icon'] as IconData,
-                    color: const Color(0xFF166534), // Dark Teal
-                    size: 20,
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        item['icon'] as IconData,
+                        color: const Color(0xFF166534),
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item['title'] as String,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                                ),
+                                child: Text(
+                                  item['badge'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0E7955),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item['subtitle'] as String,
+                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFFCBD5E1)),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  item['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF1E293B)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item['subtitle'] as String,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-                ),
-              ],
+              ),
             ),
           ),
         );
-      },
+      }).toList(),
     );
   }
 

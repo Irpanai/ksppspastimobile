@@ -200,7 +200,7 @@ class PendingPaymentsModal extends StatelessWidget {
           else
             Flexible(
               child: ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + MediaQuery.of(context).padding.bottom),
                 shrinkWrap: true,
                 itemCount: payments.length,
                 separatorBuilder: (ctx, i) => const SizedBox(height: 12),
@@ -223,7 +223,7 @@ class PendingPaymentsModal extends StatelessWidget {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + MediaQuery.of(context).padding.bottom),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -403,7 +403,7 @@ class PendingPaymentsModal extends StatelessWidget {
               ),
             ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16 + MediaQuery.of(context).padding.bottom),
         ],
       ),
     );

@@ -1620,6 +1620,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     required String title,
     required String subtitle,
     required IconData icon,
+    String? badgeText,
   }) {
     final isSelected = _selectedSumber == type;
 
@@ -1630,7 +1631,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF0E7955).withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -1638,40 +1639,83 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isSelected ? 0.04 : 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: isSelected ? Colors.white : const Color(0xFF64748B), size: 20),
+                child: Icon(icon, color: isSelected ? Colors.white : const Color(0xFF64748B), size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF1E293B),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        if (badgeText != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.3),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1),
+                    width: isSelected ? 6 : 2,
+                  ),
                 ),
               ),
             ],
