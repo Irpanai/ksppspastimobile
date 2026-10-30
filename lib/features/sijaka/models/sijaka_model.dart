@@ -18,6 +18,9 @@ class BilyetSijakaItem {
   final String metodePenyerahanBagihasil;
   final String status;
   final String? noRekeningPencairan;
+  final String? namaBankPencairan;
+  final String? noRekeningBankPencairan;
+  final String? atasNamaBankPencairan;
 
   BilyetSijakaItem({
     required this.id,
@@ -36,6 +39,9 @@ class BilyetSijakaItem {
     required this.metodePenyerahanBagihasil,
     required this.status,
     this.noRekeningPencairan,
+    this.namaBankPencairan,
+    this.noRekeningBankPencairan,
+    this.atasNamaBankPencairan,
   });
 
   bool get isActive => status.toLowerCase() == 'aktif';
@@ -94,6 +100,9 @@ class BilyetSijakaItem {
       metodePenyerahanBagihasil: json['metode_penyerahan_bagihasil']?.toString() ?? 'Setiap Bulan',
       status: json['status']?.toString() ?? 'aktif',
       noRekeningPencairan: json['rekening_pencairan']?.toString() ?? json['no_rekening_bank_pencairan']?.toString(),
+      namaBankPencairan: json['nama_bank_pencairan']?.toString(),
+      noRekeningBankPencairan: json['no_rekening_bank_pencairan']?.toString(),
+      atasNamaBankPencairan: json['atas_nama_bank_pencairan']?.toString(),
     );
   }
 }
