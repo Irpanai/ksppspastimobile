@@ -33,12 +33,12 @@ class WajibSimpananModalDialog extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0F2FE), // Light sky info blue
+                color: const Color(0xFFECFDF5), // Light emerald background
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFBAE6FD), width: 2),
+                border: Border.all(color: const Color(0xFFA7F3D0), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                    color: const Color(0xFF0E7955).withValues(alpha: 0.15),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
@@ -46,8 +46,8 @@ class WajibSimpananModalDialog extends StatelessWidget {
               ),
               child: const Center(
                 child: Icon(
-                  Icons.priority_high_rounded,
-                  color: Color(0xFF0284C7),
+                  Icons.how_to_reg_rounded,
+                  color: Color(0xFF0E7955),
                   size: 38,
                 ),
               ),

@@ -543,6 +543,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                             ),
                           ),
+                          const SizedBox(height: 120), // Bottom navbar space
                         ],
                       ),
                     ),

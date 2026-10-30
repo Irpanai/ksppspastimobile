@@ -30,7 +30,7 @@ class _PromoScreenState extends State<PromoScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        padding: EdgeInsets.fromLTRB(24, 12, 24, 28 + MediaQuery.of(ctx).padding.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +304,7 @@ class _PromoScreenState extends State<PromoScreen> {
                             onRefresh: () => provider.fetchPromos(refresh: true),
                             color: const Color(0xFF1B5E20),
                             child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                              padding: EdgeInsets.fromLTRB(20, 8, 20, 36 + MediaQuery.of(context).padding.bottom),
                               itemCount: promos.length,
                               separatorBuilder: (context, index) => const SizedBox(height: 16),
                               itemBuilder: (context, index) {

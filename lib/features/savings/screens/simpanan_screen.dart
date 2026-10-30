@@ -265,16 +265,18 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                   style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  AppCurrency.format(balance),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    AppCurrency.format(balance),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Container(
@@ -523,8 +525,8 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
                             fontSize: 14,
                             color: Color(0xFF1E293B),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          softWrap: true,
                         ),
                         const SizedBox(height: 4),
                         Text(
