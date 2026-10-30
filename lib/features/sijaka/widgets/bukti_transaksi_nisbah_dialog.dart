@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../../core/services/document_download_service.dart';
 import '../models/sijaka_model.dart';
 
 class BuktiTransaksiNisbahDialog extends StatefulWidget {
@@ -37,49 +37,17 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
     try {
       final token = context.read<AuthProvider>().token ?? await StorageService.getToken();
       final urlString = '${ApiConstants.baseUrl}/sijaka-docs/nisbah-pdf/${widget.item.id}${token != null && token.isNotEmpty ? '?token=$token' : ''}';
-      final uri = Uri.parse(urlString);
+      final safeBilyet = widget.bilyet.noBilyet.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
+      final safePeriode = widget.item.periode.replaceAll(' ', '_');
+      final fileName = 'Bukti_BagiHasil_${safeBilyet}_$safePeriode.pdf';
 
-            bool opened = false;
-      try {
-        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
-
-      if (!opened) {
-        try {
-          opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
-        } catch (_) {}
-      }
-
-      if (!opened) {
-        try {
-          opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-        } catch (_) {}
-      }
-
-      if (!opened && await canLaunchUrl(uri)) {
-        opened = await launchUrl(uri);
-      }
-
-      if (opened) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('Membuka Bukti Transaksi Bagi Hasil periode ${widget.item.periode}...')),
-                ],
-              ),
-              backgroundColor: const Color(0xFF0E7955),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Tidak dapat membuka dokumen. Pastikan browser atau aplikasi pembaca PDF tersedia di perangkat.');
-      }
+      await DocumentDownloadService.downloadAndOpen(
+        context: context,
+        url: urlString,
+        fileName: fileName,
+        documentTitle: 'Bukti Bagi Hasil (${widget.item.periode})',
+        token: token,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -501,7 +469,7 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Icon(Icons.print_outlined, size: 18),
                       label: Text(
-                        _isDownloading ? 'Memproses...' : 'Cetak PDF',
+                        _isDownloading ? 'Mengunduh...' : 'Unduh & Buka PDF',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       style: ElevatedButton.styleFrom(

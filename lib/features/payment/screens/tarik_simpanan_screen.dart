@@ -520,24 +520,22 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
 
                 const Text('PILIH SUMBER DANA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                 const SizedBox(height: 10),
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: _buildTypeCard(
-                        type: 'simpanan_sukarela',
-                        title: 'Sirela (Sukarela)',
-                        subtitle: 'Bebas tarik',
-                        icon: Icons.payments_outlined,
-                      ),
+                    _buildTypeCard(
+                      type: 'simpanan_sukarela',
+                      title: 'Sirela (Simpanan Sukarela)',
+                      subtitle: 'Simpanan sukarela bebas ditarik sewaktu-waktu sesuai saldo Anda',
+                      icon: Icons.payments_outlined,
+                      badgeText: 'Bebas Tarik',
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildTypeCard(
-                        type: 'saldo_sijaka',
-                        title: 'Bagi Hasil Sijaka',
-                        subtitle: 'Tarik Nisbah',
-                        icon: Icons.monetization_on_outlined,
-                      ),
+                    const SizedBox(height: 10),
+                    _buildTypeCard(
+                      type: 'saldo_sijaka',
+                      title: 'Bagi Hasil Sijaka',
+                      subtitle: 'Nisbah bagi hasil deposito berjangka yang siap untuk dicairkan',
+                      icon: Icons.monetization_on_outlined,
+                      badgeText: 'Nisbah Sijaka',
                     ),
                   ],
                 ),

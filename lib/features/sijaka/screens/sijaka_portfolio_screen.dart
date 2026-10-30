@@ -5,6 +5,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../../../core/services/document_download_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
@@ -960,55 +961,16 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
       final docLabel = isBilyet ? 'Bilyet Sijaka' : 'Akad & Formulir Sijaka';
 
       final urlString = '${ApiConstants.baseUrl}/sijaka-docs/$bilyetId/$endpoint${token != null && token.isNotEmpty ? '?token=$token' : ''}';
-      final uri = Uri.parse(urlString);
+      final cleanBilyet = noBilyet.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
+      final fileName = isBilyet ? 'Bilyet_Sijaka_$cleanBilyet.pdf' : 'Akad_Formulir_Sijaka_$cleanBilyet.pdf';
 
-            bool opened = false;
-      // 1. Coba externalApplication (browser atau aplikasi pembaca PDF di HP)
-      try {
-        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
-
-      // 2. Fallback coba platformDefault
-      if (!opened) {
-        try {
-          opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
-        } catch (_) {}
-      }
-
-      // 3. Fallback coba inAppBrowserView
-      if (!opened) {
-        try {
-          opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-        } catch (_) {}
-      }
-
-      // 4. Fallback coba canLaunchUrl
-      if (!opened) {
-        if (await canLaunchUrl(uri)) {
-          opened = await launchUrl(uri);
-        }
-      }
-
-      if (opened) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('Membuka dokumen $docLabel ($noBilyet)...')),
-                ],
-              ),
-              backgroundColor: const Color(0xFF0E7955),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Tidak dapat membuka dokumen. Pastikan browser atau aplikasi pembaca PDF tersedia di perangkat.');
-      }
+      await DocumentDownloadService.downloadAndOpen(
+        context: context,
+        url: urlString,
+        fileName: fileName,
+        documentTitle: docLabel,
+        token: token,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1017,7 +979,7 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
               children: [
                 const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                Expanded(child: Text('Gagal mencetak dokumen: ${e.toString()}')),
+                Expanded(child: Text('Gagal mengunduh dokumen: ${e.toString()}')),
               ],
             ),
             backgroundColor: const Color(0xFFDC2626),
@@ -1442,7 +1404,7 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                             )
                           : const Icon(Icons.file_download_outlined, size: 20),
                       label: Text(
-                        _isPrintingBilyet ? 'Memproses Bilyet...' : 'Cetak Bilyet',
+                        _isPrintingBilyet ? 'Mengunduh Bilyet...' : 'Unduh & Buka Bilyet',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -1467,7 +1429,7 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                             )
                           : const Icon(Icons.description_outlined, size: 20),
                       label: Text(
-                        _isPrintingAkad ? 'Memproses Akad...' : 'Cetak Akad & Formulir',
+                        _isPrintingAkad ? 'Mengunduh Akad...' : 'Unduh & Buka Akad',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(
