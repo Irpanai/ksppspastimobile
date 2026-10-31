@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -14,7 +14,6 @@ import '../widgets/quick_actions_grid.dart';
 import '../widgets/sijaka_portfolio_card.dart';
 
 import '../widgets/tunggakan_modal_dialog.dart';
-
 import '../widgets/wajib_simpanan_modal_dialog.dart';
 import '../../payment/models/payment_model.dart';
 import '../../payment/providers/payment_provider.dart';
@@ -45,11 +44,26 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
   void _checkAndShowTunggakanPopup() {
     final dashboardProvider = context.read<DashboardProvider>();
-    final anggota = dashboardProvider.dashboardData?.anggota;
+    final authUser = context.read<AuthProvider>().user;
+    final dashboardAnggota = dashboardProvider.dashboardData?.anggota;
     final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
 
-    // Cek jika saldo pokok 0 (artinya belum pernah bayar simpanan pokok / akun baru)
-    if (saldoPokok == 0) {
+    // Guard: Jangan tampilkan dialog apapun jika data belum tersedia atau sedang loading awal
+    if (dashboardProvider.dashboardData == null || dashboardProvider.isLoading) {
+      return;
+    }
+
+    // Anggota dianggap aktif jika status di DB aktif, status user aktif, atau isPokokPaid true
+    final isAnggotaAktif = (dashboardAnggota?.status.toLowerCase() == 'aktif') ||
+        (dashboardAnggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
+        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
+        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
+        (dashboardAnggota?.isPokokPaid == true);
+
+    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
+
+    // Cek jika akun benar-benar belum aktif dan belum bayar simpanan pokok
+    if (!isPokokPaid && !isAnggotaAktif) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           WajibSimpananModalDialog.show(context);
@@ -58,6 +72,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
       return; // Jangan lanjut cek tunggakan lain jika pokok belum dibayar
     }
 
+    // Cek tunggakan simpanan wajib bulanan jika ada
+    final anggota = dashboardAnggota;
     if (anggota != null &&
         (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty) &&
         !dashboardProvider.hasShownTunggakanDialog) {
@@ -86,10 +102,25 @@ class _BerandaScreenState extends State<BerandaScreen> {
   Widget build(BuildContext context) {
     final dashboardProvider = context.watch<DashboardProvider>();
     final paymentProvider = context.watch<PaymentProvider>();
+    final authUser = context.watch<AuthProvider>().user;
     final anggota = dashboardProvider.dashboardData?.anggota;
     final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
+
+    final isAnggotaAktif = (anggota?.status.toLowerCase() == 'aktif') ||
+        (anggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
+        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
+        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
+        (anggota?.isPokokPaid == true);
+
+    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
     final isMenunggak = anggota != null && (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
     final pendingPayments = paymentProvider.pendingPayments;
+
+    // Banner hanya ditampilkan jika benar-benar belum aktif, belum lunas pokok, dan data sudah selesai dimuat
+    final bool shouldShowPokokBanner = !isPokokPaid &&
+        !isAnggotaAktif &&
+        dashboardProvider.dashboardData != null &&
+        !dashboardProvider.isLoading;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -101,52 +132,50 @@ class _BerandaScreenState extends State<BerandaScreen> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
             child: Stack(
-            children: [
-              // Background Header with dark green
-              Container(
-                height: 220,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondary,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
+              children: [
+                // Background Header with dark green
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondary,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
                   ),
                 ),
-              ),
-              SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCustomAppBar(context),
-                    if (dashboardProvider.errorMessage != null &&
-                        dashboardProvider.errorMessage!.trim().isNotEmpty &&
-                        !dashboardProvider.errorMessage!.toLowerCase().contains('timeout'))
-                      _buildErrorBanner(context, dashboardProvider.errorMessage!),
-                    if (pendingPayments.isNotEmpty)
-                      _buildPendingPaymentBanner(context, pendingPayments),
-                    if (saldoPokok == 0)
-                      _buildSimpananPokokBanner(context),
-                    if (isMenunggak)
-                      _buildTunggakanWarningBanner(context, anggota, saldoPokok),
-                    const SizedBox(height: 24),
-                    const BalanceCard(),
-                    const SizedBox(height: 32),
-                    const QuickActionsGrid(),
-                    const SizedBox(height: 24),
-                    const CabangLocationBanner(),
-                    const SizedBox(height: 28),
-                    // const PPOBMenu(), // Dihide sementara karena belum selesai
-                    // const SizedBox(height: 24),
-                    const PromoCarousel(),
-                    const SizedBox(height: 24),
-                    const SijakaPortfolioCard(),
-                    const SizedBox(height: 120),
-                  ],
+                SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCustomAppBar(context),
+                      if (dashboardProvider.errorMessage != null &&
+                          dashboardProvider.errorMessage!.trim().isNotEmpty &&
+                          !dashboardProvider.errorMessage!.toLowerCase().contains('timeout'))
+                        _buildErrorBanner(context, dashboardProvider.errorMessage!),
+                      if (pendingPayments.isNotEmpty)
+                        _buildPendingPaymentBanner(context, pendingPayments),
+                      if (shouldShowPokokBanner)
+                        _buildSimpananPokokBanner(context),
+                      if (isMenunggak)
+                        _buildTunggakanWarningBanner(context, anggota, saldoPokok),
+                      const SizedBox(height: 24),
+                      const BalanceCard(),
+                      const SizedBox(height: 32),
+                      const QuickActionsGrid(),
+                      const SizedBox(height: 24),
+                      const CabangLocationBanner(),
+                      const SizedBox(height: 28),
+                      const PromoCarousel(),
+                      const SizedBox(height: 24),
+                      const SijakaPortfolioCard(),
+                      const SizedBox(height: 120),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -174,7 +203,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
           border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFD97706).withOpacity(0.08),
+              color: const Color(0xFFD97706).withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -198,29 +227,34 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   Text(
                     title,
                     style: const TextStyle(
+                      color: Color(0xFF92400E),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
-                      color: Color(0xFF92400E),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
                   ),
                 ],
               ),
             ),
-            ElevatedButton(
-              onPressed: () => PendingPaymentsModal.show(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF388E3C),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD97706),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text('Buka', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Lihat',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
             ),
           ],
         ),
@@ -230,7 +264,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
   Widget _buildSimpananPokokBanner(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FDF4), // Soft Emerald
@@ -307,7 +341,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
         border: Border.all(color: const Color(0xFFFDE68A)), // Amber-200
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD97706).withOpacity(0.08),
+            color: const Color(0xFFD97706).withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -400,20 +434,35 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final dashboardProvider = context.watch<DashboardProvider>();
     final dashboardAnggota = dashboardProvider.dashboardData?.anggota;
     final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
-    final isPokokPaid = saldoPokok > 0;
+
+    final isAnggotaAktif = (dashboardAnggota?.status.toLowerCase() == 'aktif') ||
+        (dashboardAnggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
+        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
+        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
+        (dashboardAnggota?.isPokokPaid == true);
+
+    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
 
     final displayName = dashboardAnggota?.nama.isNotEmpty == true
         ? dashboardAnggota!.nama
         : (authUser?.name.isNotEmpty == true ? authUser!.name : 'Nasabah');
 
-    final rawStatus = (dashboardAnggota?.status ?? authUser?.statusKeanggotaan ?? 'Aktif').trim();
-    final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? '';
-    final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? 'Pusat';
+    final rawStatus = (dashboardAnggota?.statusKeanggotaan ??
+            dashboardAnggota?.status ??
+            authUser?.statusKeanggotaan ??
+            authUser?.anggota?.status ??
+            (isAnggotaAktif ? 'Aktif' : 'Belum Aktif'))
+        .trim();
 
-    // User requirement: Jangan tulis Anggota Aktif jika belum bayar simpanan pokok
-    final String statusDisplay = isPokokPaid
-        ? (rawStatus.toLowerCase() == 'belum_aktif' ? 'BELUM AKTIF' : rawStatus.toUpperCase())
+    final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? authUser?.anggota?.noAnggota ?? '';
+    final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? authUser?.anggota?.cabang ?? 'Pusat';
+
+    // Status display: Jika anggota sudah aktif atau pokok paid, tampilkan status resminya (AKTIF)
+    final String statusDisplay = (isAnggotaAktif || isPokokPaid)
+        ? (rawStatus.toLowerCase() == 'belum_aktif' ? 'AKTIF' : rawStatus.toUpperCase())
         : 'BELUM AKTIF';
+
+    final isBadgedActive = isAnggotaAktif || isPokokPaid;
 
     final photoUrl = authUser?.fullProfilePhotoUrl ?? ApiConstants.resolveImageUrl(authUser?.profilePhotoUrl);
 
@@ -469,11 +518,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isPokokPaid
+                          color: isBadgedActive
                               ? Colors.white.withValues(alpha: 0.2)
                               : const Color(0xFFF59E0B).withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(12),
-                          border: isPokokPaid
+                          border: isBadgedActive
                               ? null
                               : Border.all(color: const Color(0xFFFDE68A), width: 1),
                         ),

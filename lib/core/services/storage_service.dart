@@ -8,6 +8,7 @@ class StorageService {
   static const String _keyPendingPayment = 'pending_payment';
   static const String _keyPendingPayments = 'pending_payments_list';
   static const String _keyLastPaymentMethod = 'last_used_payment_method';
+  static const String _keyDashboard = 'cached_dashboard_data';
 
   static SharedPreferences? _prefs;
 
@@ -62,6 +63,28 @@ class StorageService {
     } catch (_) {
       return null;
     }
+  }
+
+  // Cached Dashboard Data (for instant 0ms load on startup/login)
+  static Future<void> saveDashboardData(Map<String, dynamic> dashboardJson) async {
+    await init();
+    await _prefs!.setString(_keyDashboard, jsonEncode(dashboardJson));
+  }
+
+  static Future<Map<String, dynamic>?> getDashboardData() async {
+    await init();
+    final data = _prefs!.getString(_keyDashboard);
+    if (data == null) return null;
+    try {
+      return jsonDecode(data) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearDashboardData() async {
+    await init();
+    await _prefs!.remove(_keyDashboard);
   }
 
   // Multiple Pending Payments management
@@ -157,5 +180,6 @@ class StorageService {
     await _prefs!.remove(_keyAnggota);
     await _prefs!.remove(_keyPendingPayment);
     await _prefs!.remove(_keyPendingPayments);
+    await _prefs!.remove(_keyDashboard);
   }
 }

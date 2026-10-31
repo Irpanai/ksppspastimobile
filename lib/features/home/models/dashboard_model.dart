@@ -1,4 +1,4 @@
-class TunggakanItem {
+﻿class TunggakanItem {
   final int bulan;
   final int tahun;
   final String label;
@@ -19,6 +19,15 @@ class TunggakanItem {
       nominal: json['nominal'] is int ? json['nominal'] : int.tryParse(json['nominal']?.toString() ?? '2500') ?? 2500,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bulan': bulan,
+      'tahun': tahun,
+      'label': label,
+      'nominal': nominal,
+    };
+  }
 }
 
 class DashboardAnggota {
@@ -26,6 +35,8 @@ class DashboardAnggota {
   final String noAnggota;
   final String nama;
   final String status;
+  final String statusKeanggotaan;
+  final bool isPokokPaid;
   final String cabang;
   final bool isMenunggak;
   final List<TunggakanItem> tunggakanWajib;
@@ -37,12 +48,15 @@ class DashboardAnggota {
     required this.noAnggota,
     required this.nama,
     required this.status,
+    String? statusKeanggotaan,
+    bool? isPokokPaid,
     required this.cabang,
     this.isMenunggak = false,
     this.tunggakanWajib = const [],
     this.totalTunggakanWajib = 0,
     this.jumlahBulanMenunggak = 0,
-  });
+  })  : statusKeanggotaan = statusKeanggotaan ?? status,
+        isPokokPaid = isPokokPaid ?? (status.toLowerCase() == 'aktif');
 
   factory DashboardAnggota.fromJson(Map<String, dynamic> json) {
     final rawTunggakan = json['tunggakan_wajib'];
@@ -54,15 +68,23 @@ class DashboardAnggota {
           .toList();
     }
 
+    final statusStr = json['status']?.toString() ?? json['status_keanggotaan']?.toString() ?? 'aktif';
     final isMenunggakVal = json['is_menunggak'] == true ||
-        (json['status']?.toString().toLowerCase() == 'menunggak') ||
+        (statusStr.toLowerCase() == 'menunggak') ||
         tunggakanList.isNotEmpty;
+
+    final parsedPokokPaid = json['is_pokok_paid'] == true ||
+        json['is_pokok_paid'] == 1 ||
+        json['is_pokok_paid'] == '1' ||
+        (statusStr.toLowerCase() == 'aktif');
 
     return DashboardAnggota(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       noAnggota: json['no_anggota']?.toString() ?? '',
       nama: json['nama']?.toString() ?? '',
-      status: json['status']?.toString() ?? 'aktif',
+      status: statusStr,
+      statusKeanggotaan: json['status_keanggotaan']?.toString() ?? statusStr,
+      isPokokPaid: parsedPokokPaid,
       cabang: json['cabang']?.toString() ?? 'Pusat',
       isMenunggak: isMenunggakVal,
       tunggakanWajib: tunggakanList,
@@ -73,6 +95,22 @@ class DashboardAnggota {
           ? json['jumlah_bulan_menunggak']
           : int.tryParse(json['jumlah_bulan_menunggak']?.toString() ?? '0') ?? tunggakanList.length,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'no_anggota': noAnggota,
+      'nama': nama,
+      'status': status,
+      'status_keanggotaan': statusKeanggotaan,
+      'is_pokok_paid': isPokokPaid,
+      'cabang': cabang,
+      'is_menunggak': isMenunggak,
+      'tunggakan_wajib': tunggakanWajib.map((e) => e.toJson()).toList(),
+      'total_tunggakan_wajib': totalTunggakanWajib,
+      'jumlah_bulan_menunggak': jumlahBulanMenunggak,
+    };
   }
 }
 
@@ -139,6 +177,22 @@ class RingkasanSaldo {
       hasPendingPenarikan: json['has_pending_penarikan'] == true || (sukarelaPending + bagihasilPending) > 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'saldo_pokok': saldoPokok,
+      'saldo_wajib': saldoWajib,
+      'saldo_sukarela': saldoSukarela,
+      'saldo_sukarela_tersedia': saldoSukarelaTersedia,
+      'saldo_sukarela_pending': saldoSukarelaPending,
+      'saldo_sijaka': saldoSijaka,
+      'saldo_bagihasil_sijaka': saldoBagihasilSijaka,
+      'saldo_bagihasil_tersedia': saldoBagihasilTersedia,
+      'saldo_bagihasil_pending': saldoBagihasilPending,
+      'total_simpanan': totalSimpanan,
+      'has_pending_penarikan': hasPendingPenarikan,
+    };
+  }
 }
 
 class DashboardStatistik {
@@ -154,6 +208,12 @@ class DashboardStatistik {
           ? json['jumlah_bilyet_sijaka_aktif']
           : int.tryParse(json['jumlah_bilyet_sijaka_aktif']?.toString() ?? '0') ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'jumlah_bilyet_sijaka_aktif': jumlahBilyetSijakaAktif,
+    };
   }
 }
 
@@ -185,5 +245,13 @@ class DashboardData {
           ? DashboardStatistik.fromJson(json['statistiks'])
           : DashboardStatistik(jumlahBilyetSijakaAktif: 0),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'anggota': anggota?.toJson(),
+      'ringkasan_saldo': ringkasanSaldo.toJson(),
+      'statistiks': statistiks.toJson(),
+    };
   }
 }
