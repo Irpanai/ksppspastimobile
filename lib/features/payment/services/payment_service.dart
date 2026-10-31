@@ -43,9 +43,18 @@ class PaymentService {
       if (namaAhliWaris != null && namaAhliWaris.isNotEmpty) body['nama_ahli_waris'] = namaAhliWaris;
       if (hubunganAhliWaris != null && hubunganAhliWaris.isNotEmpty) body['hubungan_ahli_waris'] = hubunganAhliWaris;
       if (nikAhliWaris != null && nikAhliWaris.isNotEmpty) body['nik_ahli_waris'] = nikAhliWaris;
-      if (namaBank != null && namaBank.isNotEmpty) body['nama_bank'] = namaBank;
-      if (noRekening != null && noRekening.isNotEmpty) body['no_rekening'] = noRekening;
-      if (atasNamaRekening != null && atasNamaRekening.isNotEmpty) body['atas_nama_rekening'] = atasNamaRekening;
+      if (namaBank != null && namaBank.isNotEmpty) {
+        body['nama_bank'] = namaBank;
+        body['nama_bank_pencairan'] = namaBank;
+      }
+      if (noRekening != null && noRekening.isNotEmpty) {
+        body['no_rekening'] = noRekening;
+        body['no_rekening_bank_pencairan'] = noRekening;
+      }
+      if (atasNamaRekening != null && atasNamaRekening.isNotEmpty) {
+        body['atas_nama_rekening'] = atasNamaRekening;
+        body['atas_nama_bank_pencairan'] = atasNamaRekening;
+      }
       if (metodePenyerahanBagihasil != null && metodePenyerahanBagihasil.isNotEmpty) {
         body['metode_penyerahan_bagihasil'] = metodePenyerahanBagihasil;
       }

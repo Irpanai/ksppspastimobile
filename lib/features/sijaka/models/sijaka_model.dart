@@ -99,10 +99,13 @@ class BilyetSijakaItem {
       tglJatuhTempo: json['tgl_jatuh_tempo']?.toString() ?? '',
       metodePenyerahanBagihasil: json['metode_penyerahan_bagihasil']?.toString() ?? 'Setiap Bulan',
       status: json['status']?.toString() ?? 'aktif',
-      noRekeningPencairan: json['rekening_pencairan']?.toString() ?? json['no_rekening_bank_pencairan']?.toString(),
-      namaBankPencairan: json['nama_bank_pencairan']?.toString(),
-      noRekeningBankPencairan: json['no_rekening_bank_pencairan']?.toString(),
-      atasNamaBankPencairan: json['atas_nama_bank_pencairan']?.toString(),
+      noRekeningPencairan: json['no_rek_pencairan']?.toString() ??
+          json['rekening_pencairan']?.toString() ??
+          json['no_rekening_pencairan']?.toString() ??
+          json['no_rekening_bank_pencairan']?.toString(),
+      namaBankPencairan: json['nama_bank_pencairan']?.toString() ?? json['nama_bank']?.toString(),
+      noRekeningBankPencairan: json['no_rekening_bank_pencairan']?.toString() ?? json['no_rekening']?.toString(),
+      atasNamaBankPencairan: json['atas_nama_bank_pencairan']?.toString() ?? json['atas_nama_rekening']?.toString(),
     );
   }
 }

@@ -1176,11 +1176,23 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
                           _buildModernRow('Metode Penyerahan', bilyet.metodePenyerahanBagihasil),
                           const Divider(height: 1, color: Color(0xFFF1F5F9), thickness: 1.5),
                           
+                          if (bilyet.namaBankPencairan != null && bilyet.namaBankPencairan!.isNotEmpty) ...[
+                            _buildModernRow('Bank Pencairan', bilyet.namaBankPencairan!),
+                            const Divider(height: 1, color: Color(0xFFF1F5F9), thickness: 1.5),
+                          ],
+
                           _buildModernRow(
                             'No. Rekening Pencairan', 
-                            bilyet.noRekeningPencairan?.isNotEmpty == true ? bilyet.noRekeningPencairan! : '-'
+                            bilyet.noRekeningBankPencairan?.isNotEmpty == true 
+                                ? bilyet.noRekeningBankPencairan!
+                                : (bilyet.noRekeningPencairan?.isNotEmpty == true ? bilyet.noRekeningPencairan! : '-')
                           ),
                           const Divider(height: 1, color: Color(0xFFF1F5F9), thickness: 1.5),
+
+                          if (bilyet.atasNamaBankPencairan != null && bilyet.atasNamaBankPencairan!.isNotEmpty) ...[
+                            _buildModernRow('Atas Nama Rekening', bilyet.atasNamaBankPencairan!),
+                            const Divider(height: 1, color: Color(0xFFF1F5F9), thickness: 1.5),
+                          ],
                           
                           _buildModernRow('Status Bilyet', bilyet.status.toUpperCase(), isStatus: true),
                         ],

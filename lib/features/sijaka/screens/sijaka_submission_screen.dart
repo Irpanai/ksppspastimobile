@@ -905,11 +905,24 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSijakaTextField('Nama Bank', _bankController, hint: 'Contoh: BCA / Mandiri / BSI'),
+          _buildSijakaTextField(
+            'Nama Bank Pencairan',
+            _bankController,
+            hint: 'Contoh: BCA / Mandiri / BSI',
+          ),
           const SizedBox(height: 14),
-          _buildSijakaTextField('Nomor Rekening', _noRekController, hint: 'Contoh: 1234567890', isNumber: true),
+          _buildSijakaTextField(
+            'No. Rekening Bank Pencairan',
+            _noRekController,
+            hint: 'Contoh: 1234567890',
+            isNumber: true,
+          ),
           const SizedBox(height: 14),
-          _buildSijakaTextField('Atas Nama (Pemilik Rekening)', _atasNamaController, hint: 'Sesuai buku tabungan'),
+          _buildSijakaTextField(
+            'Atas Nama Rekening Pencairan',
+            _atasNamaController,
+            hint: 'Sesuai buku tabungan',
+          ),
         ],
       ),
     );
