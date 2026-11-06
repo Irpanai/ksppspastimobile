@@ -84,7 +84,14 @@ class SplashService {
   static Future<void> syncSplashWithServer() async {
     try {
       final url = Uri.parse('${ApiConstants.baseUrl}/app-config/splash');
-      final response = await http.get(url).timeout(const Duration(seconds: 5));
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        },
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode != 200) return;
 

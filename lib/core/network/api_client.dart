@@ -27,10 +27,14 @@ class ApiException implements Exception {
 class ApiClient {
   static final http.Client _client = http.Client();
 
+  static const String userAgent =
+      'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
   static Future<Map<String, String>> _getHeaders({bool withAuth = true}) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'User-Agent': userAgent,
     };
 
     if (withAuth) {
