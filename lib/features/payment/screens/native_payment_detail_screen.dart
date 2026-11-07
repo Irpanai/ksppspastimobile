@@ -587,7 +587,7 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    res.nominalFormat,
+                                    res.grossAmountFormat,
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w900,
@@ -597,7 +597,7 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                                 ],
                               ),
                               TextButton.icon(
-                                onPressed: () => _copyToClipboard(res.nominal.toString(), 'Nominal Pembayaran'),
+                                onPressed: () => _copyToClipboard(res.grossAmount.toString(), 'Nominal Pembayaran'),
                                 icon: Icon(Icons.copy_rounded, size: 15, color: bankColor),
                                 label: Text(
                                   'Salin Nominal',
@@ -665,6 +665,12 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                           _buildDetailRow('Order ID', res.orderId),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildDetailRow('Tujuan Setoran', _getTypeLabel(res.type)),
+                          const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                          _buildDetailRow('Nominal Simpanan', res.nominalFormat),
+                          const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                          _buildDetailRow('Biaya Admin', res.adminFee > 0 ? res.adminFeeFormat : 'Gratis'),
+                          const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                          _buildDetailRow('Total Tagihan', res.grossAmountFormat),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildDetailRow('Verifikasi', 'Otomatis 24 Jam (Realtime)', isVerified: true),
                         ],

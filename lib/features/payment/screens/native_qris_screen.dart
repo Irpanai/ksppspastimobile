@@ -662,10 +662,10 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Nominal Tagihan', style: TextStyle(fontSize: 12, color: qrisColor, fontWeight: FontWeight.w600)),
+                                  Text('Total Tagihan QRIS', style: TextStyle(fontSize: 12, color: qrisColor, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 2),
                                   Text(
-                                    res.nominalFormat.isNotEmpty ? res.nominalFormat : AppCurrency.format(res.nominal),
+                                    res.grossAmountFormat.isNotEmpty ? res.grossAmountFormat : AppCurrency.format(res.grossAmount),
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -675,9 +675,9 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                                 ],
                               ),
                               IconButton(
-                                onPressed: () => _copyToClipboard(res.nominal.toInt().toString(), 'Nominal'),
+                                onPressed: () => _copyToClipboard(res.grossAmount.toInt().toString(), 'Nominal Tagihan'),
                                 icon: Icon(Icons.copy_rounded, color: qrisColor),
-                                tooltip: 'Salin Nominal',
+                                tooltip: 'Salin Nominal Tagihan',
                               ),
                             ],
                           ),
@@ -747,7 +747,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
               const SizedBox(height: 16),
 
-              // Rincian Order ID
+              // Rincian Transaksi & Order ID
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -755,28 +755,64 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Nomor Transaksi (Order ID)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                          const SizedBox(height: 4),
-                          Text(
-                            res.orderId,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF1E293B)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Nomor Transaksi (Order ID)', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        IconButton(
+                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _copyToClipboard(res.orderId, 'Order ID'),
+                          icon: const Icon(Icons.copy_rounded, size: 16, color: Color(0xFF64748B)),
+                          tooltip: 'Salin Order ID',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        res.orderId,
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF1E293B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => _copyToClipboard(res.orderId, 'Order ID'),
-                      icon: const Icon(Icons.copy_rounded, size: 20, color: Color(0xFF64748B)),
-                      tooltip: 'Salin Order ID',
+                    const Divider(height: 18, color: Color(0xFFF1F5F9)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Nominal Simpanan', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text(res.nominalFormat, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Biaya Admin', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text(
+                          res.adminFee > 0 ? res.adminFeeFormat : 'Gratis',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: res.adminFee > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 18, color: Color(0xFFF1F5F9)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Tagihan QRIS', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                        Text(
+                          res.grossAmountFormat,
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: qrisColor),
+                        ),
+                      ],
                     ),
                   ],
                 ),

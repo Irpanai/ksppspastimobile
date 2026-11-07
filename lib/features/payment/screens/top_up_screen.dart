@@ -1483,8 +1483,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: 6,
                         runSpacing: 2,
-                        children: const [
-                          Row(
+                        children: [
+                          const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.bolt_rounded, size: 12, color: Color(0xFF059669)),
@@ -1499,13 +1499,15 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               ),
                             ],
                           ),
-                          Text('•', style: TextStyle(fontSize: 10, color: Color(0xFFCBD5E1))),
+                          const Text('•', style: TextStyle(fontSize: 10, color: Color(0xFFCBD5E1))),
                           Text(
-                            'Bebas Biaya Admin',
+                            selectedChannel.feeFlat > 0
+                                ? 'Biaya Admin ${AppCurrency.format(selectedChannel.feeFlat)}'
+                                : 'Bebas Biaya Admin',
                             style: TextStyle(
                               fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w600,
+                              color: selectedChannel.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
                             ),
                           ),
                         ],
@@ -1984,6 +1986,25 @@ class _TopUpScreenState extends State<TopUpScreen> {
                       maxLines: 2,
                       softWrap: true,
                     ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          ch.feeFlat > 0 ? Icons.toll_rounded : Icons.check_circle_outline_rounded,
+                          size: 11,
+                          color: ch.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          ch.feeFlat > 0 ? 'Biaya Admin ${AppCurrency.format(ch.feeFlat)}' : 'Bebas Biaya Admin',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: ch.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -2099,6 +2120,10 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
   Widget _buildBottomBar(bool isCreating, bool isPokokPaid) {
     final isDisabled = _selectedType == 'simpanan_pokok' && isPokokPaid;
+    final channels = context.watch<PaymentProvider>().activeChannels;
+    final selectedChannel = channels.where((c) => c.code == _selectedPaymentMethod).firstOrNull;
+    final int adminFee = selectedChannel?.feeFlat ?? 0;
+    final int totalPayment = _parsedAmount + adminFee;
 
     return SafeArea(
       child: Container(
@@ -2120,10 +2145,28 @@ class _TopUpScreenState extends State<TopUpScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total Pembayaran', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Total Tagihan', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                    if (adminFee > 0) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '+ Admin ${AppCurrency.format(adminFee)}',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontWeight: FontWeight.bold),
+                      ),
+                    ] else ...[
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Gratis Admin',
+                        style: TextStyle(fontSize: 10, color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Text(
-                  AppCurrency.format(_parsedAmount),
+                  AppCurrency.format(totalPayment),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
