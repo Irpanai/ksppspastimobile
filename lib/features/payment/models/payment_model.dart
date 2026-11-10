@@ -26,7 +26,7 @@ class SnapTokenResponse {
   final Map<String, dynamic>? instructions;
   final String? howToPayPage;
 
-  final bool isDirectQris;
+  final bool _isDirectQris;
   final String? qrString;
   final String? nmid;
 
@@ -55,22 +55,38 @@ class SnapTokenResponse {
     this.expiredDate,
     this.instructions,
     this.howToPayPage,
-    this.isDirectQris = false,
+    bool isDirectQris = false,
     this.qrString,
     this.nmid,
-  })  : paymentUrl = paymentUrl ?? snapRedirectUrl,
+  })  : _isDirectQris = isDirectQris,
+        paymentUrl = paymentUrl ?? snapRedirectUrl,
         grossAmount = grossAmount ?? (nominal + adminFee),
         adminFeeFormat = adminFeeFormat ?? AppCurrency.format(adminFee),
         grossAmountFormat = grossAmountFormat ?? AppCurrency.format(grossAmount ?? (nominal + adminFee));
 
+  bool get isDirectQris =>
+      _isDirectQris ||
+      paymentMethod.toLowerCase() == 'qris' ||
+      paymentMode.toLowerCase() == 'direct_qris' ||
+      (bank?.toLowerCase() == 'qris') ||
+      (qrString != null && qrString!.isNotEmpty);
+
   bool get isDirectVa =>
-      paymentMode == 'direct_va' || (vaNumber != null && vaNumber!.isNotEmpty);
+      !isDirectQris &&
+      paymentMethod.toLowerCase() != 'qris' &&
+      paymentMode.toLowerCase() != 'direct_qris' &&
+      (bank?.toLowerCase() != 'qris') &&
+      (paymentMode == 'direct_va' ||
+          (vaNumber != null &&
+              vaNumber!.isNotEmpty &&
+              vaNumber!.toLowerCase() != 'qris' &&
+              !vaNumber!.startsWith('ID')));
 
   String get displayPaymentMethod {
     if (isDirectQris) return 'QRIS Nasional';
     if (isDirectVa) {
       if (bankName != null && bankName!.isNotEmpty) return bankName!;
-      if (bank != null && bank!.isNotEmpty) return ' Virtual Account';
+      if (bank != null && bank!.isNotEmpty) return '${bank!.toUpperCase()} Virtual Account';
       return 'Virtual Account';
     }
     return 'DOKU Checkout';
@@ -104,10 +120,17 @@ class SnapTokenResponse {
     final effectiveGross = gross > 0 ? gross : (nom + fee);
     final redirectUrl = json['payment_url']?.toString() ?? json['snap_redirect_url']?.toString() ?? '';
     final qrStr = json['qr_string']?.toString();
+    final pmode = json['payment_mode']?.toString().toLowerCase() ?? '';
+    final pm = json['payment_method']?.toString().toLowerCase() ?? '';
+    final b = json['bank']?.toString().toLowerCase() ?? '';
     final isQris = json['is_direct_qris'] == true ||
-        json['payment_mode'] == 'direct_qris' ||
-        json['payment_method'] == 'qris' ||
+        pmode == 'direct_qris' ||
+        pm == 'qris' ||
+        b == 'qris' ||
         (qrStr != null && qrStr.isNotEmpty);
+
+    final rawVa = json['va_number']?.toString();
+    final cleanVa = (isQris || rawVa == 'QRIS' || (rawVa != null && rawVa.startsWith('ID'))) ? null : rawVa;
 
     return SnapTokenResponse(
       orderId: json['order_id']?.toString() ?? '',
@@ -126,17 +149,17 @@ class SnapTokenResponse {
       clientId: json['client_id']?.toString(),
       gateway: json['gateway']?.toString() ?? (json['payment_url'] != null ? 'doku' : 'midtrans'),
       createdAt: json['created_at']?.toString(),
-      paymentMode: json['payment_mode']?.toString() ?? (isQris ? 'direct_qris' : 'checkout_url'),
-      paymentMethod: json['payment_method']?.toString() ?? (isQris ? 'qris' : 'checkout'),
-      bank: json['bank']?.toString(),
-      bankName: json['bank_name']?.toString(),
-      vaNumber: json['va_number']?.toString(),
+      paymentMode: isQris ? 'direct_qris' : (json['payment_mode']?.toString() ?? 'checkout_url'),
+      paymentMethod: isQris ? 'qris' : (json['payment_method']?.toString() ?? 'checkout'),
+      bank: isQris ? 'qris' : json['bank']?.toString(),
+      bankName: isQris ? 'QRIS Nasional' : json['bank_name']?.toString(),
+      vaNumber: cleanVa,
       expiredDate: json['expired_date']?.toString(),
       instructions: json['instructions'] is Map ? Map<String, dynamic>.from(json['instructions'] as Map) : null,
       howToPayPage: json['how_to_pay_page']?.toString(),
       isDirectQris: isQris,
       qrString: qrStr,
-      nmid: json['nmid']?.toString(),
+      nmid: json['nmid']?.toString() ?? (isQris ? 'ID2026102056853' : null),
     );
   }
 

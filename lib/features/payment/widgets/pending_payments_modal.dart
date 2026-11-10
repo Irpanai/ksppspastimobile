@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/app_dialog.dart';
@@ -58,7 +58,13 @@ class PendingPaymentsModal extends StatelessWidget {
   void _resumePayment(BuildContext context, SnapTokenResponse payment) {
     Navigator.pop(context); // Tutup modal
 
-    final Widget targetScreen = payment.isDirectQris
+    final isQris = payment.isDirectQris ||
+        payment.paymentMethod.toLowerCase() == 'qris' ||
+        payment.paymentMode.toLowerCase() == 'direct_qris' ||
+        payment.bank?.toLowerCase() == 'qris' ||
+        payment.displayPaymentMethod.toLowerCase().contains('qris');
+
+    final Widget targetScreen = isQris
         ? NativeQrisScreen(paymentResponse: payment)
         : (payment.isDirectVa
             ? NativePaymentDetailScreen(paymentResponse: payment)
@@ -206,8 +212,11 @@ class PendingPaymentsModal extends StatelessWidget {
                 separatorBuilder: (ctx, i) => const SizedBox(height: 12),
                 itemBuilder: (ctx, index) {
                   final item = payments[index];
-                  final isQris = item.isDirectQris;
-                  final isVa = item.isDirectVa;
+                  final isQris = item.isDirectQris ||
+                      item.paymentMethod.toLowerCase() == 'qris' ||
+                      item.paymentMode == 'direct_qris' ||
+                      item.displayPaymentMethod.toLowerCase().contains('qris');
+                  final isVa = !isQris && item.isDirectVa;
                   final channelColor = _getChannelColor(context, item);
 
                   return Container(
@@ -307,7 +316,7 @@ class PendingPaymentsModal extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            if (isVa && item.vaNumber != null && item.vaNumber!.isNotEmpty)
+                            if (!isQris && isVa && item.vaNumber != null && item.vaNumber!.isNotEmpty && !item.vaNumber!.startsWith('ID'))
                               InkWell(
                                 onTap: () => _copyToClipboard(context, item.vaNumber!, 'Nomor VA'),
                                 borderRadius: BorderRadius.circular(8),

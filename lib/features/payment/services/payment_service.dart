@@ -11,6 +11,7 @@ class PaymentService {
     String? paymentMethod,
     String? bank,
     int? bulan,
+    int? bulanAkhir,
     int? tahun,
     int? sijakaProdukId,
     String? namaAhliWaris,
@@ -35,6 +36,7 @@ class PaymentService {
 
     if (type == 'simpanan_wajib') {
       if (bulan != null) body['bulan'] = bulan;
+      if (bulanAkhir != null) body['bulan_akhir'] = bulanAkhir;
       if (tahun != null) body['tahun'] = tahun;
     }
 

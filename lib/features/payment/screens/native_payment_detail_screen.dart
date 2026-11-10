@@ -351,12 +351,18 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
   @override
   Widget build(BuildContext context) {
     final res = widget.paymentResponse;
-    final bankKey = res.bank?.toLowerCase() ?? 'bca';
-    final displayBank = (res.bank != null && res.bank!.trim().isNotEmpty) ? res.bank!.trim().toUpperCase() : bankKey.toUpperCase();
+    final bankKey = (res.bank != null && res.bank!.trim().isNotEmpty && res.bank!.toLowerCase() != 'qris')
+        ? res.bank!.trim().toLowerCase()
+        : 'bank';
+    final displayBank = (res.bank != null && res.bank!.trim().isNotEmpty && res.bank!.toLowerCase() != 'qris')
+        ? res.bank!.trim().toUpperCase()
+        : 'BANK';
     final bankName = (res.bankName != null && res.bankName!.isNotEmpty)
         ? res.bankName!.replaceAll('Virtual Account', 'VA')
-        : '$displayBank VA';
-    final vaNumber = res.vaNumber ?? res.orderId;
+        : (displayBank == 'BANK' ? 'Virtual Account' : '$displayBank VA');
+    final vaNumber = (res.vaNumber != null && res.vaNumber!.isNotEmpty && res.vaNumber != 'QRIS' && !res.vaNumber!.startsWith('ID'))
+        ? res.vaNumber!
+        : res.orderId;
 
     // Ambil warna aksen bank / channel dari pengaturan web (tag_color), default fallback bank theme
     Color bankColor = _getBankThemeColor(bankKey);

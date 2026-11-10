@@ -228,6 +228,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Color(0xFF92400E),
                       fontWeight: FontWeight.bold,
@@ -237,14 +239,16 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: const Color(0xFFD97706),
                 borderRadius: BorderRadius.circular(10),
@@ -254,7 +258,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 11,
+                  fontSize: 11.5,
                 ),
               ),
             ),
@@ -297,6 +301,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
               children: [
                 Text(
                   'Kewajiban: Simpanan Pokok',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Color(0xFF065F46),
                     fontWeight: FontWeight.bold,
@@ -306,11 +312,14 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 SizedBox(height: 2),
                 Text(
                   'Anda diwajibkan membayar Simpanan Pokok awal.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Color(0xFF047857), fontSize: 11),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 14),
           ElevatedButton(
             onPressed: () => WajibSimpananModalDialog.show(context),
             style: ElevatedButton.styleFrom(
