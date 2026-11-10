@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../models/payment_channel_model.dart';
 import '../models/payment_model.dart';
@@ -62,11 +62,16 @@ class PaymentProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Membatalkan salah satu transaksi pending
+  /// Membatalkan salah satu transaksi pending di lokal dan backend
   Future<void> cancelPendingPayment(String orderId) async {
     _pendingPayments.removeWhere((p) => p.orderId == orderId);
     await StorageService.removePendingPayment(orderId);
     notifyListeners();
+
+    // Beritahu backend untuk membatalkan status transaksi & membersihkan notifikasi
+    try {
+      await _service.cancelPayment(orderId);
+    } catch (_) {}
   }
 
   /// Membersihkan transaksi pending teratas (atau spesifik)

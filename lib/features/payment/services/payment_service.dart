@@ -93,6 +93,19 @@ class PaymentService {
     );
   }
 
+  /// 6.3b Cancel Pending Payment Transaction & Clean Up Notification
+  Future<bool> cancelPayment(String orderId) async {
+    try {
+      final response = await ApiClient.post<dynamic>(
+        '/payment/cancel/$orderId',
+        withAuth: true,
+      );
+      return response.success;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 6.4 Get Digital Payment History
   Future<List<PaymentHistoryItem>> getPaymentHistory({
     String? status,

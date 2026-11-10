@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../savings/models/simpanan_riwayat_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -26,7 +25,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
     _tabController.addListener(_onTabChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HistoryProvider>().fetchMutasi();
+      context.read<HistoryProvider>().initForScreen();
     });
 
     _scrollController.addListener(_onScroll);
@@ -684,45 +683,122 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
   }
 
   Widget _buildLoadingSkeleton() {
-    return ListView.builder(
+    return ListView(
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      itemCount: 4,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
+      children: [
+        // Loading Status Banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          margin: const EdgeInsets.only(bottom: 18),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFBBF7D0)),
           ),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(14),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 14, width: 140, color: const Color(0xFFF1F5F9)),
-                    const SizedBox(height: 6),
-                    Container(height: 10, width: 90, color: const Color(0xFFF1F5F9)),
+                  children: const [
+                    Text(
+                      'Memuat Mutasi Rekening...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF14532D),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Mengambil catatan transaksi simpanan secara realtime',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF166534),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Container(height: 16, width: 70, color: const Color(0xFFF1F5F9)),
             ],
           ),
-        );
-      },
+        ),
+        // Skeleton cards
+        ...List.generate(4, (index) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.sync_rounded, color: Color(0xFFCBD5E1), size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 14,
+                        width: 140,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 10,
+                        width: 90,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 16,
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 

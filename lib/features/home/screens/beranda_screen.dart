@@ -382,12 +382,13 @@ class _BerandaScreenState extends State<BerandaScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 14),
           ElevatedButton(
             onPressed: () => TunggakanModalDialog.show(context, anggota, saldoPokok),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD97706),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

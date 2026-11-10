@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+// ignore: depend_on_referenced_packages
 import 'package:local_auth_android/local_auth_android.dart';
+// ignore: depend_on_referenced_packages
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 
 class BiometricService {
@@ -35,39 +37,27 @@ class BiometricService {
     }
   }
 
-  /// Label nama jenis biometrik yang tersedia di HP user (Sidik Jari, Face ID, atau Keduanya)
+  /// Label nama jenis biometrik yang didukung aplikasi (khusus Sidik Jari)
   static Future<String> getBiometricLabel() async {
-    final types = await getAvailableBiometrics();
-    final hasFace = types.contains(BiometricType.face);
-    final hasFinger = types.contains(BiometricType.fingerprint) || types.contains(BiometricType.strong);
-
-    if (hasFace && hasFinger) {
-      return 'Sidik Jari & Face ID';
-    } else if (hasFace) {
-      return 'Face ID / Pengenalan Wajah';
-    } else if (hasFinger) {
-      return 'Sidik Jari (Fingerprint)';
-    }
-    return 'Sidik Jari & Face ID';
+    return 'Sidik Jari (Fingerprint)';
   }
 
-  /// Menjalankan otentikasi biometrik (Mendukung Sidik Jari dan Face ID)
+  /// Menjalankan otentikasi biometrik khusus sidik jari (fingerprint)
   static Future<bool> authenticate({
-    String localizedReason = 'Pindai sidik jari atau Face ID Anda untuk masuk ke KSPPS PASTI',
+    String localizedReason = 'Pindai sidik jari Anda untuk masuk ke KSPPS PASTI',
   }) async {
     try {
       final canAuth = await canCheckBiometrics();
       if (!canAuth) return false;
 
-      // biometricOnly: false agar Android mengizinkan Face Unlock (Class 2) dan Fingerprint (Class 3)
       return await _auth.authenticate(
         localizedReason: localizedReason,
-        biometricOnly: false,
+        biometricOnly: true,
         persistAcrossBackgrounding: true,
         authMessages: const <AuthMessages>[
           AndroidAuthMessages(
-            signInTitle: 'Autentikasi KSPPS PASTI',
-            signInHint: 'Pindai sidik jari atau gunakan Face ID Anda',
+            signInTitle: 'Autentikasi Sidik Jari KSPPS PASTI',
+            signInHint: 'Sentuh sensor sidik jari perangkat Anda',
             cancelButton: 'Batal',
           ),
           IOSAuthMessages(

@@ -71,21 +71,48 @@ class HistoryProvider extends ChangeNotifier {
     return groups;
   }
 
+  void initForScreen() {
+    _selectedTipe = null;
+    _selectedJenis = null;
+    _startDate = null;
+    _endDate = null;
+    _currentPage = 1;
+    _lastPage = 1;
+    _totalItems = 0;
+    _items = [];
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    fetchMutasi(refresh: true);
+  }
+
   void setTipe(String? tipe) {
     if (_selectedTipe == tipe) return;
     _selectedTipe = tipe;
+    _items = [];
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     fetchMutasi(refresh: true);
   }
 
   void setJenis(String? jenis) {
     if (_selectedJenis == jenis) return;
     _selectedJenis = jenis;
+    _items = [];
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     fetchMutasi(refresh: true);
   }
 
   void setDateRange(DateTime? start, DateTime? end) {
     _startDate = start;
     _endDate = end;
+    _items = [];
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     fetchMutasi(refresh: true);
   }
 
@@ -93,6 +120,10 @@ class HistoryProvider extends ChangeNotifier {
     _selectedJenis = null;
     _startDate = null;
     _endDate = null;
+    _items = [];
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     fetchMutasi(refresh: true);
   }
 
@@ -124,7 +155,7 @@ class HistoryProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } on ApiException catch (e) {
-      if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }
+      _errorMessage = e.message.isNotEmpty ? e.message : 'Terjadi gangguan jaringan saat memuat mutasi.';
       _isLoading = false;
       notifyListeners();
     } catch (e) {

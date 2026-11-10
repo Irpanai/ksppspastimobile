@@ -114,4 +114,19 @@ class NotificationProvider extends ChangeNotifier {
       }
     }
   }
+
+  /// Hapus notifikasi transaksi pembayaran secara instan dari state lokal
+  void removePaymentNotification(String orderId) {
+    _notifications.removeWhere((n) {
+      final matchesOrderId = n.data?['order_id']?.toString() == orderId || n.message.contains(orderId);
+      if (n.type == 'payment' && matchesOrderId) {
+        if (!n.isRead && _unreadCount > 0) {
+          _unreadCount--;
+        }
+        return true;
+      }
+      return false;
+    });
+    notifyListeners();
+  }
 }

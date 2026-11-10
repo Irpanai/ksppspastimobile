@@ -249,6 +249,19 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
     );
   }
 
+  String _formatDisplayOrderId(String orderId) {
+    if (orderId.isEmpty) return orderId;
+    return orderId
+        .replaceAll('SIMPANAN_SUKARELA', 'Sirela')
+        .replaceAll('simpanan_sukarela', 'Sirela')
+        .replaceAll('PEMBUKAAN_SIJAKA', 'Sijaka')
+        .replaceAll('pembukaan_sijaka', 'Sijaka')
+        .replaceAll('SIMPANAN_POKOK', 'Sipokok')
+        .replaceAll('simpanan_pokok', 'Sipokok')
+        .replaceAll('SIMPANAN_WAJIB', 'Siwajib')
+        .replaceAll('simpanan_wajib', 'Siwajib');
+  }
+
   String _formatDuration(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
     final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
@@ -339,7 +352,10 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
   Widget build(BuildContext context) {
     final res = widget.paymentResponse;
     final bankKey = res.bank?.toLowerCase() ?? 'bca';
-    final bankName = res.bankName ?? '${bankKey.toUpperCase()} Virtual Account';
+    final displayBank = (res.bank != null && res.bank!.trim().isNotEmpty) ? res.bank!.trim().toUpperCase() : bankKey.toUpperCase();
+    final bankName = (res.bankName != null && res.bankName!.isNotEmpty)
+        ? res.bankName!.replaceAll('Virtual Account', 'VA')
+        : '$displayBank VA';
     final vaNumber = res.vaNumber ?? res.orderId;
 
     // Ambil warna aksen bank / channel dari pengaturan web (tag_color), default fallback bank theme
@@ -365,7 +381,7 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
           children: [
             // 1. Signature Curved Premium Header
             PremiumHeader(
-              title: 'Pembayaran Virtual Account',
+              title: 'VA $displayBank',
               showBackButton: true,
               onBackPressed: () => _handleBack(context),
             ),
@@ -662,7 +678,11 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                             ],
                           ),
                           const SizedBox(height: 14),
-                          _buildDetailRow('Order ID', res.orderId),
+                          _buildDetailRow(
+                            'Order ID',
+                            _formatDisplayOrderId(res.orderId),
+                            onTap: () => _copyToClipboard(res.orderId, 'Order ID'),
+                          ),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildDetailRow('Tujuan Setoran', _getTypeLabel(res.type)),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
@@ -815,12 +835,13 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isVerified = false}) {
-    return Row(
+  Widget _buildDetailRow(String label, String value, {bool isVerified = false, VoidCallback? onTap}) {
+    final isOrder = label.contains('Order');
+    final rowWidget = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -833,21 +854,38 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                 child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: isOrder ? 11 : 12,
                     fontWeight: FontWeight.bold,
                     color: isVerified ? const Color(0xFF16A34A) : const Color(0xFF0F172A),
-                    fontFamily: label.contains('Order') ? 'monospace' : null,
+                    fontFamily: isOrder ? 'monospace' : null,
+                    letterSpacing: isOrder ? -0.2 : null,
                   ),
                   textAlign: TextAlign.end,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (isOrder) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.copy_rounded, size: 13, color: Color(0xFF94A3B8)),
+              ],
             ],
           ),
         ),
       ],
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: rowWidget,
+        ),
+      );
+    }
+    return rowWidget;
   }
 
   Widget _buildInstructionSteps(dynamic instructionData, Color primaryColor) {

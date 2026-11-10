@@ -13,6 +13,11 @@ class ApiConstants {
   // static const String androidEmulatorUrl = 'http://10.0.2.2:8000/api';
   static const String androidEmulatorUrl = 'https://demo.ksppspasti.com/api';
 
+  // App Release Version (Single Source of Truth)
+  static const String appVersion = '1.0.6';
+  static const String appBuildNumber = '7';
+  static const String appVersionFormatted = 'Versi 1.0.6 (Build 7)';
+
   // Active Base URL
   static String get baseUrl {
     if (kIsWeb) {
@@ -145,7 +150,7 @@ class ApiConstants {
   static String cabangDetail(dynamic id) => '/cabangs/$id';
 
   // App Version & Update Check
-  static const String appVersion = '/app-config/version';
+  static const String appVersionEndpoint = '/app-config/version';
   static const String splashConfig = '/app-config/splash';
 
   // Notifikasi Anggota

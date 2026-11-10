@@ -17,6 +17,7 @@ import 'address_data_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_center_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'data_consent_screen.dart';
 import 'about_app_screen.dart';
 import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
@@ -27,6 +28,7 @@ import '../../auth/services/cabang_service.dart';
 import '../../auth/widgets/cabang_map_modal.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/storage_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -37,14 +39,42 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isBiometricEnabled = false;
+  String _appVersion = ApiConstants.appVersion;
 
   @override
   void initState() {
     super.initState();
     _loadBiometricStatus();
+    _loadAppVersion();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().fetchProfileDetail();
     });
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      // Jangan timpa jika hasil platform mengembalikan versi lama
+      if (mounted && info.version.isNotEmpty && _compareVersion(info.version, ApiConstants.appVersion) >= 0) {
+        setState(() => _appVersion = info.version);
+      }
+    } catch (_) {}
+  }
+
+  int _compareVersion(String a, String b) {
+    try {
+      final aParts = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final bParts = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      for (int i = 0; i < 3; i++) {
+        final pA = i < aParts.length ? aParts[i] : 0;
+        final pB = i < bParts.length ? bParts[i] : 0;
+        if (pA > pB) return 1;
+        if (pA < pB) return -1;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> _loadBiometricStatus() async {
@@ -61,14 +91,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!mounted) return;
         AppDialog.showWarning(
           context,
-          title: 'Biometrik Belum Aktif',
-          message: 'Perangkat Anda belum mengaktifkan kunci biometrik (sidik jari / Face ID). Silakan daftarkan sidik jari di pengaturan HP Anda terlebih dahulu.',
+          title: 'Sensor Sidik Jari Belum Aktif',
+          message: 'Perangkat Anda belum mengaktifkan kunci sidik jari. Silakan daftarkan sidik jari di pengaturan HP Anda terlebih dahulu.',
         );
         return;
       }
 
       final authenticated = await BiometricService.authenticate(
-        localizedReason: 'Pindai sidik jari atau Face ID Anda untuk mengaktifkan login biometrik',
+        localizedReason: 'Pindai sidik jari Anda untuk mengaktifkan login biometrik',
       );
 
       if (authenticated) {
@@ -77,8 +107,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() => _isBiometricEnabled = true);
           AppDialog.showSuccess(
             context,
-            title: 'Biometrik Aktif',
-            message: 'Fitur login menggunakan sidik jari / Face ID telah berhasil diaktifkan.',
+            title: 'Sidik Jari Aktif',
+            message: 'Fitur login menggunakan sidik jari telah berhasil diaktifkan.',
           );
         }
       }
@@ -88,8 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isBiometricEnabled = false);
         AppDialog.showSuccess(
           context,
-          title: 'Biometrik Dinonaktifkan',
-          message: 'Fitur login biometrik telah dinonaktifkan.',
+          title: 'Sidik Jari Dinonaktifkan',
+          message: 'Fitur login sidik jari telah dinonaktifkan.',
         );
       }
     }
@@ -525,7 +555,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
                                   Icons.fingerprint_rounded,
-                                  'Login Biometrik (Sidik Jari & Face ID)',
+                                  'Login Biometrik (Sidik Jari)',
                                   trailing: Switch.adaptive(
                                     value: _isBiometricEnabled,
                                     activeColor: const Color(0xFF0E7955),
@@ -570,9 +600,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
+                                  Icons.privacy_tip_outlined,
+                                  'Kebijakan & Penggunaan Data',
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataConsentScreen())),
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
                                   Icons.info_outline_rounded,
                                   'Tentang Aplikasi',
-                                  trailing: const Text('v1.0.0', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                                  trailing: Text('v$_appVersion', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppScreen())),
                                 ),
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
@@ -601,10 +637,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 12),
 
                           // App Version
-                          const Center(
+                          Center(
                             child: Text(
-                              'Si Hijau by INTIRA v1.0.0 • Sistem Syariah Terpadu',
-                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                              'Si Hijau by INTIRA v$_appVersion • Sistem Syariah Terpadu',
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                             ),
                           ),
                           const SizedBox(height: 120), // Bottom navbar space

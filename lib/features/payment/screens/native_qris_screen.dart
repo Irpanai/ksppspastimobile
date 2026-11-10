@@ -355,6 +355,19 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     );
   }
 
+  String _formatDisplayOrderId(String orderId) {
+    if (orderId.isEmpty) return orderId;
+    return orderId
+        .replaceAll('SIMPANAN_SUKARELA', 'Sirela')
+        .replaceAll('simpanan_sukarela', 'Sirela')
+        .replaceAll('PEMBUKAAN_SIJAKA', 'Sijaka')
+        .replaceAll('pembukaan_sijaka', 'Sijaka')
+        .replaceAll('SIMPANAN_POKOK', 'Sipokok')
+        .replaceAll('simpanan_pokok', 'Sipokok')
+        .replaceAll('SIMPANAN_WAJIB', 'Siwajib')
+        .replaceAll('simpanan_wajib', 'Siwajib');
+  }
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final minutes = twoDigits(duration.inMinutes.remainder(60));
@@ -617,34 +630,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                         ),
                       ),
 
-                      // Logo Bank & E-Wallet Icons Banner
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.phone_android_rounded, size: 16, color: Color(0xFF64748B)),
-                              SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'BCA • Mandiri • BRI • BSI • GoPay • OVO • Dana • ShopeePay',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
 
                       // Rincian Nominal (Aksen QRIS)
                       Padding(
@@ -774,7 +760,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        res.orderId,
+                        _formatDisplayOrderId(res.orderId),
                         style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Color(0xFF1E293B)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

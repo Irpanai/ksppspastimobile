@@ -5,6 +5,7 @@ import '../../history/screens/transaction_history_screen.dart';
 import '../../home/widgets/wajib_simpanan_modal_dialog.dart';
 import '../../promo/screens/promo_screen.dart';
 import '../../payment/screens/top_up_screen.dart';
+import '../../payment/providers/payment_provider.dart';
 import '../models/notification_model.dart';
 import '../providers/notification_provider.dart';
 
@@ -199,29 +200,55 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                 )
               else if (notif.type == 'payment')
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.receipt_long_rounded, size: 20),
+                        label: const Text(
+                          'Lihat Riwayat Transaksi',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
+                          );
+                        },
+                      ),
                     ),
-                    icon: const Icon(Icons.receipt_long_rounded, size: 20),
-                    label: const Text(
-                      'Lihat Riwayat Transaksi',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          side: BorderSide(color: Colors.red.shade200),
+                          foregroundColor: Colors.red.shade600,
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        label: const Text('Hapus Notifikasi Ini', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          final orderId = notif.data?['order_id']?.toString();
+                          if (orderId != null && orderId.isNotEmpty) {
+                            context.read<PaymentProvider>().cancelPendingPayment(orderId);
+                          }
+                          context.read<NotificationProvider>().deleteNotification(notif);
+                        },
+                      ),
                     ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
-                      );
-                    },
-                  ),
+                  ],
                 )
               else
                 SizedBox(
@@ -311,7 +338,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final item = filters[index];
           final isSelected = provider.activeFilter == item['key'];
@@ -456,7 +483,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(16, 8, 16, 36 + MediaQuery.of(context).padding.bottom),
       itemCount: notifications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final notif = notifications[index];
 

@@ -15,6 +15,8 @@ import '../models/cabang_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/cabang_service.dart';
 import '../widgets/cabang_map_modal.dart';
+import '../../profile/screens/terms_conditions_screen.dart';
+import '../../profile/screens/data_consent_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onSwitchToLogin;
@@ -63,6 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _fotoKtpBytes;
   Uint8List? _fotoWajahBytes;
   bool _isOcrLoading = false;
+  bool _isConsentChecked = false;
 
   @override
   void didChangeDependencies() {
@@ -398,6 +401,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (_selectedCabangModel == null) {
       _showWarning('Silakan pilih kantor cabang pendaftaran.');
+      return;
+    }
+
+    if (!_isConsentChecked) {
+      _showWarning('Harap centang persetujuan penggunaan data dan ketentuan layanan untuk melanjutkan pendaftaran.');
       return;
     }
 
@@ -1237,6 +1245,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'Lengkapi data diri Anda di bawah ini untuk membuka rekening simpanan syariah secara instan, aman, dan transparan.',
                             style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.4),
                           ),
+                          const SizedBox(height: 10),
+                          InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const DataConsentScreen()),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFA7F3D0)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.privacy_tip_outlined, size: 14, color: Color(0xFF0F766E)),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'UU PDP No. 27/2022 • Kebijakan Privasi & Data',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF0F766E),
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF0F766E)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1416,7 +1456,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       if (_selectedCabangModel != null)
                         _buildSelectedCabangCard(_selectedCabangModel!),
                     ]),
-                    const SizedBox(height: 32),
+
+                    // Checkbox Kesediaan Penggunaan Data & Ketentuan Layanan
+                    Container(
+                      margin: const EdgeInsets.only(top: 24, bottom: 20),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _isConsentChecked ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _isConsentChecked ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _isConsentChecked,
+                              onChanged: isLoading
+                                  ? null
+                                  : (val) => setState(() => _isConsentChecked = val ?? false),
+                              activeColor: const Color(0xFF0F766E),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: isLoading
+                                      ? null
+                                      : () => setState(() => _isConsentChecked = !_isConsentChecked),
+                                  child: const Text(
+                                    'Pernyataan Kesediaan & Persetujuan Data',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text.rich(
+                                  TextSpan(
+                                    text: 'Saya menyatakan bersedia dan menyetujui ',
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569), height: 1.45),
+                                    children: [
+                                      WidgetSpan(
+                                        alignment: PlaceholderAlignment.baseline,
+                                        baseline: TextBaseline.alphabetic,
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const TermsConditionsScreen()),
+                                          ),
+                                          child: const Text(
+                                            'Ketentuan Layanan',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0F766E),
+                                              decoration: TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' serta '),
+                                      WidgetSpan(
+                                        alignment: PlaceholderAlignment.baseline,
+                                        baseline: TextBaseline.alphabetic,
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const DataConsentScreen()),
+                                          ),
+                                          child: const Text(
+                                            'Kebijakan & Persetujuan Penggunaan Data Pribadi',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0F766E),
+                                              decoration: TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' KSPPS PASTI sesuai UU PDP No. 27/2022.'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     // Tombol Submit
                     SizedBox(

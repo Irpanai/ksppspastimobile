@@ -39,7 +39,10 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
     double? userLon;
 
     try {
-      final perm = await Geolocator.checkPermission();
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
       if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
         final pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -132,53 +135,52 @@ class _CabangLocationBannerState extends State<CabangLocationBanner> {
                 ),
                 const SizedBox(width: 14),
 
-                // Teks Judul & Deskripsi
+                // Teks Judul & Deskripsi (Ditata rapi tanpa terpotong titik-titik)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const Text(
+                        'Sebaran Kantor Cabang',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Flexible(
-                            child: Text(
-                              'Sebaran Kantor Cabang',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E293B),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
                               color: primaryColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              _branchCount != null ? '$_branchCount Cabang' : '101 Cabang',
+                              _branchCount != null ? '$_branchCount Cabang' : '107 Cabang',
                               style: TextStyle(
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: secondaryColor,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Peta lokasi & rute CS',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Peta lokasi satelit, rute & kontak WhatsApp CS',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.grey.shade600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

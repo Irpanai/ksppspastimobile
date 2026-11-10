@@ -179,7 +179,7 @@ class StorageService {
   // Biometric Settings & Credentials
   static Future<bool> isBiometricEnabled() async {
     await init();
-    return _prefs!.getBool(_keyBiometricEnabled) ?? true;
+    return _prefs!.getBool(_keyBiometricEnabled) ?? false;
   }
 
   static Future<void> setBiometricEnabled(bool enabled) async {

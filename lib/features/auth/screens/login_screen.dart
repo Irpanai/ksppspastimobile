@@ -4,6 +4,7 @@ import '../../../../shared/widgets/app_dialog.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../widgets/data_consent_modal.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/storage_service.dart';
 
@@ -27,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   late bool _isLogin;
   late final Widget _registerScreen;
   bool _canUseBiometric = false;
+  bool _hasAgreedDataConsent = false;
 
   @override
   void initState() {
@@ -44,18 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _checkBiometricAvailability() async {
     final canAuth = await BiometricService.canCheckBiometrics();
     final isSupported = await BiometricService.isDeviceSupported();
-    if (mounted) {
-      setState(() {
-        _canUseBiometric = canAuth || isSupported;
-      });
-    }
-  }
-
-  Future<void> _handleBiometricLogin() async {
+    final isEnabled = await StorageService.isBiometricEnabled();
     final credentials = await StorageService.getBiometricCredentials();
     final savedToken = await StorageService.getToken();
-    final emailText = _loginEmailController.text.trim();
-    final passwordText = _loginPasswordController.text;
 
     final hasStored = (credentials != null &&
             credentials['email'] != null &&
@@ -63,42 +56,72 @@ class _LoginScreenState extends State<LoginScreen> {
             credentials['password'] != null &&
             credentials['password']!.isNotEmpty) ||
         (savedToken != null && savedToken.isNotEmpty);
-    final hasInput = emailText.isNotEmpty && passwordText.isNotEmpty;
 
-    if (!hasStored && !hasInput) {
-      AppDialog.showWarning(
-        context,
-        title: 'Hubungkan Akun Terlebih Dahulu',
-        message: 'Silakan masukkan Email & Password akun Anda sekali di formulir ini, lalu klik Masuk Sekarang. Akun Anda akan otomatis terhubung dengan Sidik Jari / Face ID untuk login cepat seterusnya.',
-      );
+    if (mounted) {
+      setState(() {
+        // Tombol biometrik HANYA muncul jika:
+        // 1. HP mendukung sensor biometrik
+        // 2. User telah mengaktifkan login biometrik di pengaturan/profil
+        // 3. Ada akun yang tersimpan untuk diautentikasi
+        _canUseBiometric = (canAuth || isSupported) && isEnabled && hasStored;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final credentials = await StorageService.getBiometricCredentials();
+    final savedToken = await StorageService.getToken();
+
+    final hasStored = (credentials != null &&
+            credentials['email'] != null &&
+            credentials['email']!.isNotEmpty &&
+            credentials['password'] != null &&
+            credentials['password']!.isNotEmpty) ||
+        (savedToken != null && savedToken.isNotEmpty);
+
+    if (!hasStored) {
+      if (mounted) {
+        AppDialog.showWarning(
+          context,
+          title: 'Akun Belum Terhubung',
+          message: 'Silakan masuk menggunakan Email & Password terlebih dahulu untuk menghubungkan sidik jari Anda.',
+        );
+      }
       return;
     }
 
     final authenticated = await BiometricService.authenticate(
-      localizedReason: 'Pindai sidik jari atau gunakan Face ID Anda untuk masuk ke KSPPS PASTI',
+      localizedReason: 'Pindai sidik jari Anda untuk masuk ke KSPPS PASTI',
     );
     if (!authenticated) return;
 
     if (!mounted) return;
 
-    if (hasStored) {
-      final authProvider = context.read<AuthProvider>();
-      final success = await authProvider.loginWithBiometrics();
-      if (!success && mounted) {
-        AppDialog.showError(
-          context,
-          title: 'Sesi Telah Berakhir',
-          message: 'Silakan masukkan Email dan Password Anda untuk memperbarui sesi login biometrik.',
-        );
-      }
-    } else if (hasInput) {
-      await _submitLogin();
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.loginWithBiometrics();
+    if (!success && mounted) {
+      AppDialog.showError(
+        context,
+        title: 'Sesi Telah Berakhir',
+        message: 'Silakan masukkan Email dan Password Anda untuk memperbarui sesi login sidik jari.',
+      );
     }
   }
 
-  void _switchTab(bool isLogin) {
+  Future<void> _switchTab(bool isLogin) async {
     if (_isLogin == isLogin) return;
     FocusScope.of(context).unfocus();
+
+    // Sebelum beralih ke form pendaftaran, tampilkan persetujuan pemrosesan data pribadi (UU PDP)
+    if (!isLogin && !_hasAgreedDataConsent) {
+      final agreed = await DataConsentModal.show(context);
+      if (!agreed) {
+        return; // Pengguna membatalkan, tetap di tab login
+      }
+      _hasAgreedDataConsent = true;
+    }
+
+    if (!mounted) return;
     setState(() => _isLogin = isLogin);
     if (isLogin) {
       _checkBiometricAvailability();
@@ -658,49 +681,90 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        // Quick Biometric Login (Jika fitur biometrik aktif di HP)
+        // Quick Biometric Login (Khusus Sidik Jari, hanya muncul jika user telah mengaktifkannya)
         if (_canUseBiometric) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Row(
             children: const [
               Expanded(child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
-                  'atau masuk dengan',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w500),
+                  'atau masuk instan',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
               Expanded(child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton(
-              onPressed: isLoading ? null : _handleBiometricLogin,
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
-                backgroundColor: const Color(0xFFF0FDF4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.fingerprint_rounded, size: 24, color: Color(0xFF16A34A)),
-                  SizedBox(width: 6),
-                  Icon(Icons.face_unlock_outlined, size: 22, color: Color(0xFF16A34A)),
-                  SizedBox(width: 10),
-                  Text(
-                    'Masuk dengan Sidik Jari / Face ID',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF16A34A),
-                    ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isLoading ? null : _handleBiometricLogin,
+              borderRadius: BorderRadius.circular(16),
+              splashColor: primaryColor.withValues(alpha: 0.12),
+              highlightColor: primaryColor.withValues(alpha: 0.06),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF0FDF4), Color(0xFFECFDF5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.25), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.fingerprint_rounded,
+                        size: 24,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Masuk dengan Sidik Jari',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        const Text(
+                          'Sentuh sensor sidik jari untuk login cepat',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

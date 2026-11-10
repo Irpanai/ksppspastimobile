@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/cabang_model.dart';
@@ -329,10 +330,16 @@ class _CabangMapModalState extends State<CabangMapModal> {
   List<String> _provinceList = ['Semua'];
   bool _isSatellite = false;
 
+  double? _currentUserLatitude;
+  double? _currentUserLongitude;
+  bool _isLocating = false;
+
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+    _currentUserLatitude = widget.userLatitude;
+    _currentUserLongitude = widget.userLongitude;
 
     // 1. Saring hanya cabang yang memiliki koordinat valid
     _allValidCabangs = widget.allCabangs
@@ -340,23 +347,8 @@ class _CabangMapModalState extends State<CabangMapModal> {
         .toList();
 
     // 2. Hitung jarak jika ada koordinat user
-    if (widget.userLatitude != null && widget.userLongitude != null) {
-      _allValidCabangs = _allValidCabangs.map((c) {
-        final d = CabangService.calculateDistanceKm(
-          widget.userLatitude!,
-          widget.userLongitude!,
-          c.latitude!,
-          c.longitude!,
-        );
-        return c.copyWith(distanceInKm: d);
-      }).toList();
-
-      _allValidCabangs.sort((a, b) {
-        if (a.distanceInKm == null && b.distanceInKm == null) return 0;
-        if (a.distanceInKm == null) return 1;
-        if (b.distanceInKm == null) return -1;
-        return a.distanceInKm!.compareTo(b.distanceInKm!);
-      });
+    if (_currentUserLatitude != null && _currentUserLongitude != null) {
+      _calculateAndSortByDistance();
     }
 
     // 3. Ekstrak daftar provinsi unik secara dinamis
@@ -397,6 +389,141 @@ class _CabangMapModalState extends State<CabangMapModal> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _calculateAndSortByDistance() {
+    if (_currentUserLatitude == null || _currentUserLongitude == null) return;
+    _allValidCabangs = _allValidCabangs.map((c) {
+      final d = CabangService.calculateDistanceKm(
+        _currentUserLatitude!,
+        _currentUserLongitude!,
+        c.latitude!,
+        c.longitude!,
+      );
+      return c.copyWith(distanceInKm: d);
+    }).toList();
+
+    _allValidCabangs.sort((a, b) {
+      if (a.distanceInKm == null && b.distanceInKm == null) return 0;
+      if (a.distanceInKm == null) return 1;
+      if (b.distanceInKm == null) return -1;
+      return a.distanceInKm!.compareTo(b.distanceInKm!);
+    });
+  }
+
+  /// Fitur Pencarian Cabang Terdekat Berdasarkan Lokasi GPS Nasabah / User
+  Future<void> _searchNearestBranch() async {
+    if (_isLocating) return;
+    setState(() => _isLocating = true);
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('GPS belum aktif. Silakan aktifkan layanan lokasi pada perangkat Anda.'),
+              backgroundColor: Color(0xFFD97706),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Izin lokasi ditolak. Tidak dapat mencari cabang terdekat.'),
+                backgroundColor: Color(0xFFDC2626),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Izin lokasi diblokir permanen. Harap izinkan melalui Pengaturan aplikasi.'),
+              backgroundColor: Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+
+      _currentUserLatitude = pos.latitude;
+      _currentUserLongitude = pos.longitude;
+
+      _calculateAndSortByDistance();
+
+      // Reset filter wilayah ke 'Semua' agar hasil cabang terdekat diurutkan secara utuh
+      _selectedProvince = 'Semua';
+      _searchController.clear();
+      _searchQuery = '';
+      _applyFilter();
+
+      if (_allValidCabangs.isNotEmpty) {
+        final nearest = _allValidCabangs.first;
+        setState(() {
+          _focusedCabang = nearest;
+        });
+        _centerTo(LatLng(nearest.latitude!, nearest.longitude!), zoom: 15.5);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.near_me_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Cabang terdekat ditemukan: ${nearest.name} (${nearest.formattedDistance})',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[CabangMapModal] Error mencari lokasi terdekat: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mendeteksi lokasi: ${e.toString()}'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
+    }
   }
 
   void _applyFilter({bool initial = false}) {
@@ -548,8 +675,8 @@ class _CabangMapModalState extends State<CabangMapModal> {
     final lightGreenBg = primaryColor.withValues(alpha: 0.12);
     final lightGreenBorder = primaryColor.withValues(alpha: 0.35);
 
-    final userPos = (widget.userLatitude != null && widget.userLongitude != null)
-        ? LatLng(widget.userLatitude!, widget.userLongitude!)
+    final userPos = (_currentUserLatitude != null && _currentUserLongitude != null)
+        ? LatLng(_currentUserLatitude!, _currentUserLongitude!)
         : null;
 
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
@@ -630,41 +757,83 @@ class _CabangMapModalState extends State<CabangMapModal> {
             ),
             const SizedBox(height: 8),
 
-            // Kolom Pencarian Real-Time (Nama cabang, kode, kota, provinsi)
+            // Kolom Pencarian Real-Time & Tombol Deteksi Cabang Terdekat
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
-                  decoration: InputDecoration(
-                    hintText: 'Cari nama cabang, kode cabang, atau kota...',
-                    hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
-                    prefixIcon: Icon(Icons.search_rounded, color: primaryColor, size: 20),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.cancel_rounded, size: 18, color: Color(0xFF94A3B8)),
-                            onPressed: () {
-                              _searchController.clear();
-                              _searchQuery = '';
-                              _applyFilter();
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
+                        decoration: InputDecoration(
+                          hintText: 'Cari nama cabang, kota, atau alamat...',
+                          hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
+                          prefixIcon: Icon(Icons.search_rounded, color: primaryColor, size: 20),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.cancel_rounded, size: 18, color: Color(0xFF94A3B8)),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                    _applyFilter();
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onChanged: (val) {
+                          _searchQuery = val;
+                          _applyFilter();
+                        },
+                      ),
+                    ),
                   ),
-                  onChanged: (val) {
-                    _searchQuery = val;
-                    _applyFilter();
-                  },
-                ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: _isLocating ? null : _searchNearestBranch,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isLocating)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF166534)),
+                            )
+                          else
+                            const Icon(Icons.my_location_rounded, size: 16, color: Color(0xFF166534)),
+                          const SizedBox(width: 6),
+                          Text(
+                            _isLocating ? 'Mencari...' : 'Terdekat',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
@@ -771,7 +940,7 @@ class _CabangMapModalState extends State<CabangMapModal> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${c.code} • ${c.name}',
+                              c.name,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: isFocused ? FontWeight.bold : FontWeight.w500,
@@ -993,19 +1162,29 @@ class _CabangMapModalState extends State<CabangMapModal> {
                         ),
                         const SizedBox(height: 10),
 
-                        // Tombol Ke Posisi Saya
-                        if (userPos != null) ...[
-                          FloatingActionButton.small(
-                            heroTag: 'my_loc_btn',
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF2563EB),
-                            elevation: 3,
-                            onPressed: () => _centerTo(userPos, zoom: 15.0),
-                            tooltip: 'Ke Posisi Saya',
-                            child: const Icon(Icons.my_location_rounded),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                        // Tombol Ke Posisi Saya / Cari Terdekat
+                        FloatingActionButton.small(
+                          heroTag: 'my_loc_btn',
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF166534),
+                          elevation: 3,
+                          onPressed: () {
+                            if (userPos != null) {
+                              _centerTo(userPos, zoom: 15.0);
+                            } else {
+                              _searchNearestBranch();
+                            }
+                          },
+                          tooltip: userPos != null ? 'Ke Posisi Saya' : 'Cari Cabang Terdekat',
+                          child: _isLocating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF166534)),
+                                )
+                              : Icon(userPos != null ? Icons.my_location_rounded : Icons.near_me_rounded),
+                        ),
+                        const SizedBox(height: 8),
 
                         // Tombol Zoom In
                         FloatingActionButton.small(
@@ -1149,7 +1328,7 @@ class _CabangMapModalState extends State<CabangMapModal> {
                                       ),
                                       const SizedBox(height: 1),
                                       Text(
-                                        'Kode: ${_focusedCabang!.code} • ${_focusedCabang!.displayLocation}',
+                                        _focusedCabang!.displayLocation,
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w600,

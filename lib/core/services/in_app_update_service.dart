@@ -24,7 +24,7 @@ class InAppUpdateService {
       final currentVersion = packageInfo.version;
       final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
 
-      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.appVersion}');
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.appVersionEndpoint}');
       final response = await http.get(url, headers: {
         'Accept': 'application/json',
       }).timeout(const Duration(seconds: 10));
