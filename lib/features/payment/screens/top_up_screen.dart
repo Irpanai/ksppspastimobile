@@ -1500,15 +1500,20 @@ class _TopUpScreenState extends State<TopUpScreen> {
                             ],
                           ),
                           const Text('•', style: TextStyle(fontSize: 10, color: Color(0xFFCBD5E1))),
-                          Text(
-                            selectedChannel.feeFlat > 0
-                                ? 'Biaya Admin ${AppCurrency.format(selectedChannel.feeFlat)}'
-                                : 'Bebas Biaya Admin',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: selectedChannel.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final currentFee = selectedChannel.calculateFee(_parsedAmount);
+                              return Text(
+                                currentFee > 0
+                                    ? 'Biaya Admin ${AppCurrency.format(currentFee)}'
+                                    : 'Bebas Biaya Admin',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: currentFee > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -1987,23 +1992,38 @@ class _TopUpScreenState extends State<TopUpScreen> {
                       softWrap: true,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          ch.feeFlat > 0 ? Icons.toll_rounded : Icons.check_circle_outline_rounded,
-                          size: 11,
-                          color: ch.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          ch.feeFlat > 0 ? 'Biaya Admin ${AppCurrency.format(ch.feeFlat)}' : 'Bebas Biaya Admin',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: ch.feeFlat > 0 ? const Color(0xFFB45309) : const Color(0xFF059669),
-                          ),
-                        ),
-                      ],
+                    Builder(
+                      builder: (context) {
+                        final fee = ch.calculateFee(_parsedAmount);
+                        final String feeText;
+                        if (ch.feeType == 'conditional' && _parsedAmount == 0) {
+                          feeText = '≤ 100k: ${AppCurrency.format(ch.feeBelowThreshold)} | > 100k: ${ch.feeAboveThresholdPercent}%';
+                        } else if (fee > 0) {
+                          feeText = 'Biaya Admin ${AppCurrency.format(fee)}';
+                        } else {
+                          feeText = 'Bebas Biaya Admin';
+                        }
+                        final isPaid = fee > 0 || (ch.feeType == 'conditional' && _parsedAmount == 0);
+
+                        return Row(
+                          children: [
+                            Icon(
+                              isPaid ? Icons.toll_rounded : Icons.check_circle_outline_rounded,
+                              size: 11,
+                              color: isPaid ? const Color(0xFFB45309) : const Color(0xFF059669),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              feeText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isPaid ? const Color(0xFFB45309) : const Color(0xFF059669),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -2122,7 +2142,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
     final isDisabled = _selectedType == 'simpanan_pokok' && isPokokPaid;
     final channels = context.watch<PaymentProvider>().activeChannels;
     final selectedChannel = channels.where((c) => c.code == _selectedPaymentMethod).firstOrNull;
-    final int adminFee = selectedChannel?.feeFlat ?? 0;
+    final int adminFee = selectedChannel?.calculateFee(_parsedAmount) ?? 0;
     final int totalPayment = _parsedAmount + adminFee;
 
     return SafeArea(
