@@ -5,6 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../payment/screens/top_up_screen.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import '../models/simpanan_riwayat_model.dart';
 import '../providers/savings_provider.dart';
 
@@ -221,10 +222,8 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
               _buildTransactionList(items),
               if (isLoadingMore)
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: AppShimmer(child: AppSkeletonTransactionTile()),
                 ),
             ],
             const SizedBox(height: 120),
@@ -356,47 +355,7 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
   }
 
   Widget _buildLoadingList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 4,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 14, width: 140, color: const Color(0xFFF1F5F9)),
-                    const SizedBox(height: 8),
-                    Container(height: 10, width: 90, color: const Color(0xFFF1F5F9)),
-                  ],
-                ),
-              ),
-              Container(height: 16, width: 70, color: const Color(0xFFF1F5F9)),
-            ],
-          ),
-        );
-      },
-    );
+    return const AppSkeletonTransactionList(count: 4);
   }
 
   Widget _buildErrorView(String error) {

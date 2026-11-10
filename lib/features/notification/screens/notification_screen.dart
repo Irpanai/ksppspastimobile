@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../shared/widgets/premium_header.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../home/widgets/wajib_simpanan_modal_dialog.dart';
 import '../../promo/screens/promo_screen.dart';
@@ -408,7 +409,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildListContent(NotificationProvider provider, List<NotificationModel> notifications) {
     if (provider.isLoading && notifications.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppSkeletonNotificationList(count: 6);
     }
 
     if (provider.errorMessage != null && notifications.isEmpty) {

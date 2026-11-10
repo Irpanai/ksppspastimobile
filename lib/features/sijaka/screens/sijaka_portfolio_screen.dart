@@ -4,6 +4,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import '../../../../core/services/document_download_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/sijaka_model.dart';
@@ -597,31 +598,11 @@ class _SijakaPortfolioScreenState extends State<SijakaPortfolioScreen> {
   }
 
   Widget _buildLoadingSkeleton() {
-    return Column(
-      children: List.generate(
-        2,
-        (index) => Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(height: 16, width: 160, color: const Color(0xFFF1F5F9)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(height: 12, width: 100, color: const Color(0xFFF1F5F9)),
-                  Container(height: 12, width: 80, color: const Color(0xFFF1F5F9)),
-                ],
-              ),
-            ],
-          ),
+    return AppShimmer(
+      child: Column(
+        children: List.generate(
+          2,
+          (index) => const AppSkeletonSijakaCard(),
         ),
       ),
     );

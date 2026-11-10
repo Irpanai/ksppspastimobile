@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -245,13 +246,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 },
                                 loadingBuilder: (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
-                                  return Container(
-                                    color: const Color(0xFFF1F5F9),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
+                                  return const AppShimmer(
+                                    child: AppSkeletonBox(
+                                      width: 100,
+                                      height: 100,
+                                      borderRadius: 50,
                                     ),
                                   );
                                 },

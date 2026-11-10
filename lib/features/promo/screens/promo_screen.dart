@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import '../models/promo_model.dart';
 import '../providers/promo_provider.dart';
 
@@ -263,9 +264,7 @@ class _PromoScreenState extends State<PromoScreen> {
 
           Expanded(
             child: isLoading && promos.isEmpty
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF1B5E20)),
-                  )
+                ? const AppSkeletonPromoList(count: 3)
                 : errorMessage != null && promos.isEmpty
                     ? Center(
                         child: Padding(

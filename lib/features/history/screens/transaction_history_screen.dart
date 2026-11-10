@@ -5,6 +5,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../savings/models/simpanan_riwayat_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../../shared/widgets/struk_transaksi_dialog.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import '../providers/history_provider.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
@@ -558,8 +559,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
       itemBuilder: (context, index) {
         if (index == dateKeys.length) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: AppShimmer(child: AppSkeletonTransactionTile()),
           );
         }
 
@@ -683,123 +684,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
   }
 
   Widget _buildLoadingSkeleton() {
-    return ListView(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        // Loading Status Banner
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          margin: const EdgeInsets.only(bottom: 18),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFBBF7D0)),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Memuat Mutasi Rekening...',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF14532D),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Mengambil catatan transaksi simpanan secara realtime',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF166534),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Skeleton cards
-        ...List.generate(4, (index) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.sync_rounded, color: Color(0xFFCBD5E1), size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 14,
-                        width: 140,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE2E8F0),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 10,
-                        width: 90,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  height: 16,
-                  width: 70,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
+    return const AppSkeletonTransactionList(count: 6);
   }
 
   Widget _buildErrorState(String error) {

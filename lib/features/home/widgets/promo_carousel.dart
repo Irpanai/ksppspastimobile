@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../promo/providers/promo_provider.dart';
 import '../../promo/screens/promo_screen.dart';
+import '../../../shared/widgets/app_skeleton.dart';
 
 class PromoCarousel extends StatelessWidget {
   const PromoCarousel({super.key});
@@ -38,28 +39,7 @@ class PromoCarousel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 160,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: 2,
-              itemBuilder: (context, index) {
-                return Container(
-                  width: 300,
-                  margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B5E20)),
-                  ),
-                );
-              },
-            ),
-          ),
+          const AppSkeletonCarousel(),
         ],
       );
     }
