@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -18,6 +18,7 @@ import '../widgets/wajib_simpanan_modal_dialog.dart';
 import '../../payment/models/payment_model.dart';
 import '../../payment/providers/payment_provider.dart';
 import '../../payment/widgets/pending_payments_modal.dart';
+import '../../../core/services/in_app_update_service.dart';
 
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
@@ -32,6 +33,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardAndCheckTunggakan();
+      InAppUpdateService.checkAndShowUpdateDialog(context);
     });
   }
 

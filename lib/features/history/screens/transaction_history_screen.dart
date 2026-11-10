@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../savings/models/simpanan_riwayat_model.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../../../shared/widgets/struk_transaksi_dialog.dart';
 import '../providers/history_provider.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
@@ -868,19 +870,55 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> wit
                 ),
 
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF64748B),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Tutup', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                    child: const Text('Tutup', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          final user = context.read<AuthProvider>().user;
+                          StrukTransaksiDialog.show(
+                            context,
+                            StrukTransaksiData(
+                              idTransaksi: item.id.toString(),
+                              noReferensi: 'TRX-PASTI-${item.id.toString().padLeft(6, '0')}',
+                              jenisTransaksi: _formatJenisLabel(item.jenis),
+                              namaAnggota: user?.name ?? 'Anggota KSPPS PASTI',
+                              noAnggota: user?.noAnggota ?? 'PASTI-0001',
+                              cabang: user?.cabang ?? 'Pusat',
+                              nominal: item.formattedNominal,
+                              tanggalWaktu: '${item.formattedDate} WIB',
+                              keterangan: item.keterangan,
+                              isMasuk: isMasuk,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.receipt_long_rounded, size: 20),
+                        label: const Text('Cetak Struk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B5E20),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

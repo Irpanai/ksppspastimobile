@@ -25,6 +25,8 @@ import '../../auth/screens/forgot_password_screen.dart';
 import '../../auth/models/cabang_model.dart';
 import '../../auth/services/cabang_service.dart';
 import '../../auth/widgets/cabang_map_modal.dart';
+import '../../../core/services/biometric_service.dart';
+import '../../../core/services/storage_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -34,12 +36,63 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isBiometricEnabled = false;
+
   @override
   void initState() {
     super.initState();
+    _loadBiometricStatus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().fetchProfileDetail();
     });
+  }
+
+  Future<void> _loadBiometricStatus() async {
+    final enabled = await StorageService.isBiometricEnabled();
+    if (mounted) {
+      setState(() => _isBiometricEnabled = enabled);
+    }
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    if (value) {
+      final supported = await BiometricService.canCheckBiometrics();
+      if (!supported) {
+        if (!mounted) return;
+        AppDialog.showWarning(
+          context,
+          title: 'Biometrik Belum Aktif',
+          message: 'Perangkat Anda belum mengaktifkan kunci biometrik (sidik jari / Face ID). Silakan daftarkan sidik jari di pengaturan HP Anda terlebih dahulu.',
+        );
+        return;
+      }
+
+      final authenticated = await BiometricService.authenticate(
+        localizedReason: 'Pindai sidik jari atau Face ID Anda untuk mengaktifkan login biometrik',
+      );
+
+      if (authenticated) {
+        await StorageService.setBiometricEnabled(true);
+        if (mounted) {
+          setState(() => _isBiometricEnabled = true);
+          AppDialog.showSuccess(
+            context,
+            title: 'Biometrik Aktif',
+            message: 'Fitur login menggunakan sidik jari / Face ID telah berhasil diaktifkan.',
+          );
+        }
+      }
+    } else {
+      await StorageService.setBiometricEnabled(false);
+      if (mounted) {
+        setState(() => _isBiometricEnabled = false);
+        AppDialog.showSuccess(
+          context,
+          title: 'Biometrik Dinonaktifkan',
+          message: 'Fitur login biometrik telah dinonaktifkan.',
+        );
+      }
+    }
   }
 
   Future<void> _refreshAll() async {
@@ -468,6 +521,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       _refreshAll();
                                     }
                                   },
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                _buildMenuRow(
+                                  Icons.fingerprint_rounded,
+                                  'Login Biometrik (Sidik Jari)',
+                                  trailing: Switch.adaptive(
+                                    value: _isBiometricEnabled,
+                                    activeColor: const Color(0xFF0E7955),
+                                    onChanged: _toggleBiometric,
+                                  ),
+                                  onTap: () => _toggleBiometric(!_isBiometricEnabled),
                                 ),
                               ],
                             ),

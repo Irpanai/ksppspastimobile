@@ -76,6 +76,8 @@ class AuthProvider extends ChangeNotifier {
       _token = loginData.token;
       _user = loginData.user;
       _status = AuthStatus.authenticated;
+      // Simpan kredensial aman untuk fitur login biometrik
+      await StorageService.saveBiometricCredentials(email: email.trim(), password: password);
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -89,6 +91,37 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Login cepat menggunakan autentikasi biometrik
+  Future<bool> loginWithBiometrics() async {
+    final credentials = await StorageService.getBiometricCredentials();
+    if (credentials != null &&
+        credentials['email'] != null &&
+        credentials['email']!.isNotEmpty &&
+        credentials['password'] != null &&
+        credentials['password']!.isNotEmpty) {
+      return await login(credentials['email']!, credentials['password']!);
+    }
+
+    final savedToken = await StorageService.getToken();
+    if (savedToken != null && savedToken.isNotEmpty) {
+      _status = AuthStatus.authenticating;
+      notifyListeners();
+      _token = savedToken;
+      try {
+        final profile = await _authService.getProfile();
+        _user = profile;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      } catch (_) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return false;
+      }
+    }
+    return false;
   }
 
   /// Register new member

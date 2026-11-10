@@ -4,6 +4,8 @@ import '../../../../shared/widgets/app_dialog.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../../core/services/biometric_service.dart';
+import '../../../core/services/storage_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool initialIsRegister;
@@ -24,17 +26,48 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loginObscure = true;
   late bool _isLogin;
   late final Widget _registerScreen;
+  bool _canUseBiometric = false;
 
   @override
   void initState() {
     super.initState();
     _isLogin = !widget.initialIsRegister;
+    _checkBiometricAvailability();
     // Instantiate register screen once so that all form state (KTP, selfie, controllers, etc.)
     // is permanently retained in memory when switching between Masuk and Daftar.
     _registerScreen = RegisterScreen(
       isEmbedded: true,
       onSwitchToLogin: () => _switchTab(true),
     );
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final enabled = await StorageService.isBiometricEnabled();
+    final hasCreds = await StorageService.getBiometricCredentials() != null || (await StorageService.getToken()) != null;
+    final canAuth = await BiometricService.canCheckBiometrics();
+    if (mounted) {
+      setState(() {
+        _canUseBiometric = enabled && hasCreds && canAuth;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    final authenticated = await BiometricService.authenticate(
+      localizedReason: 'Pindai sidik jari atau Face ID Anda untuk masuk ke KSPPS PASTI',
+    );
+    if (!authenticated) return;
+
+    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.loginWithBiometrics();
+    if (!success && mounted) {
+      AppDialog.showError(
+        context,
+        title: 'Login Biometrik Gagal',
+        message: 'Sesi biometrik telah berakhir. Silakan masukkan email dan password akun Anda.',
+      );
+    }
   }
 
   void _switchTab(bool isLogin) {
@@ -548,6 +581,46 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
           ),
         ),
+
+        // Quick Biometric Login (Jika fitur biometrik aktif di HP)
+        if (_canUseBiometric) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: const [
+              Expanded(child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'atau masuk dengan',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Expanded(child: Divider(color: Color(0xFFE2E8F0), thickness: 1)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: isLoading ? null : _handleBiometricLogin,
+              icon: const Icon(Icons.fingerprint_rounded, size: 24, color: Color(0xFF16A34A)),
+              label: const Text(
+                'Sidik Jari / Biometrik',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF16A34A),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
+                backgroundColor: const Color(0xFFF0FDF4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

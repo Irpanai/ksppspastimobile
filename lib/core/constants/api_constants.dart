@@ -144,6 +144,10 @@ class ApiConstants {
   static const String cabangProvinces = '/cabangs/provinces';
   static String cabangDetail(dynamic id) => '/cabangs/$id';
 
+  // App Version & Update Check
+  static const String appVersion = '/app-config/version';
+  static const String splashConfig = '/app-config/splash';
+
   // Notifikasi Anggota
   static const String memberNotifications = '/member/notifications';
   static const String memberNotificationReadAll = '/member/notifications/read-all';

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
@@ -9,6 +9,9 @@ class StorageService {
   static const String _keyPendingPayments = 'pending_payments_list';
   static const String _keyLastPaymentMethod = 'last_used_payment_method';
   static const String _keyDashboard = 'cached_dashboard_data';
+  static const String _keyBiometricEnabled = 'biometric_login_enabled';
+  static const String _keyBiometricCredentials = 'biometric_credentials';
+  static const String _keyLastUpdateDismissed = 'last_update_check_dismissed';
 
   static SharedPreferences? _prefs;
 
@@ -171,6 +174,62 @@ class StorageService {
       if (code != null && code.isNotEmpty) return code;
     }
     return null;
+  }
+
+  // Biometric Settings & Credentials
+  static Future<bool> isBiometricEnabled() async {
+    await init();
+    return _prefs!.getBool(_keyBiometricEnabled) ?? false;
+  }
+
+  static Future<void> setBiometricEnabled(bool enabled) async {
+    await init();
+    await _prefs!.setBool(_keyBiometricEnabled, enabled);
+    if (!enabled) {
+      await clearBiometricCredentials();
+    }
+  }
+
+  static Future<void> saveBiometricCredentials({
+    required String email,
+    required String password,
+  }) async {
+    await init();
+    await _prefs!.setString(
+      _keyBiometricCredentials,
+      jsonEncode({'email': email, 'password': password}),
+    );
+  }
+
+  static Future<Map<String, String>?> getBiometricCredentials() async {
+    await init();
+    final raw = _prefs!.getString(_keyBiometricCredentials);
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return {
+        'email': decoded['email']?.toString() ?? '',
+        'password': decoded['password']?.toString() ?? '',
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearBiometricCredentials() async {
+    await init();
+    await _prefs!.remove(_keyBiometricCredentials);
+  }
+
+  // In-App Update Dismissed Timestamp
+  static Future<int> getLastUpdateDismissedTime() async {
+    await init();
+    return _prefs!.getInt(_keyLastUpdateDismissed) ?? 0;
+  }
+
+  static Future<void> setLastUpdateDismissedTime(int timestamp) async {
+    await init();
+    await _prefs!.setInt(_keyLastUpdateDismissed, timestamp);
   }
 
   static Future<void> clearAll() async {
