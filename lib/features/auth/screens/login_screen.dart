@@ -42,31 +42,57 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkBiometricAvailability() async {
-    final enabled = await StorageService.isBiometricEnabled();
-    final hasCreds = await StorageService.getBiometricCredentials() != null || (await StorageService.getToken()) != null;
     final canAuth = await BiometricService.canCheckBiometrics();
+    final isSupported = await BiometricService.isDeviceSupported();
     if (mounted) {
       setState(() {
-        _canUseBiometric = enabled && hasCreds && canAuth;
+        _canUseBiometric = canAuth || isSupported;
       });
     }
   }
 
   Future<void> _handleBiometricLogin() async {
+    final credentials = await StorageService.getBiometricCredentials();
+    final savedToken = await StorageService.getToken();
+    final emailText = _loginEmailController.text.trim();
+    final passwordText = _loginPasswordController.text;
+
+    final hasStored = (credentials != null &&
+            credentials['email'] != null &&
+            credentials['email']!.isNotEmpty &&
+            credentials['password'] != null &&
+            credentials['password']!.isNotEmpty) ||
+        (savedToken != null && savedToken.isNotEmpty);
+    final hasInput = emailText.isNotEmpty && passwordText.isNotEmpty;
+
+    if (!hasStored && !hasInput) {
+      AppDialog.showWarning(
+        context,
+        title: 'Hubungkan Akun Terlebih Dahulu',
+        message: 'Silakan masukkan Email & Password akun Anda sekali di formulir ini, lalu klik Masuk Sekarang. Akun Anda akan otomatis terhubung dengan Sidik Jari / Face ID untuk login cepat seterusnya.',
+      );
+      return;
+    }
+
     final authenticated = await BiometricService.authenticate(
-      localizedReason: 'Pindai sidik jari atau Face ID Anda untuk masuk ke KSPPS PASTI',
+      localizedReason: 'Pindai sidik jari atau gunakan Face ID Anda untuk masuk ke KSPPS PASTI',
     );
     if (!authenticated) return;
 
     if (!mounted) return;
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.loginWithBiometrics();
-    if (!success && mounted) {
-      AppDialog.showError(
-        context,
-        title: 'Login Biometrik Gagal',
-        message: 'Sesi biometrik telah berakhir. Silakan masukkan email dan password akun Anda.',
-      );
+
+    if (hasStored) {
+      final authProvider = context.read<AuthProvider>();
+      final success = await authProvider.loginWithBiometrics();
+      if (!success && mounted) {
+        AppDialog.showError(
+          context,
+          title: 'Sesi Telah Berakhir',
+          message: 'Silakan masukkan Email dan Password Anda untuk memperbarui sesi login biometrik.',
+        );
+      }
+    } else if (hasInput) {
+      await _submitLogin();
     }
   }
 
@@ -74,6 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLogin == isLogin) return;
     FocusScope.of(context).unfocus();
     setState(() => _isLogin = isLogin);
+    if (isLogin) {
+      _checkBiometricAvailability();
+    }
     if (_scrollController.hasClients && _scrollController.offset > 0) {
       _scrollController.animateTo(
         0,
@@ -87,6 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     precacheImage(const AssetImage('assets/images/logo-kspps-pasti.png'), context);
+    _checkBiometricAvailability();
   }
 
   @override
@@ -126,49 +156,95 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       showDialog(
         context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFECFDF5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          return GestureDetector(
+            onTap: () {
+              if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+              }
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+              child: GestureDetector(
+                onTap: () {
+                  if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+                    Navigator.of(dialogContext, rootNavigator: true).pop();
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Login Berhasil!',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFECFDF5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Login Berhasil!',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Selamat datang kembali,\n${authProvider.user?.name ?? "Nasabah"}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+                              Navigator.of(dialogContext, rootNavigator: true).pop();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1B5E20),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Lanjutkan', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Selamat datang kembali,\n${authProvider.user?.name ?? "Nasabah"}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                  ),
-                ],
+                ),
               ),
             ),
           );
         },
       );
 
-      final nav = Navigator.of(context, rootNavigator: true);
       await Future.delayed(const Duration(milliseconds: 1000));
-      nav.pop();
+      if (mounted) {
+        final nav = Navigator.of(context, rootNavigator: true);
+        if (nav.canPop()) {
+          nav.pop();
+        }
+      }
     } else {
       final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';
       AppDialog.showError(
@@ -602,21 +678,29 @@ class _LoginScreenState extends State<LoginScreen> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: OutlinedButton.icon(
+            child: OutlinedButton(
               onPressed: isLoading ? null : _handleBiometricLogin,
-              icon: const Icon(Icons.fingerprint_rounded, size: 24, color: Color(0xFF16A34A)),
-              label: const Text(
-                'Sidik Jari / Biometrik',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF16A34A),
-                ),
-              ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
                 backgroundColor: const Color(0xFFF0FDF4),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.fingerprint_rounded, size: 24, color: Color(0xFF16A34A)),
+                  SizedBox(width: 6),
+                  Icon(Icons.face_unlock_outlined, size: 22, color: Color(0xFF16A34A)),
+                  SizedBox(width: 10),
+                  Text(
+                    'Masuk dengan Sidik Jari / Face ID',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF16A34A),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

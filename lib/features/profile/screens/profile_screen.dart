@@ -525,7 +525,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
                                   Icons.fingerprint_rounded,
-                                  'Login Biometrik (Sidik Jari)',
+                                  'Login Biometrik (Sidik Jari & Face ID)',
                                   trailing: Switch.adaptive(
                                     value: _isBiometricEnabled,
                                     activeColor: const Color(0xFF0E7955),
