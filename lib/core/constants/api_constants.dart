@@ -7,9 +7,9 @@ class ApiConstants {
   // For real device: Use your machine's LAN IP, e.g. 'http://192.168.1.xxx:8000/api'
   
   // static const String defaultLocalhostUrl = 'http://localhost:8000/api';
-  // static const String defaultLocalhostUrl = 'https://app.zoy.web.id/api';
+  // static const String defaultLocalhostUrl = 'test.huma.web.id';
   static const String defaultLocalhostUrl = 'https://demo.ksppspasti.com/api';
-  // static const String androidEmulatorUrl = 'https://app.zoy.web.id/api';
+  // static const String androidEmulatorUrl = 'test.huma.web.id';
   // static const String androidEmulatorUrl = 'http://10.0.2.2:8000/api';
   static const String androidEmulatorUrl = 'https://demo.ksppspasti.com/api';
 

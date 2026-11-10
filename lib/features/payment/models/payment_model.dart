@@ -1,4 +1,4 @@
-﻿import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class SnapTokenResponse {
   final String orderId;
@@ -7,6 +7,10 @@ class SnapTokenResponse {
   final String paymentUrl;
   final num nominal;
   final String nominalFormat;
+  final num adminFee;
+  final num grossAmount;
+  final String adminFeeFormat;
+  final String grossAmountFormat;
   final String type;
   final String status;
   final String? clientKey;
@@ -33,6 +37,10 @@ class SnapTokenResponse {
     String? paymentUrl,
     required this.nominal,
     required this.nominalFormat,
+    this.adminFee = 0,
+    num? grossAmount,
+    String? adminFeeFormat,
+    String? grossAmountFormat,
     required this.type,
     required this.status,
     this.clientKey,
@@ -50,7 +58,10 @@ class SnapTokenResponse {
     this.isDirectQris = false,
     this.qrString,
     this.nmid,
-  }) : paymentUrl = paymentUrl ?? snapRedirectUrl;
+  })  : paymentUrl = paymentUrl ?? snapRedirectUrl,
+        grossAmount = grossAmount ?? (nominal + adminFee),
+        adminFeeFormat = adminFeeFormat ?? AppCurrency.format(adminFee),
+        grossAmountFormat = grossAmountFormat ?? AppCurrency.format(grossAmount ?? (nominal + adminFee));
 
   bool get isDirectVa =>
       paymentMode == 'direct_va' || (vaNumber != null && vaNumber!.isNotEmpty);
@@ -88,6 +99,9 @@ class SnapTokenResponse {
     }
 
     final nom = parseNominal(json['nominal']);
+    final fee = parseNominal(json['admin_fee']);
+    final gross = parseNominal(json['gross_amount']);
+    final effectiveGross = gross > 0 ? gross : (nom + fee);
     final redirectUrl = json['payment_url']?.toString() ?? json['snap_redirect_url']?.toString() ?? '';
     final qrStr = json['qr_string']?.toString();
     final isQris = json['is_direct_qris'] == true ||
@@ -102,6 +116,10 @@ class SnapTokenResponse {
       paymentUrl: redirectUrl,
       nominal: nom,
       nominalFormat: json['nominal_format']?.toString() ?? AppCurrency.format(nom),
+      adminFee: fee,
+      grossAmount: effectiveGross,
+      adminFeeFormat: json['admin_fee_format']?.toString() ?? AppCurrency.format(fee),
+      grossAmountFormat: json['gross_amount_format']?.toString() ?? AppCurrency.format(effectiveGross),
       type: json['type']?.toString() ?? 'simpanan_sukarela',
       status: json['status']?.toString() ?? 'pending',
       clientKey: json['client_key']?.toString(),
@@ -130,6 +148,10 @@ class SnapTokenResponse {
       'payment_url': paymentUrl,
       'nominal': nominal,
       'nominal_format': nominalFormat,
+      'admin_fee': adminFee,
+      'gross_amount': grossAmount,
+      'admin_fee_format': adminFeeFormat,
+      'gross_amount_format': grossAmountFormat,
       'type': type,
       'status': status,
       'client_key': clientKey,
@@ -159,6 +181,10 @@ class PaymentStatusResponse {
   final String type;
   final num nominal;
   final String nominalFormat;
+  final num adminFee;
+  final num grossAmount;
+  final String adminFeeFormat;
+  final String grossAmountFormat;
   final String status;
   final String? paymentType;
   final String? paymentChannel;
@@ -170,12 +196,18 @@ class PaymentStatusResponse {
     required this.type,
     required this.nominal,
     required this.nominalFormat,
+    this.adminFee = 0,
+    num? grossAmount,
+    String? adminFeeFormat,
+    String? grossAmountFormat,
     required this.status,
     this.paymentType,
     this.paymentChannel,
     this.vaNumber,
     this.paidAt,
-  });
+  })  : grossAmount = grossAmount ?? (nominal + adminFee),
+        adminFeeFormat = adminFeeFormat ?? AppCurrency.format(adminFee),
+        grossAmountFormat = grossAmountFormat ?? AppCurrency.format(grossAmount ?? (nominal + adminFee));
 
   bool get isSettled => isSettlement;
   bool get isSettlement => status.toLowerCase() == 'settlement' || status.toLowerCase() == 'capture' || status.toLowerCase() == 'success' || status.toLowerCase() == 'paid';
@@ -190,11 +222,19 @@ class PaymentStatusResponse {
     }
 
     final nom = parseNominal(json['nominal']);
+    final fee = parseNominal(json['admin_fee']);
+    final gross = parseNominal(json['gross_amount']);
+    final effectiveGross = gross > 0 ? gross : (nom + fee);
+
     return PaymentStatusResponse(
       orderId: json['order_id']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       nominal: nom,
       nominalFormat: json['nominal_format']?.toString() ?? AppCurrency.format(nom),
+      adminFee: fee,
+      grossAmount: effectiveGross,
+      adminFeeFormat: json['admin_fee_format']?.toString() ?? AppCurrency.format(fee),
+      grossAmountFormat: json['gross_amount_format']?.toString() ?? AppCurrency.format(effectiveGross),
       status: json['status']?.toString() ?? 'pending',
       paymentType: json['payment_type']?.toString(),
       paymentChannel: json['payment_channel']?.toString(),
@@ -209,6 +249,8 @@ class PaymentHistoryItem {
   final String orderId;
   final String type;
   final num nominal;
+  final num adminFee;
+  final num grossAmount;
   final String status;
   final String? paymentType;
   final String? createdAt;
@@ -218,10 +260,12 @@ class PaymentHistoryItem {
     required this.orderId,
     required this.type,
     required this.nominal,
+    this.adminFee = 0,
+    num? grossAmount,
     required this.status,
     this.paymentType,
     this.createdAt,
-  });
+  }) : grossAmount = grossAmount ?? (nominal + adminFee);
 
   factory PaymentHistoryItem.fromJson(Map<String, dynamic> json) {
     num parseNominal(dynamic val) {
@@ -230,11 +274,18 @@ class PaymentHistoryItem {
       return num.tryParse(val.toString()) ?? 0;
     }
 
+    final nom = parseNominal(json['nominal']);
+    final fee = parseNominal(json['admin_fee']);
+    final gross = parseNominal(json['gross_amount']);
+    final effectiveGross = gross > 0 ? gross : (nom + fee);
+
     return PaymentHistoryItem(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       orderId: json['order_id']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
-      nominal: parseNominal(json['nominal']),
+      nominal: nom,
+      adminFee: fee,
+      grossAmount: effectiveGross,
       status: json['status']?.toString() ?? 'pending',
       paymentType: json['payment_type']?.toString(),
       createdAt: json['created_at']?.toString(),

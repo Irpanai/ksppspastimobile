@@ -11,6 +11,11 @@ class PaymentChannelModel {
   final IconData icon;
   final int minAmount;
   final int feeFlat;
+  final String feeType;
+  final double feePercent;
+  final int feeThreshold;
+  final int feeBelowThreshold;
+  final double feeAboveThresholdPercent;
   final int sortOrder;
   final bool isActive;
   final String? maintenanceMessage;
@@ -26,10 +31,30 @@ class PaymentChannelModel {
     required this.icon,
     this.minAmount = 10000,
     this.feeFlat = 0,
+    this.feeType = 'flat',
+    this.feePercent = 0.0,
+    this.feeThreshold = 100000,
+    this.feeBelowThreshold = 0,
+    this.feeAboveThresholdPercent = 0.0,
     this.sortOrder = 0,
     this.isActive = true,
     this.maintenanceMessage,
   });
+
+  /// Hitung biaya admin riil berdasarkan nominal setoran
+  int calculateFee(int amount) {
+    if (feeType == 'percent') {
+      return (amount * (feePercent / 100)).round();
+    }
+    if (feeType == 'conditional') {
+      if (amount <= feeThreshold) {
+        return feeBelowThreshold > 0 ? feeBelowThreshold : feeFlat;
+      } else {
+        return (amount * (feeAboveThresholdPercent / 100)).round();
+      }
+    }
+    return feeFlat;
+  }
 
   factory PaymentChannelModel.fromJson(Map<String, dynamic> json) {
     final colorHex = json['tag_color'] as String? ?? '#0F766E';
@@ -38,8 +63,20 @@ class PaymentChannelModel {
     final isActiveRaw = json['is_active'];
     final bool active = isActiveRaw == null ? true : (isActiveRaw == true || isActiveRaw == 1 || isActiveRaw.toString() == 'true');
 
+    double parseDouble(dynamic val) {
+      if (val is num) return val.toDouble();
+      if (val == null) return 0.0;
+      return double.tryParse(val.toString()) ?? 0.0;
+    }
+
+    int parseInt(dynamic val, [int fallback = 0]) {
+      if (val is int) return val;
+      if (val == null) return fallback;
+      return int.tryParse(val.toString()) ?? fallback;
+    }
+
     return PaymentChannelModel(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      id: parseInt(json['id']),
       code: code,
       name: json['name'] as String? ?? 'Kanal Pembayaran',
       category: json['category'] as String? ?? 'virtual_account',
@@ -47,9 +84,14 @@ class PaymentChannelModel {
       description: json['description'] as String?,
       tagColor: _parseColor(colorHex, code),
       icon: _parseIcon(iconName, code),
-      minAmount: json['min_amount'] is int ? json['min_amount'] : int.tryParse(json['min_amount'].toString()) ?? 10000,
-      feeFlat: json['fee_flat'] is int ? json['fee_flat'] : int.tryParse(json['fee_flat'].toString()) ?? 0,
-      sortOrder: json['sort_order'] is int ? json['sort_order'] : int.tryParse(json['sort_order'].toString()) ?? 0,
+      minAmount: parseInt(json['min_amount'], 10000),
+      feeFlat: parseInt(json['fee_flat'], 0),
+      feeType: json['fee_type'] as String? ?? 'flat',
+      feePercent: parseDouble(json['fee_percent']),
+      feeThreshold: parseInt(json['fee_threshold'], 100000),
+      feeBelowThreshold: parseInt(json['fee_below_threshold'], 0),
+      feeAboveThresholdPercent: parseDouble(json['fee_above_threshold_percent']),
+      sortOrder: parseInt(json['sort_order'], 0),
       isActive: active,
       maintenanceMessage: json['maintenance_message'] as String?,
     );
