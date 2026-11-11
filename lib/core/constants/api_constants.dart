@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 
 class ApiConstants {
   // Base URL configuration
-  // For web / windows desktop / iOS simulator: 'http://localhost:8000/api'
+  // For web / windows desktop / iOS simulator: 'http://127.0.0.1:8000/api'
   // For Android emulator: 'http://10.0.2.2:8000/api'
   // For real device: Use your machine's LAN IP, e.g. 'http://192.168.1.xxx:8000/api'
   
-  // static const String defaultLocalhostUrl = 'http://localhost:8000/api';
+  // static const String defaultLocalhostUrl = 'http://127.0.0.1:8000/api';
   // static const String defaultLocalhostUrl = 'test.huma.web.id';
   static const String defaultLocalhostUrl = 'https://demo.ksppspasti.com/api';
-  // static const String androidEmulatorUrl = 'test.huma.web.id';
+  // static const String androidEmulatorUrl = 'http://127.0.0.1:8000/api';
   // static const String androidEmulatorUrl = 'http://10.0.2.2:8000/api';
   static const String androidEmulatorUrl = 'https://demo.ksppspasti.com/api';
 

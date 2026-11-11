@@ -502,6 +502,13 @@ class DokuQrisWebController {
       return false;
     }
 
+    try {
+      if (window.localStorage) {
+        var qrisStorage = window.localStorage.getItem('qris_data');
+        if (qrisStorage) inspectNetworkBody(qrisStorage);
+      }
+    } catch (e) {}
+
     if (scanDocument(document)) return;
 
     var frames = document.querySelectorAll('iframe');
@@ -641,7 +648,7 @@ class DokuQrisWebController {
   void _ensureDomPolling() {
     if (_disposed || _resolvedDirectQr || _domPollTimer != null) return;
     _domPollTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
-      if (_disposed || _resolvedDirectQr || _domPollCount >= 45) {
+      if (_disposed || _resolvedDirectQr || _domPollCount >= 55) {
         timer.cancel();
         _domPollTimer = null;
         return;

@@ -256,7 +256,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
         try {
           final status = await paymentProvider
               .checkStatus(active.orderId)
-              .timeout(const Duration(seconds: 5));
+              .timeout(const Duration(seconds: 18));
           if (!mounted) return;
 
           if (status != null && status.isSettlement) {
@@ -363,7 +363,11 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
             nmid: status?.nmid ?? active.nmid,
             expiredDate: status?.expiredDate ?? active.expiredDate,
           );
-          setState(() => _payment = updated);
+          _inlineDokuController?.dispose();
+          setState(() {
+            _payment = updated;
+            _inlineDokuController = null;
+          });
           await paymentProvider.updatePendingPayment(updated);
         } else if (!silent) {
           AppDialog.showWarning(
@@ -779,9 +783,9 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                         ),
                       ),
 
-                      // Box QR Code
+                      // Box QR Code (sejajar margin kartu dengan border rapi)
                       Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         child: _buildQrBoxContent(res, qrData, qrisColor),
                       ),
 
@@ -1068,139 +1072,155 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     String qrData,
     Color qrisColor,
   ) {
-    Widget framedQrBox(Widget child) {
+    Widget framedQrBox(Widget child, {EdgeInsets padding = const EdgeInsets.all(16)}) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: padding,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
         ),
         child: child,
       );
     }
 
-    if (qrData.isNotEmpty) {
-      return framedQrBox(
-        QrImageView(
-          data: qrData,
-          version: QrVersions.auto,
-          size: 240.0,
-          backgroundColor: Colors.white,
-          errorCorrectionLevel: QrErrorCorrectLevel.M,
-        ),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double qrSize = constraints.hasBoundedWidth
+            ? (constraints.maxWidth - 48).clamp(195.0, 248.0)
+            : 230.0;
 
-    if (_extractedQrBytes != null) {
-      return framedQrBox(
-        Image.memory(
-          _extractedQrBytes!,
-          width: 240,
-          height: 240,
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-        ),
-      );
-    }
+        if (qrData.isNotEmpty) {
+          return Center(
+            child: framedQrBox(
+              QrImageView(
+                data: qrData,
+                version: QrVersions.auto,
+                size: qrSize,
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.white,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+              ),
+            ),
+          );
+        }
 
-    if (_extractedQrImageUrl != null) {
-      return framedQrBox(
-        Image.network(
-          _extractedQrImageUrl!,
-          width: 240,
-          height: 240,
-          fit: BoxFit.contain,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const SizedBox(
-              width: 240,
-              height: 240,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return SizedBox(
-              width: 240,
-              height: 240,
-              child: Center(
-                child: OutlinedButton.icon(
-                  onPressed: _loadOrGenerateQris,
-                  icon: const Icon(Icons.refresh_rounded, size: 17),
-                  label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: qrisColor,
-                    side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        if (_extractedQrBytes != null) {
+          return Center(
+            child: framedQrBox(
+              Image.memory(
+                _extractedQrBytes!,
+                width: qrSize,
+                height: qrSize,
+                fit: BoxFit.contain,
+                gaplessPlayback: true,
+              ),
+            ),
+          );
+        }
+
+        if (_extractedQrImageUrl != null) {
+          return Center(
+            child: framedQrBox(
+              Image.network(
+                _extractedQrImageUrl!,
+                width: qrSize,
+                height: qrSize,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return SizedBox(
+                    width: qrSize,
+                    height: qrSize,
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return SizedBox(
+                    width: qrSize,
+                    height: qrSize,
+                    child: Center(
+                      child: OutlinedButton.icon(
+                        onPressed: _loadOrGenerateQris,
+                        icon: const Icon(Icons.refresh_rounded, size: 17),
+                        label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: qrisColor,
+                          side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }
+
+        final inlineController = _inlineDokuController?.webViewController;
+        if (inlineController != null) {
+          return InlineDokuQrisWebView(
+            controller: inlineController,
+            isLoading: _inlineDokuLoading,
+            progress: _inlineDokuProgress,
+            accentColor: qrisColor,
+            onReload: () => _inlineDokuController?.reload(),
+          );
+        }
+
+        final hasCheckoutUrl = res.snapRedirectUrl.trim().isNotEmpty;
+        return framedQrBox(
+          SizedBox(
+            width: 240,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.qr_code_2_rounded,
+                    size: 52,
+                    color: hasCheckoutUrl ? qrisColor : const Color(0xFF94A3B8),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
-
-    final inlineController = _inlineDokuController?.webViewController;
-    if (inlineController != null) {
-      return InlineDokuQrisWebView(
-        controller: inlineController,
-        isLoading: _inlineDokuLoading,
-        progress: _inlineDokuProgress,
-        accentColor: qrisColor,
-        onReload: () => _inlineDokuController?.reload(),
-      );
-    }
-
-    final hasCheckoutUrl = res.snapRedirectUrl.trim().isNotEmpty;
-    return framedQrBox(
-      SizedBox(
-        width: 240,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.qr_code_2_rounded,
-                size: 52,
-                color: hasCheckoutUrl ? qrisColor : const Color(0xFF94A3B8),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                hasCheckoutUrl ? 'Menyiapkan Kode QRIS' : 'QR Code Belum Tersedia',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF334155),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Tekan tombol di bawah untuk memuat ulang tampilan QRIS langsung di halaman ini.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5, height: 1.35),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _loadOrGenerateQris,
-                  icon: const Icon(Icons.refresh_rounded, size: 17),
-                  label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: qrisColor,
-                    side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 10),
+                  Text(
+                    hasCheckoutUrl ? 'Menyiapkan Kode QRIS' : 'QR Code Belum Tersedia',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Tekan tombol di bawah untuk memuat ulang tampilan QRIS langsung di halaman ini.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5, height: 1.35),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _loadOrGenerateQris,
+                      icon: const Icon(Icons.refresh_rounded, size: 17),
+                      label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: qrisColor,
+                        side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+          padding: const EdgeInsets.all(16),
+        );
+      },
     );
   }
 

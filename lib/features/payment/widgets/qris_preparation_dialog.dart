@@ -195,7 +195,7 @@ class _QrisPreparationDialogState extends State<_QrisPreparationDialog> {
       try {
         final status = await widget.paymentProvider
             .checkStatus(payment.orderId)
-            .timeout(const Duration(seconds: 4));
+            .timeout(const Duration(seconds: 18));
         if (_cancelled || !mounted) return;
         final fetchedQr = status?.qrString?.trim() ?? '';
         if (fetchedQr.isNotEmpty) {
@@ -287,7 +287,7 @@ class _QrisPreparationDialogState extends State<_QrisPreparationDialog> {
         setState(() {
           _statusText = 'Menyiapkan tampilan QRIS...';
         });
-        _postLoadGraceTimer ??= Timer(const Duration(milliseconds: 2200), () {
+        _postLoadGraceTimer ??= Timer(const Duration(milliseconds: 14000), () {
           if (!done.isCompleted) done.complete();
         });
       },
@@ -306,7 +306,7 @@ class _QrisPreparationDialogState extends State<_QrisPreparationDialog> {
       setState(() => _webCtrl = ctrl);
     }
 
-    _overallTimer = Timer(const Duration(seconds: 14), () {
+    _overallTimer = Timer(const Duration(seconds: 22), () {
       if (!done.isCompleted) done.complete();
     });
 
