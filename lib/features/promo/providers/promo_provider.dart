@@ -11,19 +11,21 @@ class PromoProvider extends ChangeNotifier {
   String? _errorMessage;
   String _selectedCategory = 'Semua';
 
-  List<PromoModel> get promos => _promos;
+  List<PromoModel> get promos =>
+      _promos.where((p) => p.isCurrentlyVisibleOn()).toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String get selectedCategory => _selectedCategory;
 
   List<PromoModel> get filteredPromos {
+    final activePromos = promos;
     if (_selectedCategory == 'Promo') {
-      return _promos.where((p) => p.isPromo).toList();
+      return activePromos.where((p) => p.isPromo).toList();
     }
     if (_selectedCategory == 'Informasi') {
-      return _promos.where((p) => p.isInfo).toList();
+      return activePromos.where((p) => p.isInfo).toList();
     }
-    return _promos;
+    return activePromos;
   }
 
   void setCategory(String category) {
@@ -46,7 +48,7 @@ class PromoProvider extends ChangeNotifier {
 
     try {
       final results = await _promoService.getPromos();
-      _promos = results;
+      _promos = results.where((p) => p.isCurrentlyVisibleOn()).toList();
       _errorMessage = null;
     } on ApiException catch (e) {
       if (!e.isTimeout && e.message.trim().isNotEmpty && !e.message.toLowerCase().contains('timeout')) { _errorMessage = e.message; }

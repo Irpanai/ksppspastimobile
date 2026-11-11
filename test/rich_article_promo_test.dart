@@ -113,5 +113,27 @@ void main() {
 
     expect(find.textContaining('AKHIR_ARTIKEL_TERVERIFIKASI'), findsOneWidget);
   });
+
+  test('PromoModel.isCurrentlyVisibleOn strictly respects start and end dates', () {
+    final scheduledPromo = PromoModel(
+      id: 99,
+      judul: 'Penyesuaian Jam Operasional',
+      tipe: 'info',
+      tanggalMulai: '2026-11-12',
+      tanggalBerakhir: '2026-11-19',
+    );
+
+    expect(scheduledPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 11, 23, 59)), isFalse);
+    expect(scheduledPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 12, 0, 1)), isTrue);
+    expect(scheduledPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 19, 23, 59)), isTrue);
+    expect(scheduledPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 20, 0, 1)), isFalse);
+
+    final unboundedPromo = PromoModel(
+      id: 100,
+      judul: 'Info Selalu Tayang',
+      tipe: 'info',
+    );
+    expect(unboundedPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 11)), isTrue);
+  });
 }
 
