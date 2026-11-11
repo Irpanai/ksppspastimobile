@@ -138,91 +138,44 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
   }
 
   void _showSuccessDialog(PaymentStatusResponse status) {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: 'Pembayaran Berhasil!',
+      message: 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
+      buttonText: 'Kembali ke Dashboard',
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      onConfirm: () {
+        if (mounted) Navigator.pop(context, true);
+      },
+      customContent: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
           children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCFCE7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 48),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Pembayaran Berhasil!',
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-              ),
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(
+                  AppCurrency.format(status.nominal),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      Text(
-                        AppCurrency.format(status.nominal),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      Text(
-                        (status.paymentChannel ?? 'Virtual Account').toUpperCase(),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx); // Close dialog
-                  Navigator.pop(context, true); // Close payment screen with success
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F766E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(
+                  (status.paymentChannel ?? 'Virtual Account').toUpperCase(),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                 ),
-                child: const Text('Kembali ke Dashboard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              ),
+              ],
             ),
           ],
         ),
@@ -233,19 +186,9 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('$label berhasil disalin'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF16A34A),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    AppDialog.showFloatingToast(
+      context,
+      message: '$label berhasil disalin',
     );
   }
 
@@ -328,23 +271,6 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
 
     if (shouldLeave && context.mounted) {
       Navigator.pop(context, false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('Pembayaran disimpan. Lanjutkan kapan saja melalui Beranda.'),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF2E7D32),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          duration: const Duration(seconds: 4),
-        ),
-      );
     }
   }
 

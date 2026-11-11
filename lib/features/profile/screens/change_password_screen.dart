@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../auth/screens/forgot_password_screen.dart';
 import '../providers/profile_provider.dart';
@@ -61,49 +62,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
+    AppDialog.showError(
+      context,
+      title: 'Gagal Mengubah Password',
+      message: message,
+    );
   }
 
   void _showSuccessAndPop() {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: 'Berhasil',
+      message: 'Password akun Anda berhasil diubah.',
+      buttonText: 'Selesai',
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(color: Color(0xFFECFDF5), shape: BoxShape.circle),
-                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
-              ),
-              const SizedBox(height: 16),
-              const Text('Berhasil', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('Password akun Anda berhasil diubah.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF64748B))),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0E7955),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Selesai'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      onConfirm: () {
+        if (mounted) Navigator.pop(context);
+      },
     );
   }
 

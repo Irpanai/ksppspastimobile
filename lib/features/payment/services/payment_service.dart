@@ -66,6 +66,7 @@ class PaymentService {
       ApiConstants.snapToken,
       body: body,
       withAuth: true,
+      timeout: const Duration(seconds: 45),
       fromJsonT: (data) => SnapTokenResponse.fromJson(data as Map<String, dynamic>),
     );
 

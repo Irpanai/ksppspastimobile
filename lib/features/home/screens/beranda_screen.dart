@@ -19,6 +19,8 @@ import '../../payment/models/payment_model.dart';
 import '../../payment/providers/payment_provider.dart';
 import '../../payment/widgets/pending_payments_modal.dart';
 import '../../../core/services/in_app_update_service.dart';
+import '../../../shared/widgets/app_dialog.dart';
+import '../../../shared/widgets/dashboard_alert_banner.dart';
 
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
@@ -28,6 +30,8 @@ class BerandaScreen extends StatefulWidget {
 }
 
 class _BerandaScreenState extends State<BerandaScreen> {
+  String? _lastShownError;
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +45,28 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final dashboardProvider = context.read<DashboardProvider>();
     await dashboardProvider.fetchDashboard();
     if (!mounted) return;
+    _checkDashboardErrorModal();
     _checkAndShowTunggakanPopup();
+  }
+
+  void _checkDashboardErrorModal() {
+    final err = context.read<DashboardProvider>().errorMessage?.trim() ?? '';
+    if (err.isEmpty || err.toLowerCase().contains('timeout')) {
+      _lastShownError = null;
+      return;
+    }
+    if (_lastShownError == err) return;
+    _lastShownError = err;
+    AppDialog.showError(
+      context,
+      title: 'Gagal Memuat Beranda',
+      message: err,
+      buttonText: 'Muat Ulang',
+      onConfirm: () {
+        if (mounted) _loadDashboardAndCheckTunggakan();
+      },
+      secondaryButtonText: 'Tutup',
+    );
   }
 
   void _checkAndShowTunggakanPopup() {
@@ -96,6 +121,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
       context.read<NotificationProvider>().fetchNotifications(refresh: true),
     ]);
     if (mounted) {
+      _checkDashboardErrorModal();
       _checkAndShowTunggakanPopup();
     }
   }
@@ -151,10 +177,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildCustomAppBar(context),
-                      if (dashboardProvider.errorMessage != null &&
-                          dashboardProvider.errorMessage!.trim().isNotEmpty &&
-                          !dashboardProvider.errorMessage!.toLowerCase().contains('timeout'))
-                        _buildErrorBanner(context, dashboardProvider.errorMessage!),
                       if (pendingPayments.isNotEmpty)
                         _buildPendingPaymentBanner(context, pendingPayments),
                       if (shouldShowPokokBanner)
@@ -193,148 +215,24 @@ class _BerandaScreenState extends State<BerandaScreen> {
         ? '${first.displayPaymentMethod} dan ${count - 1} lainnya • Ketuk untuk lihat'
         : '${first.displayPaymentMethod} • ${first.nominalFormat}';
 
-    return InkWell(
-      onTap: () => PendingPaymentsModal.show(context),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB), // Warm amber background
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFD97706).withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEF3C7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.timer_outlined, color: Color(0xFFD97706), size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF92400E),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD97706),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                'Lihat',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return DashboardAlertBanner.amber(
+      title: title,
+      subtitle: subtitle,
+      actionLabel: 'Lihat',
+      icon: Icons.timer_outlined,
+      onCardTap: () => PendingPaymentsModal.show(context),
+      onActionTap: () => PendingPaymentsModal.show(context),
     );
   }
 
   Widget _buildSimpananPokokBanner(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4), // Soft Emerald
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA7F3D0)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF047857).withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFDCFCE7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.priority_high_rounded, color: Color(0xFF047857), size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Kewajiban: Simpanan Pokok',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Color(0xFF065F46),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Anda diwajibkan membayar Simpanan Pokok awal.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Color(0xFF047857), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          ElevatedButton(
-            onPressed: () => WajibSimpananModalDialog.show(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF047857),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Bayar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    return DashboardAlertBanner.emerald(
+      title: 'Kewajiban: Simpanan Pokok',
+      subtitle: 'Anda diwajibkan membayar Simpanan Pokok awal.',
+      actionLabel: 'Bayar',
+      icon: Icons.priority_high_rounded,
+      onCardTap: () => WajibSimpananModalDialog.show(context),
+      onActionTap: () => WajibSimpananModalDialog.show(context),
     );
   }
 
@@ -343,101 +241,15 @@ class _BerandaScreenState extends State<BerandaScreen> {
         ? anggota.jumlahBulanMenunggak
         : anggota.tunggakanWajib.length;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB), // Amber-50
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFDE68A)), // Amber-200
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD97706).withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFEF3C7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Perhatian: Status Menunggak',
-                  style: TextStyle(
-                    color: Color(0xFF92400E),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  bulanCount > 0
-                      ? 'Ada $bulanCount bulan Simpanan Wajib belum dibayar.'
-                      : 'Simpanan Wajib belum terbayar.',
-                  style: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          ElevatedButton(
-            onPressed: () => TunggakanModalDialog.show(context, anggota, saldoPokok),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD97706),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            child: const Text('Bayar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorBanner(BuildContext context, String error) {
-    if (error.trim().isEmpty || error.toLowerCase().contains('timeout')) {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              error,
-              style: TextStyle(color: Colors.red.shade800, fontSize: 12),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.redAccent, size: 20),
-            onPressed: () => context.read<DashboardProvider>().fetchDashboard(refresh: true),
-          ),
-        ],
-      ),
+    return DashboardAlertBanner.amber(
+      title: 'Perhatian: Status Menunggak',
+      subtitle: bulanCount > 0
+          ? 'Ada $bulanCount bulan Simpanan Wajib belum dibayar.'
+          : 'Simpanan Wajib belum terbayar.',
+      actionLabel: 'Bayar',
+      icon: Icons.warning_amber_rounded,
+      onCardTap: () => TunggakanModalDialog.show(context, anggota, saldoPokok),
+      onActionTap: () => TunggakanModalDialog.show(context, anggota, saldoPokok),
     );
   }
 

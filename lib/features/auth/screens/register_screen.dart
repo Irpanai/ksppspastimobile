@@ -17,6 +17,7 @@ import '../services/cabang_service.dart';
 import '../widgets/cabang_map_modal.dart';
 import '../../profile/screens/terms_conditions_screen.dart';
 import '../../profile/screens/data_consent_screen.dart';
+import '../../../shared/widgets/app_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onSwitchToLogin;
@@ -427,23 +428,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Pendaftaran berhasil! Selamat datang di KSPPS PASTI.',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      await AppDialog.showSuccess(
+        context,
+        title: 'Pendaftaran Berhasil',
+        message: 'Selamat datang di KSPPS PASTI. Akun Anda telah berhasil dibuat.',
+        buttonText: 'Masuk Beranda',
+        barrierDismissible: false,
       );
+      if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -456,53 +448,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0E7955),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    AppDialog.showSuccess(
+      context,
+      title: 'Berhasil',
+      message: message,
     );
   }
 
   void _showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
-          ],
-        ),
-        backgroundColor: const Color(0xFFF59E0B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    AppDialog.showWarning(
+      context,
+      title: 'Perhatian',
+      message: message,
     );
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
-          ],
-        ),
-        backgroundColor: const Color(0xFFDC2626),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    AppDialog.showError(
+      context,
+      title: 'Terjadi Kesalahan',
+      message: message,
     );
   }
 

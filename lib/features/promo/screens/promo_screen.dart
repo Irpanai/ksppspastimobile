@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/app_skeleton.dart';
-import '../models/promo_model.dart';
 import '../providers/promo_provider.dart';
+import '../widgets/promo_detail_sheet.dart';
 
 class PromoScreen extends StatefulWidget {
   const PromoScreen({super.key});
@@ -19,213 +19,6 @@ class _PromoScreenState extends State<PromoScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PromoProvider>().fetchPromos();
     });
-  }
-
-  void _showDetailBottomSheet(BuildContext context, PromoModel promo) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: EdgeInsets.fromLTRB(24, 12, 24, 28 + MediaQuery.of(ctx).padding.bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Banner Image jika ada
-            if (promo.gambarBanner != null && promo.gambarBanner!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  promo.gambarBanner!,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 180,
-                      color: const Color(0xFFF1F5F9),
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B5E20)),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    debugPrint('Modal promo image error: $error (URL: ${promo.gambarBanner})');
-                    return _buildPlaceholderBanner(promo);
-                  },
-                ),
-              )
-            else
-              _buildPlaceholderBanner(promo),
-
-            const SizedBox(height: 16),
-
-            // Badge & Tanggal
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildCategoryBadge(promo),
-                if (promo.tanggalBerakhir != null)
-                  Text(
-                    'Berlaku s/d ${promo.tanggalBerakhir}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                  )
-                else if (promo.createdAt != null)
-                  Text(
-                    promo.createdAt!,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            // Judul
-            Text(
-              promo.judul,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-                height: 1.3,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Deskripsi
-            if (promo.deskripsi != null && promo.deskripsi!.isNotEmpty)
-              Text(
-                promo.deskripsi!,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF475569),
-                  height: 1.6,
-                ),
-              ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B5E20),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryBadge(PromoModel promo) {
-    final isPromo = promo.isPromo;
-    final color = isPromo ? const Color(0xFF10B981) : const Color(0xFF3B82F6);
-    final text = isPromo ? 'PROMO' : 'INFORMASI';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderBanner(PromoModel promo) {
-    final isPromo = promo.isPromo;
-    final startColor = isPromo ? const Color(0xFF1B5E20) : const Color(0xFF1E3A8A);
-    final endColor = isPromo ? const Color(0xFF388E3C) : const Color(0xFF3B82F6);
-
-    return Container(
-      height: 140,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [startColor, endColor],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -15,
-            bottom: -15,
-            child: Icon(
-              isPromo ? Icons.percent_rounded : Icons.campaign_rounded,
-              size: 110,
-              color: Colors.white.withOpacity(0.12),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isPromo ? Icons.local_offer_rounded : Icons.info_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isPromo ? 'Promo Spesial Koperasi' : 'Pemberitahuan Resmi',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                Text(
-                  'KSPPS PASTI',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -314,7 +107,7 @@ class _PromoScreenState extends State<PromoScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.04),
+                                        color: Colors.black.withValues(alpha: 0.04),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -322,7 +115,7 @@ class _PromoScreenState extends State<PromoScreen> {
                                   ),
                                   clipBehavior: Clip.antiAlias,
                                   child: InkWell(
-                                    onTap: () => _showDetailBottomSheet(context, promo),
+                                    onTap: () => showPromoDetailSheet(context, promo),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -335,21 +128,21 @@ class _PromoScreenState extends State<PromoScreen> {
                                             fit: BoxFit.cover,
                                             loadingBuilder: (context, child, loadingProgress) {
                                               if (loadingProgress == null) return child;
-                                              return Container(
-                                                height: 150,
-                                                color: const Color(0xFFF1F5F9),
-                                                child: const Center(
-                                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B5E20)),
+                                              return const AppShimmer(
+                                                child: AppSkeletonBox(
+                                                  width: double.infinity,
+                                                  height: 150,
+                                                  borderRadius: 0,
                                                 ),
                                               );
                                             },
                                             errorBuilder: (context, error, stackTrace) {
                                               debugPrint('Card promo image error: $error (URL: ${promo.gambarBanner})');
-                                              return _buildPlaceholderBanner(promo);
+                                              return PromoPlaceholderBanner(promo: promo);
                                             },
                                           )
                                         else
-                                          _buildPlaceholderBanner(promo),
+                                          PromoPlaceholderBanner(promo: promo),
 
                                         // Content
                                         Padding(
@@ -360,16 +153,23 @@ class _PromoScreenState extends State<PromoScreen> {
                                               Row(
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                 children: [
-                                                  _buildCategoryBadge(promo),
+                                                  PromoCategoryBadge(promo: promo),
+                                                  const SizedBox(width: 8),
                                                   if (promo.tanggalBerakhir != null)
-                                                    Text(
-                                                      's/d ${promo.tanggalBerakhir}',
-                                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                                    Flexible(
+                                                      child: Text(
+                                                        's/d ${promo.tanggalBerakhir}',
+                                                        style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
                                                     )
                                                   else if (promo.createdAt != null)
-                                                    Text(
-                                                      promo.createdAt!,
-                                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                                    Flexible(
+                                                      child: Text(
+                                                        promo.createdAt!,
+                                                        style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -383,10 +183,10 @@ class _PromoScreenState extends State<PromoScreen> {
                                                   height: 1.3,
                                                 ),
                                               ),
-                                              if (promo.deskripsi != null && promo.deskripsi!.isNotEmpty) ...[
+                                              if (promo.plainTextPreview.isNotEmpty) ...[
                                                 const SizedBox(height: 6),
                                                 Text(
-                                                  promo.deskripsi!,
+                                                  promo.plainTextPreview,
                                                   maxLines: 2,
                                                   overflow: TextOverflow.ellipsis,
                                                   style: const TextStyle(
@@ -427,7 +227,7 @@ class _PromoScreenState extends State<PromoScreen> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: const Color(0xFF1B5E20).withOpacity(0.2),
+                color: const Color(0xFF1B5E20).withValues(alpha: 0.2),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

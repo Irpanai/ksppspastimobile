@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/pin_verification_dialog.dart';
 
@@ -27,55 +28,40 @@ class _QrisPaymentScreenState extends State<QrisPaymentScreen> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: 'Pembayaran Berhasil!',
+      message: 'Pembayaran QRIS Anda telah berhasil diproses.',
+      buttonText: 'Selesai',
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF0FDF4),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 48),
+      onConfirm: () {
+        if (mounted) Navigator.pop(context);
+      },
+      customContent: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'Toko Sembako Berkah',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Rp ${_amountController.text}',
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E293B),
+                letterSpacing: -0.5,
               ),
-              const SizedBox(height: 24),
-              const Text('Pembayaran Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-              const SizedBox(height: 8),
-              Text(
-                'Toko Sembako Berkah',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Rp ${_amountController.text}',
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Go back to Home
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Selesai', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              )
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -269,46 +270,15 @@ class _SetPinScreenState extends State<SetPinScreen> {
   }
 
   void _showSuccessAndPop(String title, String message) {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: title,
+      message: message,
+      buttonText: 'Selesai',
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(color: Color(0xFFECFDF5), shape: BoxShape.circle),
-                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
-              ),
-              const SizedBox(height: 16),
-              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF64748B), height: 1.4)),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.pop(context, true);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0E7955),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Selesai', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      onConfirm: () {
+        if (mounted) Navigator.pop(context, true);
+      },
     );
   }
 

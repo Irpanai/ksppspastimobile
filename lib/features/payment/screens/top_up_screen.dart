@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/widgets/dashboard_alert_banner.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../home/models/dashboard_model.dart';
 import '../../sijaka/screens/sijaka_submission_screen.dart';
@@ -208,67 +209,29 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   void _showPokokAlreadyPaidDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+    AppDialog.showInfo(
+      context,
+      title: 'Simpanan Pokok Sudah Lunas',
+      message:
+          'Setoran awal Simpanan Pokok sebesar Rp 15.000 telah terverifikasi. Simpanan pokok hanya dibayarkan 1 (satu) kali selama menjadi anggota aktif KSPPS PASTI dan tidak perlu disetor lagi.',
+      icon: Icons.check_circle_rounded,
+      primaryColor: const Color(0xFF16A34A),
+      buttonText: 'Mengerti',
+      customContent: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCFCE7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 40),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Simpanan Pokok Sudah Lunas',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Setoran awal Simpanan Pokok sebesar Rp 15.000 telah terverifikasi. Simpanan pokok hanya dibayarkan 1 (satu) kali selama menjadi anggota aktif KSPPS PASTI dan tidak perlu disetor lagi.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.info_outline_rounded, color: Color(0xFF0284C7), size: 18),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Bisa dicairkan kembali saat keluar keanggotaan.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF0369A1)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.info_outline_rounded, color: Color(0xFF0284C7), size: 18),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Bisa dicairkan kembali saat keluar keanggotaan.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF0369A1), fontWeight: FontWeight.w500),
               ),
             ),
           ],
@@ -303,60 +266,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
     final isQrisSelected = _selectedPaymentMethod.toLowerCase() == 'qris';
 
-    // Tampilkan loading modal informatif agar pengguna tahu sistem sedang memproses secara realtime
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => PopScope(
-        canPop: false,
-        child: Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: Colors.white,
-          elevation: 8,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  isQrisSelected ? 'Menyiapkan Kode QRIS...' : 'Menyiapkan Pembayaran...',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isQrisSelected
-                      ? 'Menghubungkan ke gateway pembayaran dan membuat kode QRIS instan resmi. Mohon tunggu...'
-                      : 'Menghubungkan ke server bank untuk menerbitkan nomor Virtual Account. Mohon tunggu...',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    SnapTokenResponse? result;
-    try {
-      result = await paymentProvider.createPayment(
+    Future<SnapTokenResponse?> triggerCreatePayment() {
+      return paymentProvider.createPayment(
         type: _selectedType,
         nominal: amount,
         paymentMethod: _selectedPaymentMethod,
@@ -365,57 +276,108 @@ class _TopUpScreenState extends State<TopUpScreen> {
         bulanAkhir: (_selectedType == 'simpanan_wajib' && _isBatchWajib) ? _wajibEndMonth : null,
         tahun: _selectedType == 'simpanan_wajib' ? _wajibYear : null,
       );
-    } catch (_) {
-      result = null;
-    } finally {
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context); // Tutup loading dialog
-      }
     }
 
-    if (!mounted) return;
+    bool? success;
 
-    if (result != null) {
-      final isQris = isQrisSelected ||
-          result.isDirectQris ||
-          result.paymentMethod.toLowerCase() == 'qris' ||
-          result.bank?.toLowerCase() == 'qris';
-
-      final Widget targetScreen = isQris
-          ? NativeQrisScreen(paymentResponse: result)
-          : (result.isDirectVa
-              ? NativePaymentDetailScreen(paymentResponse: result)
-              : DokuWebViewScreen(paymentResponse: result));
-
-      final success = await Navigator.push<bool>(
+    // Untuk QRIS: langsung buka layar QRIS dengan Skeleton Loading sampai QR selesai di-generate
+    if (isQrisSelected) {
+      success = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (context) => targetScreen,
+          builder: (context) => NativeQrisScreen(
+            onGeneratePayment: triggerCreatePayment,
+          ),
+        ),
+      );
+    } else {
+      // Untuk VA / Checkout: tampilkan dialog persiapan pembayaran sebelum membuka layar instruksi
+      AppDialog.showShell(
+        context: context,
+        barrierDismissible: false,
+        child: PopScope(
+          canPop: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Menyiapkan Pembayaran...',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Menghubungkan ke server bank untuk menerbitkan kode pembayaran. Mohon tunggu...',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       );
 
-      if (success == true && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 10),
-                Expanded(child: Text('Setoran simpanan berhasil diverifikasi!')),
-              ],
-            ),
-            backgroundColor: const Color(0xFF16A34A),
-            behavior: SnackBarBehavior.floating,
+      SnapTokenResponse? result;
+      try {
+        result = await triggerCreatePayment();
+      } catch (_) {
+        result = null;
+      } finally {
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context); // Tutup loading dialog
+        }
+      }
+
+      if (!mounted) return;
+
+      if (result != null) {
+        final isQris = result.isDirectQris ||
+            result.paymentMethod.toLowerCase() == 'qris' ||
+            result.bank?.toLowerCase() == 'qris';
+
+        final Widget targetScreen = isQris
+            ? NativeQrisScreen(paymentResponse: result)
+            : (result.isDirectVa
+                ? NativePaymentDetailScreen(paymentResponse: result)
+                : DokuWebViewScreen(paymentResponse: result));
+
+        success = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => targetScreen,
           ),
         );
-        Navigator.pop(context, true);
+      } else {
+        AppDialog.showError(
+          context,
+          title: 'Pembayaran Belum Berhasil',
+          message: paymentProvider.errorMessage ?? 'Gagal membuat transaksi pembayaran. Silakan periksa kembali rincian pembayaran Anda.',
+        );
       }
-    } else {
-      AppDialog.showError(
-        context,
-        title: 'Pembayaran Belum Berhasil',
-        message: paymentProvider.errorMessage ?? 'Gagal membuat transaksi pembayaran. Silakan periksa kembali rincian pembayaran Anda.',
-      );
+    }
+
+    if (success == true && mounted) {
+      Navigator.pop(context, true);
     }
   }
 
@@ -503,64 +465,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
         ? '${first.displayPaymentMethod} dan ${count - 1} lainnya • Ketuk untuk lihat'
         : '${first.displayPaymentMethod} • ${first.nominalFormat}';
 
-    return InkWell(
-      onTap: () => PendingPaymentsModal.show(context),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEF3C7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.receipt_long_rounded, color: Color(0xFFD97706), size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11.5, color: Color(0xFFB45309)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            ElevatedButton(
-              onPressed: () => PendingPaymentsModal.show(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF388E3C),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-              child: const Text('Buka', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
+    return DashboardAlertBanner.amber(
+      margin: EdgeInsets.zero,
+      title: title,
+      subtitle: subtitle,
+      actionLabel: 'Buka',
+      icon: Icons.receipt_long_rounded,
+      onCardTap: () => PendingPaymentsModal.show(context),
+      onActionTap: () => PendingPaymentsModal.show(context),
     );
   }
 
@@ -863,80 +775,29 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
         // Status Tunggakan Akun User
         if (anggota != null && anggota.tunggakanWajib.isNotEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ada ${anggota.tunggakanWajib.length} Bulan Iuran Belum Dibayar',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF92400E),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Total ${AppCurrency.format(anggota.totalTunggakanWajib)} (${anggota.tunggakanWajib.first.label} s/d ${anggota.tunggakanWajib.last.label})',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFB45309),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isBatchWajib = true;
-                      _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-                      _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-                      _wajibYear = anggota.tunggakanWajib.first.tahun;
-                      _updateWajibAmount();
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Semua ${anggota.tunggakanWajib.length} bulan tunggakan dipilih (${AppCurrency.format(anggota.totalTunggakanWajib)}).'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD97706),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Pilih Semua',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
+          DashboardAlertBanner.amber(
+            margin: EdgeInsets.zero,
+            title: 'Ada ${anggota.tunggakanWajib.length} Bulan Iuran Belum Dibayar',
+            subtitle:
+                'Total ${AppCurrency.format(anggota.totalTunggakanWajib)} (${anggota.tunggakanWajib.first.label} s/d ${anggota.tunggakanWajib.last.label})',
+            actionLabel: 'Pilih Semua',
+            icon: Icons.warning_amber_rounded,
+            onActionTap: () {
+              setState(() {
+                _isBatchWajib = true;
+                _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
+                _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
+                _wajibYear = anggota.tunggakanWajib.first.tahun;
+                _updateWajibAmount();
+              });
+              AppDialog.showInfo(
+                context,
+                title: 'Tunggakan Dipilih',
+                message:
+                    'Semua ${anggota.tunggakanWajib.length} bulan tunggakan dipilih (${AppCurrency.format(anggota.totalTunggakanWajib)}).',
+                icon: Icons.done_all_rounded,
+              );
+            },
           ),
           const SizedBox(height: 16),
         ] else if (anggota != null) ...[
@@ -1530,12 +1391,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
                       onTap: () {
                         if (isDisabled) return;
                         if (isLunas && !_isBatchWajib) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Bulan $monthName $_wajibYear sudah lunas dibayar.'),
-                              duration: const Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                          AppDialog.showInfo(
+                            context,
+                            title: 'Iuran Sudah Lunas',
+                            message: 'Bulan $monthName $_wajibYear sudah lunas dibayar dan tidak perlu dibayar lagi.',
+                            icon: Icons.verified_rounded,
+                            primaryColor: const Color(0xFF0E7955),
                           );
                           return;
                         }

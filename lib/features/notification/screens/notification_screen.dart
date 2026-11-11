@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../shared/widgets/app_dialog.dart';
 import '../../../shared/widgets/premium_header.dart';
 import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/rich_article_viewer.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../home/widgets/wajib_simpanan_modal_dialog.dart';
 import '../../promo/screens/promo_screen.dart';
@@ -32,38 +34,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
             ),
-          ),
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(ctx).padding.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 14, bottom: 6),
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    padding: EdgeInsets.fromLTRB(24, 14, 24, MediaQuery.of(ctx).padding.bottom + 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                 children: [
                   Container(
                     width: 44,
@@ -117,13 +125,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                notif.message,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF475569),
-                  height: 1.5,
-                ),
+              RichArticleViewer(
+                content: notif.message,
+                accentColor: notif.iconColor,
               ),
               const SizedBox(height: 24),
               if (notif.type == 'pokok')
@@ -264,7 +268,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     child: const Text('Tutup', style: TextStyle(color: Color(0xFF334155))),
                   ),
                 ),
-            ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -290,12 +299,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   icon: const Icon(Icons.done_all_rounded, color: Colors.white, size: 20),
                   onPressed: () {
                     provider.markAllAsRead();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Semua notifikasi ditandai telah dibaca'),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppDialog.showSuccess(
+                      context,
+                      title: 'Semua Dibaca',
+                      message: 'Semua notifikasi telah ditandai sebagai dibaca.',
                     );
                   },
                 ),
@@ -502,12 +509,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
           onDismissed: (_) {
             provider.deleteNotification(notif);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Notifikasi telah dihapus'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
+            AppDialog.showFloatingToast(
+              context,
+              message: 'Notifikasi telah dihapus',
             );
           },
           child: InkWell(
@@ -603,7 +607,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          notif.message,
+                          stripHtmlToPlainText(notif.message),
                           style: TextStyle(
                             fontSize: 12.5,
                             color: notif.isRead ? const Color(0xFF64748B) : const Color(0xFF334155),

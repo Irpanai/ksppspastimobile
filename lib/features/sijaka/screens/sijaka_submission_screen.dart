@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../payment/providers/payment_provider.dart';
 import '../../payment/screens/doku_webview_screen.dart';
@@ -192,27 +193,28 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
 
   Future<void> _submitPengajuan() async {
     if (_selectedProduct == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih produk Sijaka terlebih dahulu.')),
+      AppDialog.showWarning(
+        context,
+        title: 'Pilih Produk Sijaka',
+        message: 'Silakan pilih produk Sijaka terlebih dahulu sebelum melanjutkan pengajuan.',
       );
       return;
     }
 
     if (_rawNominal < _selectedProduct!.minimalSetoran) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Nominal minimal untuk ${_selectedProduct!.namaProduk} adalah ${_selectedProduct!.formattedMinimalSetoran}.',
-          ),
-          backgroundColor: Colors.red.shade700,
-        ),
+      AppDialog.showWarning(
+        context,
+        title: 'Nominal Belum Mencukupi',
+        message: 'Nominal minimal untuk ${_selectedProduct!.namaProduk} adalah ${_selectedProduct!.formattedMinimalSetoran}.',
       );
       return;
     }
 
     if (!_agreed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap menyetujui syarat & ketentuan akad.')),
+      AppDialog.showWarning(
+        context,
+        title: 'Persetujuan Akad Diperlukan',
+        message: 'Harap menyetujui syarat & ketentuan akad sebelum mengajukan.',
       );
       return;
     }
@@ -261,20 +263,18 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           ),
         );
       } else if (paymentProvider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(paymentProvider.errorMessage!),
-            backgroundColor: Colors.red.shade700,
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengajukan Sijaka',
+          message: paymentProvider.errorMessage!,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: ${e.toString()}'),
-            backgroundColor: Colors.red.shade700,
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Terjadi Kesalahan',
+          message: 'Gagal memproses pengajuan Sijaka: ${e.toString()}',
         );
       }
     }

@@ -119,7 +119,8 @@ class SnapTokenResponse {
     final gross = parseNominal(json['gross_amount']);
     final effectiveGross = gross > 0 ? gross : (nom + fee);
     final redirectUrl = json['payment_url']?.toString() ?? json['snap_redirect_url']?.toString() ?? '';
-    final qrStr = json['qr_string']?.toString();
+    final rawQr = json['qr_string'] ?? json['qr_code'] ?? json['qr_content'] ?? json['qrContent'];
+    final qrStr = rawQr?.toString().trim();
     final pmode = json['payment_mode']?.toString().toLowerCase() ?? '';
     final pm = json['payment_method']?.toString().toLowerCase() ?? '';
     final b = json['bank']?.toString().toLowerCase() ?? '';
@@ -194,6 +195,44 @@ class SnapTokenResponse {
       'nmid': nmid,
     };
   }
+
+  /// Salin objek dengan pembaruan data QRIS (ketika QR dimuat ulang secara bertahap)
+  SnapTokenResponse copyWithQr({
+    String? qrString,
+    String? nmid,
+    String? expiredDate,
+    String? status,
+  }) {
+    return SnapTokenResponse(
+      orderId: orderId,
+      snapToken: snapToken,
+      snapRedirectUrl: snapRedirectUrl,
+      paymentUrl: paymentUrl,
+      nominal: nominal,
+      nominalFormat: nominalFormat,
+      adminFee: adminFee,
+      grossAmount: grossAmount,
+      adminFeeFormat: adminFeeFormat,
+      grossAmountFormat: grossAmountFormat,
+      type: type,
+      status: status ?? this.status,
+      clientKey: clientKey,
+      clientId: clientId,
+      gateway: gateway,
+      createdAt: createdAt,
+      paymentMode: paymentMode,
+      paymentMethod: paymentMethod,
+      bank: bank,
+      bankName: bankName,
+      vaNumber: vaNumber,
+      expiredDate: expiredDate ?? this.expiredDate,
+      instructions: instructions,
+      howToPayPage: howToPayPage,
+      isDirectQris: _isDirectQris,
+      qrString: qrString ?? this.qrString,
+      nmid: nmid ?? this.nmid,
+    );
+  }
 }
 
 /// Alias typedef for DOKU Checkout
@@ -212,6 +251,9 @@ class PaymentStatusResponse {
   final String? paymentType;
   final String? paymentChannel;
   final String? vaNumber;
+  final String? qrString;
+  final String? nmid;
+  final String? expiredDate;
   final String? paidAt;
 
   PaymentStatusResponse({
@@ -227,6 +269,9 @@ class PaymentStatusResponse {
     this.paymentType,
     this.paymentChannel,
     this.vaNumber,
+    this.qrString,
+    this.nmid,
+    this.expiredDate,
     this.paidAt,
   })  : grossAmount = grossAmount ?? (nominal + adminFee),
         adminFeeFormat = adminFeeFormat ?? AppCurrency.format(adminFee),
@@ -248,6 +293,7 @@ class PaymentStatusResponse {
     final fee = parseNominal(json['admin_fee']);
     final gross = parseNominal(json['gross_amount']);
     final effectiveGross = gross > 0 ? gross : (nom + fee);
+    final rawQr = json['qr_string'] ?? json['qr_code'] ?? json['qr_content'] ?? json['qrContent'];
 
     return PaymentStatusResponse(
       orderId: json['order_id']?.toString() ?? '',
@@ -262,6 +308,9 @@ class PaymentStatusResponse {
       paymentType: json['payment_type']?.toString(),
       paymentChannel: json['payment_channel']?.toString(),
       vaNumber: json['va_number']?.toString(),
+      qrString: rawQr?.toString().trim(),
+      nmid: json['nmid']?.toString(),
+      expiredDate: json['expired_date']?.toString(),
       paidAt: json['paid_at']?.toString(),
     );
   }

@@ -5,6 +5,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../../core/services/document_download_service.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../models/sijaka_model.dart';
 
 class BuktiTransaksiNisbahDialog extends StatefulWidget {
@@ -50,19 +51,10 @@ class _BuktiTransaksiNisbahDialogState extends State<BuktiTransaksiNisbahDialog>
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text('Gagal mendownload bukti: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengunduh Bukti',
+          message: 'Tidak dapat mengunduh bukti transaksi bagi hasil: ${e.toString()}',
         );
       }
     } finally {

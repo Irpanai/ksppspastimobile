@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_dialog.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../payment/screens/top_up_screen.dart';
 import '../../payment/screens/tarik_simpanan_screen.dart';
@@ -42,7 +43,10 @@ class QuickActionsGrid extends StatelessWidget {
                       } else if (action['label'] == 'Penarikan') {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const TarikSimpananScreen()));
                       } else if (action['label'] == 'Transfer') {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur Transfer segera hadir')));
+                        AppDialog.showComingSoon(
+                          context,
+                          featureName: 'Transfer Antar Anggota & Bank',
+                        );
                       }
                     }, 
                     borderRadius: BorderRadius.circular(20),

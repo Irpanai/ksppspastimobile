@@ -134,8 +134,10 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka browser eksternal')),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Membuka Browser',
+          message: 'Tidak dapat membuka browser eksternal.',
         );
       }
     }
@@ -167,145 +169,104 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
         _showStatusResultDialog(status);
       }
     } else if (!silent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(paymentProvider.errorMessage ?? 'Gagal memeriksa status pembayaran'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Memeriksa Status',
+        message: paymentProvider.errorMessage ?? 'Gagal memeriksa status pembayaran',
       );
     }
   }
 
   void _showStatusResultDialog(PaymentStatusResponse status) {
-    showDialog(
-      context: context,
-      barrierDismissible: !status.isSettlement,
-      builder: (dialogCtx) {
-        final isSuccess = status.isSettlement;
-        final isPending = status.isPending;
+    final isSuccess = status.isSettlement;
+    final isPending = status.isPending;
 
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          contentPadding: const EdgeInsets.all(24),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: isSuccess
-                      ? const Color(0xFFF0FDF4)
-                      : (isPending ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2)),
-                  shape: BoxShape.circle,
+    final iconData = isSuccess
+        ? Icons.check_circle_rounded
+        : (isPending ? Icons.access_time_filled_rounded : Icons.cancel_rounded);
+    final iconColor = isSuccess
+        ? const Color(0xFF16A34A)
+        : (isPending ? const Color(0xFFD97706) : const Color(0xFFDC2626));
+    final iconBgColor = isSuccess
+        ? const Color(0xFFDCFCE7)
+        : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2));
+    final iconBorderColor = isSuccess
+        ? const Color(0xFFA7F3D0)
+        : (isPending ? const Color(0xFFFDE68A) : const Color(0xFFFECACA));
+
+    AppDialog.showCustom(
+      context,
+      barrierDismissible: !isSuccess,
+      icon: iconData,
+      iconColor: iconColor,
+      iconBgColor: iconBgColor,
+      iconBorderColor: iconBorderColor,
+      title: isSuccess
+          ? 'Pembayaran Berhasil!'
+          : (isPending ? 'Menunggu Pembayaran' : 'Pembayaran Dibatalkan'),
+      message: isSuccess
+          ? 'Transaksi Anda telah diterima dan saldo simpanan berhasil ditambahkan.'
+          : (isPending
+              ? 'Selesaikan pembayaran melalui channel yang Anda pilih di DOKU Checkout.'
+              : 'Transaksi gagal atau dibatalkan oleh pengguna.'),
+      primaryButtonText: isSuccess ? 'Kembali ke Beranda' : 'Tutup',
+      primaryButtonColor: isSuccess
+          ? const Color(0xFF16A34A)
+          : (isPending ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+      onPrimaryPressed: () {
+        Navigator.of(context, rootNavigator: true).pop();
+        if (isSuccess && mounted) {
+          Navigator.pop(context, true);
+        }
+      },
+      customContent: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Nominal:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(
+                  AppCurrency.format(status.nominal),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
                 ),
-                child: Icon(
-                  isSuccess
-                      ? Icons.check_circle_rounded
-                      : (isPending ? Icons.access_time_filled_rounded : Icons.cancel_rounded),
-                  size: 40,
-                  color: isSuccess
-                      ? const Color(0xFF16A34A)
-                      : (isPending ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(
+                  status.orderId.length > 20
+                      ? '${status.orderId.substring(0, 20)}...'
+                      : status.orderId,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B), fontFamily: 'monospace'),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                isSuccess
-                    ? 'Pembayaran Berhasil!'
-                    : (isPending ? 'Menunggu Pembayaran' : 'Pembayaran Dibatalkan'),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isSuccess
-                    ? 'Transaksi Anda telah diterima dan saldo simpanan berhasil ditambahkan.'
-                    : (isPending
-                        ? 'Selesaikan pembayaran melalui channel yang Anda pilih di DOKU Checkout.'
-                        : 'Transaksi gagal atau dibatalkan oleh pengguna.'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Nominal:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        Text(
-                          AppCurrency.format(status.nominal),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                        Text(
-                          status.orderId.length > 20
-                              ? '${status.orderId.substring(0, 20)}...'
-                              : status.orderId,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B), fontFamily: 'monospace'),
-                        ),
-                      ],
-                    ),
-                    if (status.paymentChannel != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Channel:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                          Text(
-                            status.paymentChannel!.toUpperCase(),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(dialogCtx);
-                    if (isSuccess) {
-                      Navigator.pop(context, true);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF388E3C),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
+              ],
+            ),
+            if (status.paymentChannel != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Channel:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Text(
+                    status.paymentChannel!.toUpperCase(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
                   ),
-                  child: Text(
-                    isSuccess ? 'Kembali ke Beranda' : 'Tutup',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
+                ],
               ),
             ],
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 

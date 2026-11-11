@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../providers/profile_provider.dart';
 
@@ -87,29 +88,21 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('Data Rekening Bank berhasil disimpan!'),
-            ],
-          ),
-          backgroundColor: const Color(0xFF166534),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppDialog.showSuccess(
+        context,
+        title: 'Berhasil',
+        message: 'Data Rekening Bank berhasil disimpan!',
+        buttonText: 'Selesai',
+        barrierDismissible: false,
+        onConfirm: () {
+          if (mounted) Navigator.pop(context);
+        },
       );
-      Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(profileProvider.errorMessage ?? 'Gagal menyimpan data rekening bank.'),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Menyimpan',
+        message: profileProvider.errorMessage ?? 'Gagal menyimpan data rekening bank.',
       );
     }
   }

@@ -357,73 +357,24 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: 'Pengajuan Berhasil Dikirim',
+      message:
+          'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} berhasil diajukan. Dana akan ditransfer ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
+      buttonText: 'Selesai',
+      secondaryButtonText: 'Lihat Riwayat',
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFECFDF5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
-              ),
-              const SizedBox(height: 16),
-              const Text('Pengajuan Berhasil Dikirim', textAlign: TextAlign.center, style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} berhasil diajukan. Dana akan ditransfer ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B), height: 1.4, fontSize: 13),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _amountController.clear();
-                        _noteController.clear();
-                        _tabController.animateTo(1);
-                        _fetchRiwayat();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Lihat Riwayat', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0E7955),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Selesai', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      onSecondaryPressed: () {
+        if (!mounted) return;
+        _amountController.clear();
+        _noteController.clear();
+        _tabController.animateTo(1);
+        _fetchRiwayat();
+      },
+      onConfirm: () {
+        if (mounted) Navigator.pop(context);
+      },
     );
   }
 

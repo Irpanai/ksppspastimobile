@@ -185,6 +185,16 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
+  /// Memperbarui data pending payment (misalnya saat qr_string baru dimuat)
+  Future<void> updatePendingPayment(SnapTokenResponse updated) async {
+    final idx = _pendingPayments.indexWhere((p) => p.orderId == updated.orderId);
+    if (idx != -1) {
+      _pendingPayments[idx] = updated;
+      await StorageService.savePendingPayment(updated.toJson());
+      notifyListeners();
+    }
+  }
+
   /// Check payment status from Midtrans / DOKU / backend
   Future<PaymentStatusResponse?> checkStatus(String orderId) async {
     _isCheckingStatus = true;
@@ -197,6 +207,21 @@ class PaymentProvider extends ChangeNotifier {
       if (status.isSettled) {
         _pendingPayments.removeWhere((p) => p.orderId == orderId);
         await StorageService.removePendingPayment(orderId);
+      } else if (status.qrString != null && status.qrString!.isNotEmpty) {
+        final idx = _pendingPayments.indexWhere((p) => p.orderId == orderId);
+        if (idx != -1) {
+          final current = _pendingPayments[idx];
+          if ((current.qrString == null || current.qrString!.isEmpty) ||
+              (status.nmid != null && status.nmid!.isNotEmpty && current.nmid != status.nmid)) {
+            final updated = current.copyWithQr(
+              qrString: status.qrString,
+              nmid: status.nmid,
+              expiredDate: status.expiredDate,
+            );
+            _pendingPayments[idx] = updated;
+            await StorageService.savePendingPayment(updated.toJson());
+          }
+        }
       }
       _isCheckingStatus = false;
       notifyListeners();

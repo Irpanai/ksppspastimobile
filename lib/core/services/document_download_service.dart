@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../shared/widgets/app_dialog.dart';
 
 class DocumentDownloadService {
   /// Mengunduh dokumen PDF langsung ke dalam penyimpanan perangkat
@@ -64,75 +65,31 @@ class DocumentDownloadService {
       // 6. Beri notifikasi sukses ke user dengan opsi bagikan
       if (context.mounted) {
         final message = openResult.type == ResultType.noAppToOpen
-            ? 'Dokumen berhasil diunduh. Tidak ada aplikasi pembaca PDF di perangkat.'
-            : 'Dokumen $documentTitle siap dibuka.';
+            ? '$documentTitle berhasil diunduh ke perangkat. Tidak ada aplikasi pembaca PDF yang terpasang.'
+            : '$documentTitle berhasil diunduh dan siap dibuka.';
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$documentTitle Berhasil Diunduh',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        message,
-                        style: const TextStyle(fontSize: 11, color: Colors.white70),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            action: SnackBarAction(
-              label: 'Bagikan',
-              textColor: const Color(0xFFFDE68A),
-              onPressed: () {
-                Share.shareXFiles(
-                  [XFile(filePath)],
-                  text: '$documentTitle - KSPPS PASTI',
-                );
-              },
-            ),
-            backgroundColor: const Color(0xFF0E7955),
-            duration: const Duration(seconds: 6),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
+        AppDialog.showSuccess(
+          context,
+          title: 'Dokumen Berhasil Diunduh',
+          message: message,
+          buttonText: 'Selesai',
+          secondaryButtonText: 'Bagikan',
+          onSecondaryPressed: () {
+            Share.shareXFiles(
+              [XFile(filePath)],
+              text: '$documentTitle - KSPPS PASTI',
+            );
+          },
         );
       }
 
       return true;
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Gagal mengunduh dokumen: ${e.toString().replaceAll("Exception: ", "")}',
-                    style: const TextStyle(fontSize: 12.5),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengunduh Dokumen',
+          message: 'Tidak dapat mengunduh dokumen: ${e.toString().replaceAll("Exception: ", "")}',
         );
       }
       return false;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../widgets/gadai_transaction_card.dart';
 
@@ -360,25 +361,12 @@ class _GadaiScreenState extends State<GadaiScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              isPelunasan
-                                  ? 'Pengajuan tebus ${item['itemName']} berhasil diproses!'
-                                  : 'Pembayaran ujrah ${item['itemName']} berhasil!',
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: const Color(0xFF047857),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                  AppDialog.showSuccess(
+                    context,
+                    title: isPelunasan ? 'Pengajuan Tebus Diproses' : 'Pembayaran Ujrah Berhasil',
+                    message: isPelunasan
+                        ? 'Pengajuan tebus ${item['itemName']} berhasil diproses!'
+                        : 'Pembayaran ujrah ${item['itemName']} berhasil!',
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -483,13 +471,10 @@ class _GadaiScreenState extends State<GadaiScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Pengajuan Gadai Rahn diterima! Petugas penaksir kami akan segera menghubungi Anda.'),
-                        backgroundColor: const Color(0xFF047857),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    AppDialog.showSuccess(
+                      context,
+                      title: 'Pengajuan Gadai Diterima',
+                      message: 'Pengajuan Gadai Rahn diterima! Petugas penaksir kami akan segera menghubungi Anda.',
                     );
                   },
                   style: ElevatedButton.styleFrom(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../auth/widgets/cabang_map_modal.dart';
 import '../../auth/services/cabang_service.dart';
@@ -22,11 +23,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memuat peta kantor cabang.'),
-            backgroundColor: Color(0xFFDC2626),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Memuat Peta',
+          message: 'Tidak dapat memuat peta kantor cabang saat ini.',
         );
       }
     }
@@ -40,11 +40,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tidak dapat membuka tautan layanan.'),
-            backgroundColor: Color(0xFFDC2626),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Membuka Tautan',
+          message: 'Tidak dapat membuka tautan layanan.',
         );
       }
     }

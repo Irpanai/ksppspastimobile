@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../providers/profile_provider.dart';
 
@@ -58,35 +59,21 @@ class _AddressDataScreenState extends State<AddressDataScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Expanded(child: Text('Alamat Domisili berhasil diperbarui!')),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      AppDialog.showSuccess(
+        context,
+        title: 'Berhasil',
+        message: 'Alamat Domisili berhasil diperbarui!',
+        buttonText: 'Selesai',
+        barrierDismissible: false,
+        onConfirm: () {
+          if (mounted) Navigator.pop(context);
+        },
       );
-      Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(profileProvider.errorMessage ?? 'Gagal memperbarui profil')),
-            ],
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Memperbarui',
+        message: profileProvider.errorMessage ?? 'Gagal memperbarui profil',
       );
     }
   }

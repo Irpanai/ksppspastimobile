@@ -18,20 +18,20 @@ class WajibSimpananModalDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       elevation: 16,
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
-        padding: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 380),
+        padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon header (Informasi tanda seru yang ramah dan elegan)
             Container(
-              width: 72,
-              height: 72,
+              width: 68,
+              height: 68,
               decoration: BoxDecoration(
                 color: const Color(0xFFECFDF5), // Light emerald background
                 shape: BoxShape.circle,
@@ -48,29 +48,30 @@ class WajibSimpananModalDialog extends StatelessWidget {
                 child: Icon(
                   Icons.how_to_reg_rounded,
                   color: Color(0xFF0E7955),
-                  size: 38,
+                  size: 34,
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             // Title
             const Text(
               'Aktivasi Keanggotaan',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             // Description
             const Text(
               'Anda diwajibkan untuk membayar Simpanan Pokok dan Simpanan Wajib terlebih dahulu untuk mengaktifkan seluruh fitur layanan KSPPS INOVASI PASTI NUSANTARA.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF475569),
+                fontSize: 13.5,
+                color: Color(0xFF64748B),
                 height: 1.5,
               ),
             ),
@@ -78,7 +79,7 @@ class WajibSimpananModalDialog extends StatelessWidget {
             // Action Button
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 46,
               child: ElevatedButton(
                 onPressed: () {
                   // Tutup dialog
@@ -96,13 +97,13 @@ class WajibSimpananModalDialog extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: const Text(
                   'Bayar Sekarang',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

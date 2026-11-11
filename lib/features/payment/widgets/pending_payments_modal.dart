@@ -22,19 +22,9 @@ class PendingPaymentsModal extends StatelessWidget {
 
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(' berhasil disalin'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF388E3C),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    AppDialog.showFloatingToast(
+      context,
+      message: '$label berhasil disalin',
     );
   }
 

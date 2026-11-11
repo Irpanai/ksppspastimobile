@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -86,35 +87,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Refresh AuthProvider profile too
       context.read<AuthProvider>().fetchProfile();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Expanded(child: Text('Data profil berhasil diperbarui!')),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      AppDialog.showSuccess(
+        context,
+        title: 'Profil Diperbarui',
+        message: 'Data profil berhasil diperbarui!',
+        buttonText: 'Selesai',
+        barrierDismissible: false,
+        onConfirm: () {
+          if (mounted) Navigator.pop(context);
+        },
       );
-      Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(profileProvider.errorMessage ?? 'Gagal memperbarui profil')),
-            ],
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Memperbarui',
+        message: profileProvider.errorMessage ?? 'Gagal memperbarui profil',
       );
     }
   }
@@ -147,34 +134,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (success) {
         // Refresh AuthProvider profile too
         context.read<AuthProvider>().fetchProfile();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Expanded(child: Text('Foto profil berhasil diperbarui!')),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+        AppDialog.showSuccess(
+          context,
+          title: 'Foto Diperbarui',
+          message: 'Foto profil berhasil diperbarui!',
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(child: Text(profileProvider.errorMessage ?? 'Gagal mengunggah foto profil')),
-              ],
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengunggah Foto',
+          message: profileProvider.errorMessage ?? 'Gagal mengunggah foto profil',
         );
       }
     } catch (e) {
@@ -192,13 +161,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFF59E0B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    AppDialog.showWarning(
+      context,
+      title: 'Perhatian',
+      message: message,
     );
   }
 

@@ -1,4 +1,5 @@
 import '../../../core/constants/api_constants.dart';
+import '../../../shared/widgets/rich_article_viewer.dart';
 
 class PromoModel {
   final int id;
@@ -23,6 +24,9 @@ class PromoModel {
 
   bool get isPromo => tipe.toLowerCase() == 'promo';
   bool get isInfo => tipe.toLowerCase() == 'info';
+
+  /// Cuplikan teks bersih (tanpa tag HTML / kode tabel) untuk pratinjau kartu.
+  String get plainTextPreview => stripHtmlToPlainText(deskripsi);
 
   /// Resolves the banner image to an active URL (CORS / host-aware)
   String? get fullGambarUrl => ApiConstants.resolveImageUrl(gambarBanner);

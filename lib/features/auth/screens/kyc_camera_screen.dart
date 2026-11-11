@@ -3,6 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../shared/widgets/app_dialog.dart';
 
 enum KycCameraMode {
   ktp,
@@ -176,11 +177,10 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
       debugPrint('Error taking picture: $e');
       setState(() => _isTakingPicture = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mengambil foto: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengambil Foto',
+          message: 'Tidak dapat memotret menggunakan kamera: $e',
         );
       }
     }
@@ -213,8 +213,10 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal membuka kamera: $e')),
+        AppDialog.showError(
+          context,
+          title: 'Kamera Tidak Tersedia',
+          message: 'Gagal membuka kamera perangkat: $e',
         );
       }
     }

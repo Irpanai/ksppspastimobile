@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/pin_verification_dialog.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -94,20 +95,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFFEF4444),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
+    AppDialog.showError(
+      context,
+      title: 'Terjadi Kesalahan',
+      message: message,
     );
   }
 
@@ -137,23 +128,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _verifiedPin = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.shield_outlined, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('Verifikasi PIN dibatalkan. Form ubah password tetap terkunci.'),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF475569),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 2),
-        ),
+      AppDialog.showWarning(
+        context,
+        title: 'Verifikasi Dibatalkan',
+        message: 'Verifikasi PIN dibatalkan. Form ubah password tetap terkunci.',
       );
     }
   }
@@ -322,7 +300,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E7955).withOpacity(0.08),
+              color: const Color(0xFF0E7955).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.shield_outlined, size: 56, color: Color(0xFF0E7955)),
@@ -461,7 +439,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E7955).withOpacity(0.08),
+              color: const Color(0xFF0E7955).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.lock_reset_rounded, size: 56, color: Color(0xFF0E7955)),
@@ -537,7 +515,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E7955).withOpacity(0.08),
+              color: const Color(0xFF0E7955).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.mark_email_unread_outlined, size: 56, color: Color(0xFF0E7955)),
@@ -636,7 +614,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E7955).withOpacity(0.08),
+              color: const Color(0xFF0E7955).withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.verified_user_rounded, size: 56, color: Color(0xFF0E7955)),

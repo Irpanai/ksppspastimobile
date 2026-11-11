@@ -768,17 +768,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } catch (_) {}
 
       await context.read<AuthProvider>().logout();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Berhasil keluar dari akun'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
     }
   }
 

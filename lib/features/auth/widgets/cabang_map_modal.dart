@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/cabang_model.dart';
 import '../services/cabang_service.dart';
+import '../../../shared/widgets/app_dialog.dart';
 
 /// Widget Mini Map visual untuk kartu cabang terpilih pada halaman pendaftaran.
 /// Mendukung toggle beralih antara Peta Standar (OpenStreetMap) dan Citra Satelit (Esri World Imagery).
@@ -420,12 +421,10 @@ class _CabangMapModalState extends State<CabangMapModal> {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('GPS belum aktif. Silakan aktifkan layanan lokasi pada perangkat Anda.'),
-              backgroundColor: Color(0xFFD97706),
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppDialog.showWarning(
+            context,
+            title: 'GPS Belum Aktif',
+            message: 'Silakan aktifkan layanan lokasi pada perangkat Anda.',
           );
         }
         return;
@@ -436,12 +435,10 @@ class _CabangMapModalState extends State<CabangMapModal> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Izin lokasi ditolak. Tidak dapat mencari cabang terdekat.'),
-                backgroundColor: Color(0xFFDC2626),
-                behavior: SnackBarBehavior.floating,
-              ),
+            AppDialog.showError(
+              context,
+              title: 'Izin Lokasi Ditolak',
+              message: 'Tidak dapat mencari cabang terdekat tanpa izin lokasi.',
             );
           }
           return;
@@ -450,12 +447,10 @@ class _CabangMapModalState extends State<CabangMapModal> {
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Izin lokasi diblokir permanen. Harap izinkan melalui Pengaturan aplikasi.'),
-              backgroundColor: Color(0xFFDC2626),
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppDialog.showError(
+            context,
+            title: 'Izin Lokasi Diblokir',
+            message: 'Izin lokasi diblokir permanen. Harap izinkan melalui Pengaturan aplikasi.',
           );
         }
         return;
@@ -487,36 +482,20 @@ class _CabangMapModalState extends State<CabangMapModal> {
         _centerTo(LatLng(nearest.latitude!, nearest.longitude!), zoom: 15.5);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.near_me_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Cabang terdekat ditemukan: ${nearest.name} (${nearest.formattedDistance})',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF16A34A),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
+          AppDialog.showSuccess(
+            context,
+            title: 'Cabang Terdekat Ditemukan',
+            message: '${nearest.name} (${nearest.formattedDistance})',
           );
         }
       }
     } catch (e) {
       debugPrint('[CabangMapModal] Error mencari lokasi terdekat: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mendeteksi lokasi: ${e.toString()}'),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mendeteksi Lokasi',
+          message: 'Tidak dapat menemukan lokasi Anda saat ini: ${e.toString()}',
         );
       }
     } finally {

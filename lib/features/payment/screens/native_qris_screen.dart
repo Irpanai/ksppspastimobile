@@ -8,20 +8,27 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/widgets/app_skeleton.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
+import 'doku_webview_screen.dart';
 
 class NativeQrisScreen extends StatefulWidget {
-  final SnapTokenResponse paymentResponse;
+  final SnapTokenResponse? paymentResponse;
+  final Future<SnapTokenResponse?> Function()? onGeneratePayment;
 
   const NativeQrisScreen({
     super.key,
-    required this.paymentResponse,
-  });
+    this.paymentResponse,
+    this.onGeneratePayment,
+  }) : assert(
+          paymentResponse != null || onGeneratePayment != null,
+          'paymentResponse atau onGeneratePayment harus diisi',
+        );
 
   @override
   State<NativeQrisScreen> createState() => _NativeQrisScreenState();
@@ -29,18 +36,33 @@ class NativeQrisScreen extends StatefulWidget {
 
 class _NativeQrisScreenState extends State<NativeQrisScreen> {
   final GlobalKey _qrBoundaryKey = GlobalKey();
+  SnapTokenResponse? _payment;
   Timer? _countdownTimer;
   Timer? _autoCheckTimer;
   Duration _timeLeft = const Duration(minutes: 30);
   bool _isChecking = false;
   bool _isDownloading = false;
   bool _hasSettled = false;
+  bool _isLoadingQris = false;
+  String? _generationError;
 
   @override
   void initState() {
     super.initState();
-    _initCountdown();
-    _startAutoPolling();
+    _payment = widget.paymentResponse;
+    final initialQr = _payment?.qrString?.trim() ?? '';
+
+    if (_payment != null && initialQr.isNotEmpty) {
+      _isLoadingQris = false;
+      _initCountdown();
+      _startAutoPolling();
+    } else {
+      // Tampilkan skeleton loading terlebih dahulu sampai generate/fetch QRIS selesai
+      _isLoadingQris = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadOrGenerateQris();
+      });
+    }
   }
 
   @override
@@ -50,18 +72,105 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     super.dispose();
   }
 
-  void _initCountdown() {
-    if (widget.paymentResponse.expiredDate != null &&
-        widget.paymentResponse.expiredDate!.isNotEmpty) {
+  void _refreshGlobalProviders() {
+    try {
+      context.read<DashboardProvider>().fetchDashboard(refresh: true);
+      context.read<SavingsProvider>().fetchRiwayat('sukarela', refresh: true);
+      context.read<SavingsProvider>().fetchRiwayat('wajib', refresh: true);
+      context.read<SavingsProvider>().fetchRiwayat('pokok', refresh: true);
+      context.read<SijakaProvider>().fetchBilyetList(refresh: true);
+    } catch (_) {}
+  }
+
+  Future<void> _loadOrGenerateQris() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingQris = true;
+      _generationError = null;
+    });
+
+    final paymentProvider = context.read<PaymentProvider>();
+
+    if (_payment == null && widget.onGeneratePayment != null) {
       try {
-        final exp = DateTime.parse(widget.paymentResponse.expiredDate!);
+        final created = await widget.onGeneratePayment!();
+        if (!mounted) return;
+
+        if (created == null) {
+          setState(() {
+            _isLoadingQris = false;
+            _generationError = paymentProvider.errorMessage ??
+                'Gagal membuat transaksi QRIS. Silakan periksa koneksi Anda dan coba kembali.';
+          });
+          return;
+        }
+
+        _payment = created;
+        _initCountdown();
+        _startAutoPolling();
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingQris = false;
+          _generationError = 'Gagal membuat kode QRIS: ${e.toString()}';
+        });
+        return;
+      }
+    } else if (_payment != null && _countdownTimer == null) {
+      _initCountdown();
+      _startAutoPolling();
+    }
+
+    // Jika qrString masih kosong (mis. timeout DOKU atau transaksi pending lama), fetch ulang via status check
+    final active = _payment;
+    if (active != null && (active.qrString == null || active.qrString!.trim().isEmpty)) {
+      for (int attempt = 1; attempt <= 2; attempt++) {
+        if (!mounted || _hasSettled) return;
+        final status = await paymentProvider.checkStatus(active.orderId);
+        if (!mounted) return;
+
+        if (status != null && status.isSettlement) {
+          _hasSettled = true;
+          _autoCheckTimer?.cancel();
+          _refreshGlobalProviders();
+          setState(() => _isLoadingQris = false);
+          _showSuccessDialog(status);
+          return;
+        }
+
+        final fetchedQr = status?.qrString?.trim() ?? '';
+        if (fetchedQr.isNotEmpty) {
+          final updated = active.copyWithQr(
+            qrString: fetchedQr,
+            nmid: status?.nmid ?? active.nmid,
+            expiredDate: status?.expiredDate ?? active.expiredDate,
+          );
+          _payment = updated;
+          await paymentProvider.updatePendingPayment(updated);
+          break;
+        }
+
+        if (attempt < 2) {
+          await Future.delayed(const Duration(milliseconds: 1200));
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoadingQris = false);
+  }
+
+  void _initCountdown() {
+    _countdownTimer?.cancel();
+    final payment = _payment;
+    if (payment == null) return;
+
+    if (payment.expiredDate != null && payment.expiredDate!.isNotEmpty) {
+      try {
+        final exp = DateTime.parse(payment.expiredDate!);
         final now = DateTime.now().toUtc();
         final diff = exp.difference(now);
-        if (diff.isNegative) {
-          _timeLeft = Duration.zero;
-        } else {
-          _timeLeft = diff;
-        }
+        _timeLeft = diff.isNegative ? Duration.zero : diff;
       } catch (_) {
         _timeLeft = const Duration(minutes: 30);
       }
@@ -80,16 +189,18 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   }
 
   void _startAutoPolling() {
+    _autoCheckTimer?.cancel();
     // Polling setiap 7 detik untuk mendeteksi pembayaran QRIS realtime
     _autoCheckTimer = Timer.periodic(const Duration(seconds: 7), (_) {
-      if (mounted && !_isChecking && !_hasSettled) {
+      if (mounted && !_isLoadingQris && !_isChecking && !_hasSettled && _payment != null) {
         _checkStatus(silent: true);
       }
     });
   }
 
   Future<void> _checkStatus({bool silent = false}) async {
-    if (_hasSettled) return;
+    final active = _payment;
+    if (_hasSettled || active == null) return;
 
     if (!silent) {
       setState(() => _isChecking = true);
@@ -97,7 +208,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
     try {
       final paymentProvider = context.read<PaymentProvider>();
-      final status = await paymentProvider.checkStatus(widget.paymentResponse.orderId);
+      final status = await paymentProvider.checkStatus(active.orderId);
 
       if (!mounted) return;
 
@@ -108,23 +219,26 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
       if (status != null && status.isSettlement) {
         _hasSettled = true;
         _autoCheckTimer?.cancel();
-
-        // Refresh Provider Global
-        try {
-          context.read<DashboardProvider>().fetchDashboard(refresh: true);
-          context.read<SavingsProvider>().fetchRiwayat('sukarela', refresh: true);
-          context.read<SavingsProvider>().fetchRiwayat('wajib', refresh: true);
-          context.read<SavingsProvider>().fetchRiwayat('pokok', refresh: true);
-          context.read<SijakaProvider>().fetchBilyetList(refresh: true);
-        } catch (_) {}
-
+        _refreshGlobalProviders();
         _showSuccessDialog(status);
-      } else if (!silent) {
-        AppDialog.showWarning(
-          context,
-          title: 'Pembayaran Belum Terdeteksi',
-          message: 'Pembayaran QRIS belum terdeteksi. Silakan selesaikan pembayaran di aplikasi m-Banking atau e-Wallet Anda lalu coba lagi.',
-        );
+      } else {
+        // Jika QR baru tersedia saat polling, langsung perbarui UI
+        final fetchedQr = status?.qrString?.trim() ?? '';
+        if (fetchedQr.isNotEmpty && (active.qrString == null || active.qrString!.trim().isEmpty)) {
+          final updated = active.copyWithQr(
+            qrString: fetchedQr,
+            nmid: status?.nmid ?? active.nmid,
+            expiredDate: status?.expiredDate ?? active.expiredDate,
+          );
+          setState(() => _payment = updated);
+          await paymentProvider.updatePendingPayment(updated);
+        } else if (!silent) {
+          AppDialog.showWarning(
+            context,
+            title: 'Pembayaran Belum Terdeteksi',
+            message: 'Pembayaran QRIS belum terdeteksi. Silakan selesaikan pembayaran di aplikasi m-Banking atau e-Wallet Anda lalu coba lagi.',
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -140,99 +254,55 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   }
 
   void _showSuccessDialog(PaymentStatusResponse status) {
-    showDialog(
-      context: context,
+    AppDialog.showSuccess(
+      context,
+      title: 'Pembayaran QRIS Berhasil!',
+      message: 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
+      buttonText: 'Selesai & Kembali',
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      onConfirm: () {
+        if (mounted) Navigator.pop(context, true);
+      },
+      customContent: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
           children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCFCE7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 48),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Pembayaran QRIS Berhasil!',
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-              ),
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(
+                  AppCurrency.format(status.nominal),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text('QRIS Nasional', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
+              ],
             ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      Text(
-                        AppCurrency.format(status.nominal),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
-                      ),
-                    ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Flexible(
+                  child: Text(
+                    status.orderId,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF334155)),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      const Text('QRIS Nasional', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      Text(
-                        status.orderId,
-                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF334155)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context, true);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF388E3C),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('Selesai & Kembali', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              ),
+              ],
             ),
           ],
         ),
@@ -241,14 +311,13 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   }
 
   Future<void> _downloadQr() async {
-    final qrData = widget.paymentResponse.qrString ?? '';
-    if (qrData.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kode QR belum tersedia untuk diunduh.'),
-          backgroundColor: Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-        ),
+    final res = _payment;
+    final qrData = res?.qrString?.trim() ?? '';
+    if (res == null || qrData.isEmpty) {
+      AppDialog.showWarning(
+        context,
+        title: 'QR Belum Tersedia',
+        message: 'Kode QR belum tersedia untuk diunduh.',
       );
       return;
     }
@@ -263,12 +332,10 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
         if (!requestGranted) {
           if (!mounted) return;
           setState(() => _isDownloading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Izin akses galeri tidak diberikan. Silakan izinkan akses untuk menyimpan gambar QR.'),
-              backgroundColor: Color(0xFFDC2626),
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppDialog.showError(
+            context,
+            title: 'Izin Galeri Diperlukan',
+            message: 'Izin akses galeri tidak diberikan. Silakan izinkan akses untuk menyimpan gambar QR.',
           );
           return;
         }
@@ -289,69 +356,41 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
       final Uint8List pngBytes = byteData.buffer.asUint8List();
 
       // 3. Simpan ke Galeri menggunakan plugin Gal
-      final cleanOrderId = widget.paymentResponse.orderId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final cleanOrderId = res.orderId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       await Gal.putImageBytes(pngBytes, name: 'QRIS_KSPPS_$cleanOrderId');
 
       if (!mounted) return;
       setState(() => _isDownloading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'QRIS berhasil disimpan ke Galeri! Anda dapat memilih gambar ini di m-Banking/e-Wallet.',
-                  style: TextStyle(fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF16A34A),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
+      AppDialog.showSuccess(
+        context,
+        title: 'QRIS Tersimpan ke Galeri',
+        message: 'QRIS berhasil disimpan ke Galeri! Anda dapat memilih gambar ini melalui menu upload QR di m-Banking atau e-Wallet.',
       );
     } on GalException catch (e) {
       if (!mounted) return;
       setState(() => _isDownloading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menyimpan ke galeri: ${e.type.message}'),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Menyimpan ke Galeri',
+        message: 'Gagal menyimpan gambar ke galeri: ${e.type.message}',
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isDownloading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengunduh QR: ${e.toString()}'),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Mengunduh QR',
+        message: 'Terjadi kesalahan saat mengunduh QR: ${e.toString()}',
       );
     }
   }
 
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('$label berhasil disalin'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF388E3C),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    AppDialog.showFloatingToast(
+      context,
+      message: '$label berhasil disalin',
     );
   }
 
@@ -381,9 +420,10 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final res = widget.paymentResponse;
-    final qrData = res.qrString ?? '';
-    final nmid = res.nmid ?? 'ID2026102056853';
+    final res = _payment;
+    final qrData = res?.qrString?.trim() ?? '';
+    final nmid = res?.nmid ?? 'ID2026102056853';
+    final hasQr = qrData.isNotEmpty;
 
     // Warna aksen QRIS dinamis dari pengaturan web (tag_color), default resmi merah QRIS
     Color qrisColor = const Color(0xFFDC2626);
@@ -394,7 +434,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     } catch (_) {}
 
     return PopScope(
-      canPop: _hasSettled,
+      canPop: _hasSettled || _isLoadingQris || _generationError != null || res == null,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final shouldLeave = await AppDialog.showConfirmation(
@@ -422,14 +462,19 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
               onBackPressed: () => Navigator.maybePop(context),
               actions: [
                 IconButton(
-                  onPressed: _isDownloading ? null : _downloadQr,
+                  onPressed: (_isDownloading || _isLoadingQris || !hasQr) ? null : _downloadQr,
                   icon: _isDownloading
                       ? const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.file_download_outlined, color: Colors.white),
+                      : Icon(
+                          Icons.file_download_outlined,
+                          color: (_isLoadingQris || !hasQr)
+                              ? Colors.white.withValues(alpha: 0.45)
+                              : Colors.white,
+                        ),
                   tooltip: 'Download QR ke Galeri',
                 ),
               ],
@@ -441,7 +486,11 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
-                  child: Column(
+                  child: _isLoadingQris
+                      ? _buildQrisSkeleton(qrisColor)
+                      : (_generationError != null || res == null)
+                          ? _buildGenerationErrorState(qrisColor)
+                          : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Banner Countdown Timer
@@ -614,17 +663,72 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                                   backgroundColor: Colors.white,
                                   errorCorrectionLevel: QrErrorCorrectLevel.M,
                                 )
-                              : Container(
-                                  height: 240,
+                              : SizedBox(
                                   width: 240,
-                                  alignment: Alignment.center,
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.broken_image_outlined, size: 48, color: Color(0xFF94A3B8)),
-                                      SizedBox(height: 12),
-                                      Text('Gagal memuat QR Code', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-                                    ],
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.qr_code_2_rounded, size: 48, color: Color(0xFF94A3B8)),
+                                        const SizedBox(height: 10),
+                                        const Text(
+                                          'QR Code belum tersedia langsung',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Color(0xFF334155),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        const Text(
+                                          'Muat ulang QRIS atau lanjutkan pembayaran melalui halaman resmi DOKU.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5, height: 1.35),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton.icon(
+                                            onPressed: _loadOrGenerateQris,
+                                            icon: const Icon(Icons.refresh_rounded, size: 17),
+                                            label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: qrisColor,
+                                              side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
+                                              padding: const EdgeInsets.symmetric(vertical: 9),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            ),
+                                          ),
+                                        ),
+                                        if (res.snapRedirectUrl.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () {
+                                                Navigator.pushReplacement(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => DokuWebViewScreen(paymentResponse: res),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                                              label: const Text('Buka Halaman Bayar', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: qrisColor,
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                         ),
@@ -684,7 +788,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   Expanded(
                     flex: 3,
                     child: ElevatedButton.icon(
-                      onPressed: _isDownloading ? null : _downloadQr,
+                      onPressed: (_isDownloading || !hasQr) ? null : _downloadQr,
                       icon: _isDownloading
                           ? const SizedBox(
                               width: 18,
@@ -712,7 +816,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   Expanded(
                     flex: 2,
                     child: OutlinedButton.icon(
-                      onPressed: () => _copyToClipboard(qrData, 'Kode QR'),
+                      onPressed: hasQr ? () => _copyToClipboard(qrData, 'Kode QR') : null,
                       icon: const Icon(Icons.copy_rounded, size: 18),
                       label: const Text(
                         'Salin Kode',
@@ -905,6 +1009,253 @@ const SizedBox(height: 20),
   ),
 ),
 );
+  }
+
+  Widget _buildQrisSkeleton(Color qrisColor) {
+    return AppShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Skeleton Countdown Timer Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Row(
+              children: [
+                AppSkeletonBox(width: 36, height: 36, borderRadius: 18),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppSkeletonBox(width: 160, height: 12),
+                      SizedBox(height: 6),
+                      AppSkeletonBox(width: 100, height: 16),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Skeleton Kartu QRIS Utama
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              children: [
+                // Header banner skeleton mengikuti aksen kartu QRIS
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: qrisColor.withValues(alpha: 0.14),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AppSkeletonBox(width: 96, height: 22),
+                      AppSkeletonBox(width: 112, height: 18),
+                    ],
+                  ),
+                ),
+
+                // Merchant Info & NMID skeleton
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Column(
+                    children: [
+                      AppSkeletonBox(width: 140, height: 18),
+                      SizedBox(height: 8),
+                      AppSkeletonBox(width: 170, height: 12),
+                    ],
+                  ),
+                ),
+
+                // QR Code Box skeleton
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Column(
+                      children: [
+                        AppSkeletonBox(width: 224, height: 224, borderRadius: 12),
+                        SizedBox(height: 10),
+                        AppSkeletonBox(width: 130, height: 11),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                // Total Tagihan QRIS skeleton
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, 18),
+                  child: AppSkeletonBox(width: double.infinity, height: 68, borderRadius: 14),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Skeleton Action Buttons Row
+          const Row(
+            children: [
+              Expanded(flex: 3, child: AppSkeletonBox(height: 46, borderRadius: 14)),
+              SizedBox(width: 10),
+              Expanded(flex: 2, child: AppSkeletonBox(height: 46, borderRadius: 14)),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Skeleton Rincian Transaksi Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeletonBox(width: 150, height: 12),
+                SizedBox(height: 8),
+                AppSkeletonBox(width: 190, height: 14),
+                SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppSkeletonBox(width: 110, height: 12),
+                    AppSkeletonBox(width: 85, height: 14),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppSkeletonBox(width: 90, height: 12),
+                    AppSkeletonBox(width: 75, height: 14),
+                  ],
+                ),
+                SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppSkeletonBox(width: 125, height: 14),
+                    AppSkeletonBox(width: 95, height: 16),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Skeleton CTA Button
+          const AppSkeletonBox(width: double.infinity, height: 50, borderRadius: 14),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenerationErrorState(Color qrisColor) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: qrisColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.qr_code_2_rounded, size: 36, color: qrisColor),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Gagal Menyiapkan QRIS',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _generationError ?? 'Terjadi kendala saat membuat kode QRIS.',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton.icon(
+              onPressed: _loadOrGenerateQris,
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                'Coba Generate Ulang',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: qrisColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF475569),
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'Kembali',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildInstructionStep({required String step, required String title, required String desc, Color? accentColor}) {

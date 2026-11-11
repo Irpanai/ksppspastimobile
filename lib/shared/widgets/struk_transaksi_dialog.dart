@@ -7,6 +7,7 @@ import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'app_dialog.dart';
 
 class StrukTransaksiData {
   final String idTransaksi;
@@ -95,8 +96,10 @@ class _StrukTransaksiDialogState extends State<StrukTransaksiDialog> {
       final file = await _captureReceiptAsFile();
       if (file == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal membuat gambar struk')),
+          AppDialog.showError(
+            context,
+            title: 'Gagal Membuat Gambar',
+            message: 'Tidak dapat membuat gambar struk untuk dibagikan.',
           );
         }
         return;
@@ -136,8 +139,10 @@ _Transaksi syariah aman, amanah, dan terpercaya._
       final file = await _captureReceiptAsFile();
       if (file == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal memproses gambar')),
+          AppDialog.showError(
+            context,
+            title: 'Gagal Memproses Gambar',
+            message: 'Tidak dapat menghasilkan gambar struk transaksi.',
           );
         }
         return;
@@ -146,26 +151,18 @@ _Transaksi syariah aman, amanah, dan terpercaya._
       await Gal.putImage(file.path);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Color(0xFF059669),
-            content: Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 10),
-                Text('Struk berhasil disimpan ke Galeri HP!'),
-              ],
-            ),
-          ),
+        AppDialog.showSuccess(
+          context,
+          title: 'Struk Tersimpan',
+          message: 'Struk transaksi berhasil disimpan ke Galeri HP Anda.',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFFDC2626),
-            content: Text('Gagal menyimpan gambar: $e'),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Menyimpan Gambar',
+          message: 'Tidak dapat menyimpan gambar struk ke galeri: $e',
         );
       }
     } finally {

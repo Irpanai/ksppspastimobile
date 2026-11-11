@@ -63,42 +63,16 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
     if (!mounted) return;
     if (success) {
       _confirmController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xFF10B981),
-          behavior: SnackBarBehavior.floating,
-          content: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Pengajuan berhasil dikirim! Menunggu persetujuan petugas.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+      AppDialog.showSuccess(
+        context,
+        title: 'Pengajuan Terkirim',
+        message: 'Pengajuan berhasil dikirim! Menunggu persetujuan petugas.',
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  provider.errorMessage ?? 'Gagal mengajukan pengunduran diri.',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+      AppDialog.showError(
+        context,
+        title: 'Gagal Mengajukan',
+        message: provider.errorMessage ?? 'Gagal mengajukan pengunduran diri.',
       );
     }
   }
@@ -649,12 +623,9 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: _targetText));
                       _confirmController.text = _targetText;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Teks disalin dan ditempel ke kolom input!'),
-                          duration: Duration(seconds: 1),
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      AppDialog.showFloatingToast(
+                        context,
+                        message: 'Teks disalin dan ditempel ke kolom input',
                       );
                     },
                     borderRadius: BorderRadius.circular(8),

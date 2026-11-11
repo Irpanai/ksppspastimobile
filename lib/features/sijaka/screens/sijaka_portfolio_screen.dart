@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/app_skeleton.dart';
 import '../../../../core/services/document_download_service.dart';
@@ -953,19 +954,10 @@ class _BilyetDetailBottomSheetState extends State<_BilyetDetailBottomSheet> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text('Gagal mengunduh dokumen: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Mengunduh Dokumen',
+          message: 'Tidak dapat mengunduh dokumen saat ini: ${e.toString()}',
         );
       }
     } finally {

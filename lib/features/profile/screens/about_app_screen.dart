@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../core/services/in_app_update_service.dart';
 
@@ -59,15 +60,19 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tidak dapat membuka Play Store')),
+          AppDialog.showError(
+            context,
+            title: 'Tidak Dapat Membuka Play Store',
+            message: 'Tautan Google Play Store tidak dapat dibuka pada perangkat ini.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal membuka Play Store: $e')),
+        AppDialog.showError(
+          context,
+          title: 'Gagal Membuka Play Store',
+          message: 'Terjadi kesalahan saat membuka Play Store: $e',
         );
       }
     }
@@ -287,24 +292,31 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                           ),
                           const SizedBox(height: 14),
                           _buildUpdateItem(
+                            icon: Icons.qr_code_2_rounded,
+                            iconColor: const Color(0xFF9333EA),
+                            title: 'Loading QRIS Shimmer Tanpa Kedip',
+                            desc: 'Pembayaran QRIS menampilkan skeleton loading shimmer hingga kode QR siap dipindai.',
+                          ),
+                          const SizedBox(height: 10),
+                          _buildUpdateItem(
+                            icon: Icons.article_rounded,
+                            iconColor: const Color(0xFF0284C7),
+                            title: 'Info & Promo Rich Content + Tabel',
+                            desc: 'Detail info dan promo dapat digulir penuh dengan dukungan teks tebal, miring, dan tabel rapi.',
+                          ),
+                          const SizedBox(height: 10),
+                          _buildUpdateItem(
+                            icon: Icons.style_rounded,
+                            iconColor: const Color(0xFFD97706),
+                            title: 'Desain Banner & Modal Popup Seragam',
+                            desc: 'Notifikasi status, peringatan tunggakan, dan dialog konfirmasi serasi di seluruh layar.',
+                          ),
+                          const SizedBox(height: 10),
+                          _buildUpdateItem(
                             icon: Icons.date_range_rounded,
                             iconColor: primaryColor,
-                            title: 'Bayar Batch & Deteksi Tunggakan Iuran',
-                            desc: 'Sistem membaca data akun otomatis menghitung bulan yang belum terbayar & tombol lunasi cepat.',
-                          ),
-                          const SizedBox(height: 10),
-                          _buildUpdateItem(
-                            icon: Icons.calendar_month_rounded,
-                            iconColor: const Color(0xFF0284C7),
-                            title: 'Pemilih Bulan Interaktif Modern',
-                            desc: 'Bottom sheet kalender 12 bulan elegan dengan status tunggakan & lunas menggantikan dropdown lama.',
-                          ),
-                          const SizedBox(height: 10),
-                          _buildUpdateItem(
-                            icon: Icons.auto_awesome_rounded,
-                            iconColor: const Color(0xFFD97706),
-                            title: 'Skeleton Loading Shimmer',
-                            desc: 'Efek kilau halus modern di seluruh menu utama menggantikan loading spinner kaku.',
+                            title: 'Bayar Batch & Pemilih Bulan Modern',
+                            desc: 'Deteksi otomatis tunggakan akun dengan tombol lunasi cepat dan bottom sheet 12 bulan.',
                           ),
                           const SizedBox(height: 10),
                           _buildUpdateItem(
@@ -312,13 +324,6 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                             iconColor: const Color(0xFF16A34A),
                             title: 'Kepatuhan UU PDP No. 27/2022',
                             desc: 'Persetujuan digital perlindungan data pribadi anggota yang aman dan transparan.',
-                          ),
-                          const SizedBox(height: 10),
-                          _buildUpdateItem(
-                            icon: Icons.qr_code_scanner_rounded,
-                            iconColor: const Color(0xFF9333EA),
-                            title: 'Optimasi QRIS & Order ID Ringkas',
-                            desc: 'Format transaksi ringkas dan pembayaran QRIS langsung menuju layar kode QR resmi.',
                           ),
                           const SizedBox(height: 16),
                           const Divider(height: 1, color: Color(0xFFF1F5F9)),
