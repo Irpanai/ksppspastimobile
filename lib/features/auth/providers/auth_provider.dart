@@ -43,6 +43,8 @@ class AuthProvider extends ChangeNotifier {
     final cachedUser = await StorageService.getUserData();
     if (cachedUser != null) {
       _user = UserModel.fromJson(cachedUser);
+      _status = AuthStatus.authenticated;
+      notifyListeners();
     }
 
     // Try to refresh profile from backend /auth/me
@@ -50,8 +52,17 @@ class AuthProvider extends ChangeNotifier {
       final userProfile = await _authService.getProfile();
       _user = userProfile;
       _status = AuthStatus.authenticated;
+    } on ApiException catch (e) {
+      if (e.statusCode == 401 || _user == null) {
+        await StorageService.clearAll();
+        _token = null;
+        _user = null;
+        _status = AuthStatus.unauthenticated;
+      } else {
+        _status = AuthStatus.authenticated;
+      }
     } catch (e) {
-      // If cached user exists and network failed, we can still stay authenticated or fallback
+      // If cached user exists and network failed, keep session authenticated
       if (_user != null) {
         _status = AuthStatus.authenticated;
       } else {

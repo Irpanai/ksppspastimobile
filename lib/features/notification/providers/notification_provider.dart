@@ -3,7 +3,10 @@ import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  final NotificationService _service = NotificationService();
+  final NotificationService _service;
+
+  NotificationProvider({NotificationService? service})
+      : _service = service ?? NotificationService();
 
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;
@@ -96,22 +99,34 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteNotification(NotificationModel notif) async {
-    final wasUnread = !notif.isRead;
-    _notifications.removeWhere((n) => n.id == notif.id);
+  Future<bool> deleteNotification(NotificationModel notif) async {
+    final originalIndex = _notifications.indexWhere((n) => n.id == notif.id);
+    if (originalIndex == -1) return false;
+
+    final removed = _notifications.removeAt(originalIndex);
+    final wasUnread = !removed.isRead;
     if (wasUnread && _unreadCount > 0) {
       _unreadCount--;
     }
     notifyListeners();
 
     try {
-      final updatedUnread = await _service.deleteNotification(notif.id);
+      final updatedUnread = await _service.deleteNotification(removed.id);
       _unreadCount = updatedUnread;
       notifyListeners();
+      return true;
     } catch (e) {
+      // Kembalikan item jika hapus ke server gagal agar tidak muncul mendadak saat refresh berikutnya
+      final insertIndex = originalIndex <= _notifications.length ? originalIndex : _notifications.length;
+      _notifications.insert(insertIndex, removed);
+      if (wasUnread) {
+        _unreadCount++;
+      }
+      notifyListeners();
       if (kDebugMode) {
         print('Error deleting notification: $e');
       }
+      return false;
     }
   }
 

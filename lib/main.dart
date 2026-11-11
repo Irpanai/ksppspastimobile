@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'core/services/app_launch_service.dart';
 import 'core/services/storage_service.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -14,6 +16,7 @@ import 'features/promo/providers/promo_provider.dart';
 import 'features/savings/providers/savings_provider.dart';
 import 'features/sijaka/providers/sijaka_provider.dart';
 import 'features/splash/screens/splash_screen.dart';
+import 'features/splash/services/splash_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +24,11 @@ void main() async {
   await initializeDateFormatting('id_ID', null);
   // Initialize local preferences storage
   await StorageService.init();
+
+  final skipSplash = await AppLaunchService.shouldSkipSplash();
+  if (skipSplash) {
+    unawaited(SplashService.syncSplashWithServer());
+  }
 
   runApp(
     MultiProvider(
@@ -36,7 +44,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PromoProvider()..fetchPromos()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()..fetchNotifications()),
       ],
-      child: const DigitalCoopApp(),
+      child: DigitalCoopApp(skipSplash: skipSplash),
     ),
   );
 }
@@ -53,7 +61,9 @@ class AppState extends ChangeNotifier {
 }
 
 class DigitalCoopApp extends StatelessWidget {
-  const DigitalCoopApp({super.key});
+  final bool skipSplash;
+
+  const DigitalCoopApp({super.key, this.skipSplash = false});
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +112,7 @@ class DigitalCoopApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const SplashScreen(),
+      home: skipSplash ? const AuthWrapper() : const SplashScreen(),
     );
   }
 }

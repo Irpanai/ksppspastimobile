@@ -20,7 +20,7 @@ class DataConsentScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const PremiumHeader(title: 'Kebijakan & Persetujuan Data'),
+          const PremiumHeader(title: 'Kebijakan Data'),
           Expanded(
             child: SafeArea(
               top: false,

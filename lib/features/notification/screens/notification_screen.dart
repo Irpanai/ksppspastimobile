@@ -507,11 +507,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
             child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
           ),
-          onDismissed: (_) {
-            provider.deleteNotification(notif);
+          onDismissed: (_) async {
+            final deleted = await provider.deleteNotification(notif);
+            if (!context.mounted) return;
             AppDialog.showFloatingToast(
               context,
-              message: 'Notifikasi telah dihapus',
+              message: deleted
+                  ? 'Notifikasi telah dihapus'
+                  : 'Gagal menghapus notifikasi, coba lagi',
+              icon: deleted
+                  ? Icons.check_circle_rounded
+                  : Icons.error_outline_rounded,
+              backgroundColor: deleted
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFDC2626),
             );
           },
           child: InkWell(
