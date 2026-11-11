@@ -155,10 +155,10 @@ class _PromoScreenState extends State<PromoScreen> {
                                                 children: [
                                                   PromoCategoryBadge(promo: promo),
                                                   const SizedBox(width: 8),
-                                                  if (promo.tanggalBerakhir != null)
+                                                  if (promo.formattedTanggalBerakhir != null)
                                                     Flexible(
                                                       child: Text(
-                                                        's/d ${promo.tanggalBerakhir}',
+                                                        's/d ${promo.formattedTanggalBerakhir}',
                                                         style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
                                                         overflow: TextOverflow.ellipsis,
                                                       ),

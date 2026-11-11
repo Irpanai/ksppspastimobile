@@ -1,4 +1,5 @@
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../shared/widgets/rich_article_viewer.dart';
 
 class PromoModel {
@@ -68,6 +69,20 @@ class PromoModel {
     }
 
     return true;
+  }
+
+  /// Format tanggal mulai penayangan ke format ringkas Indonesia (contoh: `11 Nov 2026`).
+  String? get formattedTanggalMulai => _formatShortDate(tanggalMulai);
+
+  /// Format tanggal berakhir penayangan ke format ringkas Indonesia (contoh: `11 Nov 2026`).
+  String? get formattedTanggalBerakhir => _formatShortDate(tanggalBerakhir);
+
+  static String? _formatShortDate(String? raw) {
+    final parsed = parseDateOnly(raw);
+    if (parsed == null) return null;
+    final isoDate =
+        '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
+    return AppDateFormatter.formatIndoShort(isoDate);
   }
 
   factory PromoModel.fromJson(Map<String, dynamic> json) {

@@ -135,5 +135,64 @@ void main() {
     );
     expect(unboundedPromo.isCurrentlyVisibleOn(DateTime(2026, 11, 11)), isTrue);
   });
+
+  test('PromoModel formats tanggalMulai and tanggalBerakhir as d MMM yyyy', () {
+    final promo = PromoModel(
+      id: 101,
+      judul: 'Promo Berjangka',
+      tipe: 'promo',
+      tanggalMulai: '2026-11-11',
+      tanggalBerakhir: '2026-11-19',
+    );
+    expect(promo.formattedTanggalMulai, equals('11 Nov 2026'));
+    expect(promo.formattedTanggalBerakhir, equals('19 Nov 2026'));
+
+    final isoPromo = PromoModel(
+      id: 102,
+      judul: 'Promo ISO',
+      tipe: 'promo',
+      tanggalBerakhir: '2026-08-05T23:59:59Z',
+    );
+    expect(isoPromo.formattedTanggalBerakhir, equals('5 Agu 2026'));
+
+    final blankDatePromo = PromoModel(
+      id: 103,
+      judul: 'Tanpa Batas',
+      tipe: 'info',
+      tanggalMulai: '   ',
+      tanggalBerakhir: '',
+    );
+    expect(blankDatePromo.formattedTanggalMulai, isNull);
+    expect(blankDatePromo.formattedTanggalBerakhir, isNull);
+  });
+
+  testWidgets('showPromoDetailSheet displays formatted Indonesian short date', (tester) async {
+    final promo = PromoModel(
+      id: 104,
+      judul: 'Penyesuaian Jam Operasional',
+      tipe: 'info',
+      tanggalMulai: '2026-11-12',
+      tanggalBerakhir: '2026-11-19',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showPromoDetailSheet(context, promo),
+              child: const Text('Buka Detail'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Buka Detail'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Berlaku s/d 19 Nov 2026'), findsOneWidget);
+    expect(find.textContaining('2026-11-19'), findsNothing);
+  });
 }
 

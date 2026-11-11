@@ -208,14 +208,14 @@ void showPromoDetailSheet(BuildContext context, PromoModel promo) {
                           runSpacing: 6,
                           children: [
                             PromoCategoryBadge(promo: promo),
-                            if (promo.tanggalBerakhir != null)
+                            if (promo.formattedTanggalBerakhir != null)
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Icon(Icons.event_available_rounded, size: 14, color: Color(0xFF64748B)),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Berlaku s/d ${promo.tanggalBerakhir}',
+                                    'Berlaku s/d ${promo.formattedTanggalBerakhir}',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Color(0xFF64748B),
