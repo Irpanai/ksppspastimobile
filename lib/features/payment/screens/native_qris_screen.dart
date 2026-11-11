@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -15,16 +16,22 @@ import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
-import 'doku_webview_screen.dart';
+import '../widgets/doku_qris_web_bridge.dart';
 
 class NativeQrisScreen extends StatefulWidget {
   final SnapTokenResponse? paymentResponse;
   final Future<SnapTokenResponse?> Function()? onGeneratePayment;
+  final Uint8List? initialQrBytes;
+  final String? initialQrImageUrl;
+  final DokuQrisWebController? preloadedWebController;
 
   const NativeQrisScreen({
     super.key,
     this.paymentResponse,
     this.onGeneratePayment,
+    this.initialQrBytes,
+    this.initialQrImageUrl,
+    this.preloadedWebController,
   }) : assert(
           paymentResponse != null || onGeneratePayment != null,
           'paymentResponse atau onGeneratePayment harus diisi',
@@ -45,14 +52,43 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   bool _hasSettled = false;
   bool _isLoadingQris = false;
   String? _generationError;
+  Uint8List? _extractedQrBytes;
+  String? _extractedQrImageUrl;
+  DokuQrisWebController? _inlineDokuController;
+  bool _inlineDokuLoading = true;
+  double _inlineDokuProgress = 0.0;
 
   @override
   void initState() {
     super.initState();
     _payment = widget.paymentResponse;
+    _extractedQrBytes = widget.initialQrBytes;
+    _extractedQrImageUrl = widget.initialQrImageUrl;
     final initialQr = _payment?.qrString?.trim() ?? '';
+    final preloaded = widget.preloadedWebController;
 
-    if (_payment != null && initialQr.isNotEmpty) {
+    if (preloaded != null && !preloaded.isDisposed && preloaded.webViewController != null) {
+      _inlineDokuController = preloaded;
+      _inlineDokuLoading = preloaded.isLoading;
+      _inlineDokuProgress = preloaded.progress;
+      preloaded.setCallbacks(
+        onExtracted: (payload) => _applyExtractedPayload(payload),
+        onPaymentFinishedUrl: () => _checkStatus(silent: true),
+        onProgress: (p) {
+          if (mounted) setState(() => _inlineDokuProgress = p);
+        },
+        onPageLoadingChanged: (loading) {
+          if (mounted) setState(() => _inlineDokuLoading = loading);
+        },
+      );
+    }
+
+    final hasPreloadedContent = initialQr.isNotEmpty ||
+        _extractedQrBytes != null ||
+        _extractedQrImageUrl != null ||
+        _inlineDokuController != null;
+
+    if (_payment != null && hasPreloadedContent) {
       _isLoadingQris = false;
       _initCountdown();
       _startAutoPolling();
@@ -69,7 +105,13 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   void dispose() {
     _countdownTimer?.cancel();
     _autoCheckTimer?.cancel();
+    _disposeWebControllers();
     super.dispose();
+  }
+
+  void _disposeWebControllers() {
+    _inlineDokuController?.dispose();
+    _inlineDokuController = null;
   }
 
   void _refreshGlobalProviders() {
@@ -82,11 +124,98 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     } catch (_) {}
   }
 
+  Future<void> _applyExtractedPayload(ExtractedQrisPayload payload) async {
+    if (!mounted) return;
+    final active = _payment;
+    if (active == null) return;
+
+    final paymentProvider = context.read<PaymentProvider>();
+
+    if (payload.hasQrString) {
+      final updated = active.copyWithQr(qrString: payload.qrString);
+      _payment = updated;
+      await paymentProvider.updatePendingPayment(updated);
+    }
+
+    Uint8List? downloadedBytes;
+    String? fallbackImageUrl;
+    if (payload.hasImageUrl && !payload.hasImageBytes && (_payment?.qrString?.trim().isEmpty ?? true)) {
+      try {
+        final resp = await http
+            .get(Uri.parse(payload.imageUrl!))
+            .timeout(const Duration(seconds: 6));
+        if (resp.statusCode == 200 && resp.bodyBytes.length > 80) {
+          downloadedBytes = resp.bodyBytes;
+        } else {
+          fallbackImageUrl = payload.imageUrl;
+        }
+      } catch (_) {
+        fallbackImageUrl = payload.imageUrl;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      if ((_payment?.qrString?.trim().isEmpty ?? true)) {
+        if (payload.hasImageBytes) {
+          _extractedQrBytes = payload.imageBytes;
+          _extractedQrImageUrl = null;
+        } else if (downloadedBytes != null) {
+          _extractedQrBytes = downloadedBytes;
+          _extractedQrImageUrl = null;
+        } else if (fallbackImageUrl != null && _extractedQrBytes == null) {
+          _extractedQrImageUrl = fallbackImageUrl;
+        }
+      }
+      _isLoadingQris = false;
+    });
+
+    final hasFinalQr = (_payment?.qrString?.trim().isNotEmpty ?? false) ||
+        _extractedQrBytes != null ||
+        _extractedQrImageUrl != null;
+
+    if (hasFinalQr) {
+      _inlineDokuController?.dispose();
+      _inlineDokuController = null;
+    }
+  }
+
+  void _activateInlineDokuFallback(String checkoutUrl) {
+    if (!mounted || checkoutUrl.trim().isEmpty) return;
+
+    _inlineDokuController?.dispose();
+    final inlineCtrl = DokuQrisWebController();
+    _inlineDokuLoading = true;
+    _inlineDokuProgress = 0.0;
+
+    final started = inlineCtrl.start(
+      url: checkoutUrl,
+      onExtracted: (payload) => _applyExtractedPayload(payload),
+      onPaymentFinishedUrl: () => _checkStatus(silent: true),
+      onProgress: (p) {
+        if (mounted) setState(() => _inlineDokuProgress = p);
+      },
+      onPageLoadingChanged: (loading) {
+        if (mounted) setState(() => _inlineDokuLoading = loading);
+      },
+    );
+
+    if (started) {
+      setState(() => _inlineDokuController = inlineCtrl);
+    } else {
+      inlineCtrl.dispose();
+    }
+  }
+
   Future<void> _loadOrGenerateQris() async {
     if (!mounted) return;
+    final generatedFresh = _payment == null && widget.onGeneratePayment != null;
+    _disposeWebControllers();
     setState(() {
       _isLoadingQris = true;
       _generationError = null;
+      _extractedQrBytes = null;
+      _extractedQrImageUrl = null;
     });
 
     final paymentProvider = context.read<PaymentProvider>();
@@ -121,38 +250,42 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
       _startAutoPolling();
     }
 
-    // Jika qrString masih kosong (mis. timeout DOKU atau transaksi pending lama), fetch ulang via status check
     final active = _payment;
     if (active != null && (active.qrString == null || active.qrString!.trim().isEmpty)) {
-      for (int attempt = 1; attempt <= 2; attempt++) {
-        if (!mounted || _hasSettled) return;
-        final status = await paymentProvider.checkStatus(active.orderId);
-        if (!mounted) return;
+      if (!generatedFresh || active.snapRedirectUrl.trim().isEmpty) {
+        try {
+          final status = await paymentProvider
+              .checkStatus(active.orderId)
+              .timeout(const Duration(seconds: 5));
+          if (!mounted) return;
 
-        if (status != null && status.isSettlement) {
-          _hasSettled = true;
-          _autoCheckTimer?.cancel();
-          _refreshGlobalProviders();
-          setState(() => _isLoadingQris = false);
-          _showSuccessDialog(status);
-          return;
-        }
+          if (status != null && status.isSettlement) {
+            _hasSettled = true;
+            _autoCheckTimer?.cancel();
+            _refreshGlobalProviders();
+            setState(() => _isLoadingQris = false);
+            _showSuccessDialog(status);
+            return;
+          }
 
-        final fetchedQr = status?.qrString?.trim() ?? '';
-        if (fetchedQr.isNotEmpty) {
-          final updated = active.copyWithQr(
-            qrString: fetchedQr,
-            nmid: status?.nmid ?? active.nmid,
-            expiredDate: status?.expiredDate ?? active.expiredDate,
-          );
-          _payment = updated;
-          await paymentProvider.updatePendingPayment(updated);
-          break;
-        }
+          final fetchedQr = status?.qrString?.trim() ?? '';
+          if (fetchedQr.isNotEmpty) {
+            final updated = active.copyWithQr(
+              qrString: fetchedQr,
+              nmid: status?.nmid ?? active.nmid,
+              expiredDate: status?.expiredDate ?? active.expiredDate,
+            );
+            _payment = updated;
+            await paymentProvider.updatePendingPayment(updated);
+          }
+        } catch (_) {}
+      }
 
-        if (attempt < 2) {
-          await Future.delayed(const Duration(milliseconds: 1200));
-        }
+      final current = _payment;
+      if (current != null &&
+          (current.qrString == null || current.qrString!.trim().isEmpty) &&
+          current.snapRedirectUrl.trim().isNotEmpty) {
+        _activateInlineDokuFallback(current.snapRedirectUrl);
       }
     }
 
@@ -313,7 +446,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   Future<void> _downloadQr() async {
     final res = _payment;
     final qrData = res?.qrString?.trim() ?? '';
-    if (res == null || qrData.isEmpty) {
+    if (res == null || (qrData.isEmpty && _extractedQrBytes == null && _extractedQrImageUrl == null)) {
       AppDialog.showWarning(
         context,
         title: 'QR Belum Tersedia',
@@ -423,7 +556,8 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     final res = _payment;
     final qrData = res?.qrString?.trim() ?? '';
     final nmid = res?.nmid ?? 'ID2026102056853';
-    final hasQr = qrData.isNotEmpty;
+    final hasQrImage = qrData.isNotEmpty || _extractedQrBytes != null || _extractedQrImageUrl != null;
+    final hasCopyableQr = qrData.isNotEmpty;
 
     // Warna aksen QRIS dinamis dari pengaturan web (tag_color), default resmi merah QRIS
     Color qrisColor = const Color(0xFFDC2626);
@@ -462,7 +596,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
               onBackPressed: () => Navigator.maybePop(context),
               actions: [
                 IconButton(
-                  onPressed: (_isDownloading || _isLoadingQris || !hasQr) ? null : _downloadQr,
+                  onPressed: (_isDownloading || _isLoadingQris || !hasQrImage) ? null : _downloadQr,
                   icon: _isDownloading
                       ? const SizedBox(
                           width: 18,
@@ -471,7 +605,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                         )
                       : Icon(
                           Icons.file_download_outlined,
-                          color: (_isLoadingQris || !hasQr)
+                          color: (_isLoadingQris || !hasQrImage)
                               ? Colors.white.withValues(alpha: 0.45)
                               : Colors.white,
                         ),
@@ -648,90 +782,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                       // Box QR Code
                       Padding(
                         padding: const EdgeInsets.all(16),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
-                          ),
-                          child: qrData.isNotEmpty
-                              ? QrImageView(
-                                  data: qrData,
-                                  version: QrVersions.auto,
-                                  size: 240.0,
-                                  backgroundColor: Colors.white,
-                                  errorCorrectionLevel: QrErrorCorrectLevel.M,
-                                )
-                              : SizedBox(
-                                  width: 240,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.qr_code_2_rounded, size: 48, color: Color(0xFF94A3B8)),
-                                        const SizedBox(height: 10),
-                                        const Text(
-                                          'QR Code belum tersedia langsung',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Color(0xFF334155),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text(
-                                          'Muat ulang QRIS atau lanjutkan pembayaran melalui halaman resmi DOKU.',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5, height: 1.35),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: OutlinedButton.icon(
-                                            onPressed: _loadOrGenerateQris,
-                                            icon: const Icon(Icons.refresh_rounded, size: 17),
-                                            label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: qrisColor,
-                                              side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
-                                              padding: const EdgeInsets.symmetric(vertical: 9),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                            ),
-                                          ),
-                                        ),
-                                        if (res.snapRedirectUrl.isNotEmpty) ...[
-                                          const SizedBox(height: 8),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () {
-                                                Navigator.pushReplacement(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => DokuWebViewScreen(paymentResponse: res),
-                                                  ),
-                                                );
-                                              },
-                                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                                              label: const Text('Buka Halaman Bayar', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: qrisColor,
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                padding: const EdgeInsets.symmetric(vertical: 9),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                        ),
+                        child: _buildQrBoxContent(res, qrData, qrisColor),
                       ),
 
                       const SizedBox(height: 12),
@@ -788,7 +839,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   Expanded(
                     flex: 3,
                     child: ElevatedButton.icon(
-                      onPressed: (_isDownloading || !hasQr) ? null : _downloadQr,
+                      onPressed: (_isDownloading || !hasQrImage) ? null : _downloadQr,
                       icon: _isDownloading
                           ? const SizedBox(
                               width: 18,
@@ -816,7 +867,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   Expanded(
                     flex: 2,
                     child: OutlinedButton.icon(
-                      onPressed: hasQr ? () => _copyToClipboard(qrData, 'Kode QR') : null,
+                      onPressed: hasCopyableQr ? () => _copyToClipboard(qrData, 'Kode QR') : null,
                       icon: const Icon(Icons.copy_rounded, size: 18),
                       label: const Text(
                         'Salin Kode',
@@ -911,12 +962,13 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
               const SizedBox(height: 16),
 
               // Petunjuk Pembayaran (Expandable / Cards)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
@@ -999,7 +1051,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                   ),
                 ),
               ),
-const SizedBox(height: 20),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -1009,6 +1061,147 @@ const SizedBox(height: 20),
   ),
 ),
 );
+  }
+
+  Widget _buildQrBoxContent(
+    SnapTokenResponse res,
+    String qrData,
+    Color qrisColor,
+  ) {
+    Widget framedQrBox(Widget child) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+        ),
+        child: child,
+      );
+    }
+
+    if (qrData.isNotEmpty) {
+      return framedQrBox(
+        QrImageView(
+          data: qrData,
+          version: QrVersions.auto,
+          size: 240.0,
+          backgroundColor: Colors.white,
+          errorCorrectionLevel: QrErrorCorrectLevel.M,
+        ),
+      );
+    }
+
+    if (_extractedQrBytes != null) {
+      return framedQrBox(
+        Image.memory(
+          _extractedQrBytes!,
+          width: 240,
+          height: 240,
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+        ),
+      );
+    }
+
+    if (_extractedQrImageUrl != null) {
+      return framedQrBox(
+        Image.network(
+          _extractedQrImageUrl!,
+          width: 240,
+          height: 240,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const SizedBox(
+              width: 240,
+              height: 240,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return SizedBox(
+              width: 240,
+              height: 240,
+              child: Center(
+                child: OutlinedButton.icon(
+                  onPressed: _loadOrGenerateQris,
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: qrisColor,
+                    side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    final inlineController = _inlineDokuController?.webViewController;
+    if (inlineController != null) {
+      return InlineDokuQrisWebView(
+        controller: inlineController,
+        isLoading: _inlineDokuLoading,
+        progress: _inlineDokuProgress,
+        accentColor: qrisColor,
+        onReload: () => _inlineDokuController?.reload(),
+      );
+    }
+
+    final hasCheckoutUrl = res.snapRedirectUrl.trim().isNotEmpty;
+    return framedQrBox(
+      SizedBox(
+        width: 240,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.qr_code_2_rounded,
+                size: 52,
+                color: hasCheckoutUrl ? qrisColor : const Color(0xFF94A3B8),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                hasCheckoutUrl ? 'Menyiapkan Kode QRIS' : 'QR Code Belum Tersedia',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Tekan tombol di bawah untuk memuat ulang tampilan QRIS langsung di halaman ini.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5, height: 1.35),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loadOrGenerateQris,
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: const Text('Muat Ulang QR', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: qrisColor,
+                    side: BorderSide(color: qrisColor.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildQrisSkeleton(Color qrisColor) {

@@ -9,7 +9,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../payment/providers/payment_provider.dart';
 import '../../payment/screens/doku_webview_screen.dart';
 import '../../payment/screens/native_payment_detail_screen.dart';
-import '../../payment/screens/native_qris_screen.dart';
+import '../../payment/widgets/qris_preparation_dialog.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
@@ -250,18 +250,24 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       if (!mounted) return;
 
       if (snapResponse != null) {
-        final Widget targetScreen = snapResponse.isDirectQris
-            ? NativeQrisScreen(paymentResponse: snapResponse)
-            : (snapResponse.isDirectVa
-                ? NativePaymentDetailScreen(paymentResponse: snapResponse)
-                : DokuWebViewScreen(paymentResponse: snapResponse));
+        if (snapResponse.isDirectQris) {
+          await QrisPreparationHelper.open(
+            context,
+            existingPayment: snapResponse,
+            forceStatusCheckForExisting: false,
+          );
+        } else {
+          final Widget targetScreen = snapResponse.isDirectVa
+              ? NativePaymentDetailScreen(paymentResponse: snapResponse)
+              : DokuWebViewScreen(paymentResponse: snapResponse);
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => targetScreen,
-          ),
-        );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => targetScreen,
+            ),
+          );
+        }
       } else if (paymentProvider.errorMessage != null) {
         AppDialog.showError(
           context,

@@ -6,7 +6,7 @@ import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
 import '../screens/doku_webview_screen.dart';
 import '../screens/native_payment_detail_screen.dart';
-import '../screens/native_qris_screen.dart';
+import 'qris_preparation_dialog.dart';
 
 class PendingPaymentsModal extends StatelessWidget {
   const PendingPaymentsModal({super.key});
@@ -46,7 +46,8 @@ class PendingPaymentsModal extends StatelessWidget {
   }
 
   void _resumePayment(BuildContext context, SnapTokenResponse payment) {
-    Navigator.pop(context); // Tutup modal
+    final navigator = Navigator.of(context);
+    navigator.pop(); // Tutup modal
 
     final isQris = payment.isDirectQris ||
         payment.paymentMethod.toLowerCase() == 'qris' ||
@@ -54,13 +55,19 @@ class PendingPaymentsModal extends StatelessWidget {
         payment.bank?.toLowerCase() == 'qris' ||
         payment.displayPaymentMethod.toLowerCase().contains('qris');
 
-    final Widget targetScreen = isQris
-        ? NativeQrisScreen(paymentResponse: payment)
-        : (payment.isDirectVa
-            ? NativePaymentDetailScreen(paymentResponse: payment)
-            : DokuWebViewScreen(paymentResponse: payment));
+    if (isQris) {
+      QrisPreparationHelper.open(
+        navigator.context,
+        existingPayment: payment,
+      );
+      return;
+    }
 
-    Navigator.push(context, MaterialPageRoute(builder: (_) => targetScreen));
+    final Widget targetScreen = payment.isDirectVa
+        ? NativePaymentDetailScreen(paymentResponse: payment)
+        : DokuWebViewScreen(paymentResponse: payment);
+
+    navigator.push(MaterialPageRoute(builder: (_) => targetScreen));
   }
 
   Future<void> _cancelPayment(BuildContext context, SnapTokenResponse payment) async {

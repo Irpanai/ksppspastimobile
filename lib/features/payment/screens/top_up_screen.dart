@@ -13,7 +13,7 @@ import '../models/payment_model.dart';
 import '../models/payment_channel_model.dart';
 import 'doku_webview_screen.dart';
 import 'native_payment_detail_screen.dart';
-import 'native_qris_screen.dart';
+import '../widgets/qris_preparation_dialog.dart';
 import '../widgets/pending_payments_modal.dart';
 import '../../../../core/services/storage_service.dart';
 
@@ -280,15 +280,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
 
     bool? success;
 
-    // Untuk QRIS: langsung buka layar QRIS dengan Skeleton Loading sampai QR selesai di-generate
+    // Untuk QRIS: muat transaksi & kode QRIS sampai siap di dialog sebelum membuka layar pembayaran QRIS
     if (isQrisSelected) {
-      success = await Navigator.push<bool>(
+      success = await QrisPreparationHelper.open(
         context,
-        MaterialPageRoute(
-          builder: (context) => NativeQrisScreen(
-            onGeneratePayment: triggerCreatePayment,
-          ),
-        ),
+        onGeneratePayment: triggerCreatePayment,
       );
     } else {
       // Untuk VA / Checkout: tampilkan dialog persiapan pembayaran sebelum membuka layar instruksi
@@ -355,18 +351,24 @@ class _TopUpScreenState extends State<TopUpScreen> {
             result.paymentMethod.toLowerCase() == 'qris' ||
             result.bank?.toLowerCase() == 'qris';
 
-        final Widget targetScreen = isQris
-            ? NativeQrisScreen(paymentResponse: result)
-            : (result.isDirectVa
-                ? NativePaymentDetailScreen(paymentResponse: result)
-                : DokuWebViewScreen(paymentResponse: result));
+        if (isQris) {
+          success = await QrisPreparationHelper.open(
+            context,
+            existingPayment: result,
+            forceStatusCheckForExisting: false,
+          );
+        } else {
+          final Widget targetScreen = result.isDirectVa
+              ? NativePaymentDetailScreen(paymentResponse: result)
+              : DokuWebViewScreen(paymentResponse: result);
 
-        success = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => targetScreen,
-          ),
-        );
+          success = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => targetScreen,
+            ),
+          );
+        }
       } else {
         AppDialog.showError(
           context,
