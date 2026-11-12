@@ -1,9 +1,41 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/widgets/app_dialog.dart';
+
+class KycImageNormalizationService {
+  static const MethodChannel _channel = MethodChannel('com.ksppspasti.mobile/kyc_image');
+
+  /// Menormalkan orientasi EXIF dan menerapkan cermin horizontal untuk kamera depan
+  /// agar hasil tangkapan selfie konsisten dengan pratinjau cermin saat memotret.
+  static Future<String> normalizeCapturedPhoto({
+    required String path,
+    required bool mirrorHorizontal,
+  }) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return path;
+    }
+
+    try {
+      final normalized = await _channel.invokeMethod<String>(
+        'normalizeCapturedPhoto',
+        <String, dynamic>{
+          'path': path,
+          'mirrorHorizontal': mirrorHorizontal,
+        },
+      );
+      if (normalized != null && normalized.isNotEmpty) {
+        return normalized;
+      }
+    } catch (e) {
+      debugPrint('KycImageNormalizationService fallback to raw path: $e');
+    }
+    return path;
+  }
+}
 
 enum KycCameraMode {
   ktp,
@@ -12,10 +44,13 @@ enum KycCameraMode {
 
 class KycCameraScreen extends StatefulWidget {
   final KycCameraMode mode;
+  @visibleForTesting
+  final File? initialCapturedFile;
 
   const KycCameraScreen({
     super.key,
     required this.mode,
+    this.initialCapturedFile,
   });
 
   @override
@@ -28,17 +63,26 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
   bool _isInitializing = true;
   String? _errorMessage;
   bool _isTakingPicture = false;
+  bool _isFlippingPreview = false;
+  bool _isFrontCamera = false;
   FlashMode _flashMode = FlashMode.off;
   bool _hasFlash = false;
 
   // Preview state after capture
   XFile? _capturedFile;
+  final Set<String> _generatedTempPaths = <String>{};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    if (widget.initialCapturedFile != null) {
+      _isInitializing = false;
+      _isFrontCamera = widget.mode == KycCameraMode.selfie;
+      _capturedFile = XFile(widget.initialCapturedFile!.path);
+    } else {
+      _initCamera();
+    }
   }
 
   @override
@@ -46,6 +90,16 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteTempFileIfOwned(String? path) async {
+    if (path == null || !_generatedTempPaths.remove(path)) return;
+    try {
+      final f = File(path);
+      if (await f.exists()) {
+        await f.delete();
+      }
+    } catch (_) {}
   }
 
   @override
@@ -109,6 +163,7 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
       );
 
       _controller = controller;
+      _isFrontCamera = selectedCamera.lensDirection == CameraLensDirection.front;
 
       await controller.initialize();
 
@@ -169,27 +224,62 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
         _flashMode = FlashMode.off;
       }
 
+      // Selaraskan orientasi EXIF & hilangkan perbedaan cerminan antara preview kamera depan dan file hasil.
+      final normalizedPath = await KycImageNormalizationService.normalizeCapturedPhoto(
+        path: photo.path,
+        mirrorHorizontal: _isFrontCamera,
+      );
+      if (normalizedPath != photo.path) {
+        _generatedTempPaths.add(normalizedPath);
+      }
+
+      if (!mounted) return;
       setState(() {
-        _capturedFile = photo;
+        _capturedFile = XFile(normalizedPath);
         _isTakingPicture = false;
       });
     } catch (e) {
       debugPrint('Error taking picture: $e');
+      if (!mounted) return;
       setState(() => _isTakingPicture = false);
+      AppDialog.showError(
+        context,
+        title: 'Gagal Mengambil Foto',
+        message: 'Tidak dapat memotret menggunakan kamera: $e',
+      );
+    }
+  }
+
+  Future<void> _flipPreviewImage() async {
+    if (_capturedFile == null || _isFlippingPreview) return;
+    final previousPath = _capturedFile!.path;
+    setState(() => _isFlippingPreview = true);
+    try {
+      final flippedPath = await KycImageNormalizationService.normalizeCapturedPhoto(
+        path: previousPath,
+        mirrorHorizontal: true,
+      );
+      if (!mounted) return;
+      if (flippedPath != previousPath) {
+        _generatedTempPaths.add(flippedPath);
+        setState(() {
+          _capturedFile = XFile(flippedPath);
+        });
+        await _deleteTempFileIfOwned(previousPath);
+      }
+    } finally {
       if (mounted) {
-        AppDialog.showError(
-          context,
-          title: 'Gagal Mengambil Foto',
-          message: 'Tidak dapat memotret menggunakan kamera: $e',
-        );
+        setState(() => _isFlippingPreview = false);
       }
     }
   }
 
   void _retakePicture() {
+    final oldPath = _capturedFile?.path;
     setState(() {
       _capturedFile = null;
     });
+    _deleteTempFileIfOwned(oldPath);
   }
 
   void _confirmPicture() {
@@ -494,6 +584,7 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
         Center(
           child: Image.file(
             File(_capturedFile!.path),
+            key: ValueKey(_capturedFile!.path),
             fit: BoxFit.contain,
           ),
         ),
@@ -501,12 +592,12 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
         // Semi-transparent top bar
         Positioned(
           top: MediaQuery.of(context).padding.top + 16,
-          left: 20,
-          right: 20,
+          left: 16,
+          right: 16,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.75),
+              color: Colors.black.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white24),
             ),
@@ -544,6 +635,44 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
                     ],
                   ),
                 ),
+                if (!isKtp) ...[
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: _isFlippingPreview ? null : _flipPreviewImage,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _isFlippingPreview
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.flip_rounded, color: Colors.white, size: 17),
+                            const SizedBox(width: 5),
+                            const Text(
+                              'Balik',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -551,15 +680,15 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
 
         // Bottom Action Bar: Retake vs Confirm
         Positioned(
-          bottom: 24,
-          left: 20,
-          right: 20,
+          bottom: 20,
+          left: 16,
+          right: 16,
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.85),
+              color: Colors.black.withValues(alpha: 0.86),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.5),
@@ -572,42 +701,72 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
               children: [
                 // Retake Button
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _retakePicture,
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    label: const Text(
-                      'Foto Ulang',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFF94A3B8), width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  flex: 9,
+                  child: SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: _isFlippingPreview ? null : _retakePicture,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white.withValues(alpha: 0.10),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.35), width: 1.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh_rounded, size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Foto Ulang',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
                 // Confirm Button
                 Expanded(
-                  flex: 2,
-                  child: ElevatedButton.icon(
-                    onPressed: _confirmPicture,
-                    icon: const Icon(Icons.check_rounded, size: 20),
-                    label: const Text(
-                      'Gunakan Foto Ini',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  flex: 12,
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isFlippingPreview ? null : _confirmPicture,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_rounded, size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Gunakan Foto Ini',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

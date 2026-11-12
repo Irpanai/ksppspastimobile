@@ -324,7 +324,7 @@ class AppDialog {
   }
 
   /// Expose animated loading / custom card dialog shell so non-standard modals
-  /// match AppDialog proportions, radius, and backdrop blur.
+  /// match AppDialog proportions, radius, white card surface, and backdrop blur.
   static Future<T?> showShell<T>({
     required BuildContext context,
     required Widget child,
@@ -333,7 +333,7 @@ class AppDialog {
     return _showAnimatedDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      child: child,
+      child: _AppDialogCardShell(child: child),
     );
   }
 
@@ -437,6 +437,44 @@ class AppDialog {
   }
 }
 
+class _AppDialogCardShell extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  const _AppDialogCardShell({
+    required this.child,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      width: 350,
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: child,
+      ),
+    );
+  }
+}
+
 class _AppDialogContent extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -468,29 +506,11 @@ class _AppDialogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Container(
-      width: 350,
-      constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+    return _AppDialogCardShell(
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             // Centered Icon Badge
             Container(
               width: 68,
@@ -641,7 +661,6 @@ class _AppDialogContent extends StatelessWidget {
               ),
           ],
         ),
-      ),
     );
   }
 }

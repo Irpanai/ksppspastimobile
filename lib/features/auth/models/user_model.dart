@@ -30,6 +30,9 @@ class AnggotaModel {
   final String? jenisKeanggotaan;
   final String? status;
   final String? statusKeanggotaan;
+  final bool? isPokokPaid;
+  final bool? isWajibPaid;
+  final bool? isMemberActive;
   final String? tglBergabung;
   final String? foto;
 
@@ -63,6 +66,9 @@ class AnggotaModel {
     this.jenisKeanggotaan,
     this.status,
     this.statusKeanggotaan,
+    this.isPokokPaid,
+    this.isWajibPaid,
+    this.isMemberActive,
     this.tglBergabung,
     this.foto,
   });
@@ -103,6 +109,9 @@ class AnggotaModel {
       jenisKeanggotaan: json['jenis_keanggotaan']?.toString(),
       status: json['status']?.toString(),
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? json['status']?.toString(),
+      isPokokPaid: _parseOptionalBool(json['is_pokok_paid']),
+      isWajibPaid: _parseOptionalBool(json['is_wajib_paid']),
+      isMemberActive: _parseOptionalBool(json['is_member_active']),
       tglBergabung: json['tgl_bergabung']?.toString(),
       foto: json['foto']?.toString() ??
           json['photo']?.toString() ??
@@ -143,6 +152,9 @@ class AnggotaModel {
       'jenis_keanggotaan': jenisKeanggotaan,
       'status': status,
       'status_keanggotaan': statusKeanggotaan,
+      'is_pokok_paid': isPokokPaid,
+      'is_wajib_paid': isWajibPaid,
+      'is_member_active': isMemberActive,
       'tgl_bergabung': tglBergabung,
       'foto': foto,
     };
@@ -155,6 +167,9 @@ class UserModel {
   final String email;
   final String? noAnggota;
   final String? statusKeanggotaan;
+  final bool? isPokokPaid;
+  final bool? isWajibPaid;
+  final bool? isMemberActive;
   final String? cabang;
   final String? profilePhotoUrl;
   final bool hasPin;
@@ -167,6 +182,9 @@ class UserModel {
     required this.email,
     this.noAnggota,
     this.statusKeanggotaan,
+    this.isPokokPaid,
+    this.isWajibPaid,
+    this.isMemberActive,
     this.cabang,
     this.profilePhotoUrl,
     this.hasPin = false,
@@ -186,6 +204,9 @@ class UserModel {
     String? email,
     String? noAnggota,
     String? statusKeanggotaan,
+    bool? isPokokPaid,
+    bool? isWajibPaid,
+    bool? isMemberActive,
     String? cabang,
     String? profilePhotoUrl,
     bool? hasPin,
@@ -198,6 +219,9 @@ class UserModel {
       email: email ?? this.email,
       noAnggota: noAnggota ?? this.noAnggota,
       statusKeanggotaan: statusKeanggotaan ?? this.statusKeanggotaan,
+      isPokokPaid: isPokokPaid ?? this.isPokokPaid,
+      isWajibPaid: isWajibPaid ?? this.isWajibPaid,
+      isMemberActive: isMemberActive ?? this.isMemberActive,
       cabang: cabang ?? this.cabang,
       profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
       hasPin: hasPin ?? this.hasPin,
@@ -237,6 +261,9 @@ class UserModel {
       email: json['email']?.toString() ?? '',
       noAnggota: json['no_anggota']?.toString() ?? parsedAnggota?.noAnggota,
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? parsedAnggota?.status,
+      isPokokPaid: _parseOptionalBool(json['is_pokok_paid']) ?? parsedAnggota?.isPokokPaid,
+      isWajibPaid: _parseOptionalBool(json['is_wajib_paid']) ?? parsedAnggota?.isWajibPaid,
+      isMemberActive: _parseOptionalBool(json['is_member_active']) ?? parsedAnggota?.isMemberActive,
       cabang: json['cabang']?.toString() ?? parsedAnggota?.cabang,
       profilePhotoUrl: rawPhoto,
       hasPin: parsedHasPin,
@@ -252,6 +279,9 @@ class UserModel {
       'email': email,
       'no_anggota': noAnggota,
       'status_keanggotaan': statusKeanggotaan,
+      'is_pokok_paid': isPokokPaid,
+      'is_wajib_paid': isWajibPaid,
+      'is_member_active': isMemberActive,
       'cabang': cabang,
       'profile_photo_url': profilePhotoUrl,
       'has_pin': hasPin,
@@ -259,6 +289,14 @@ class UserModel {
       'anggota': anggota?.toJson(),
     };
   }
+}
+
+bool? _parseOptionalBool(dynamic val) {
+  if (val == null) return null;
+  if (val is bool) return val;
+  if (val == 1 || val == '1' || val.toString().toLowerCase() == 'true') return true;
+  if (val == 0 || val == '0' || val.toString().toLowerCase() == 'false') return false;
+  return null;
 }
 
 class LoginResponseData {

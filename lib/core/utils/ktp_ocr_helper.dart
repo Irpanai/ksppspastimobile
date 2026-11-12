@@ -1,14 +1,76 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+class KtpAddressResult {
+  final String? alamat;
+  final String? rtRw;
+  final String? kelurahanDesa;
+  final String? kecamatan;
+  final String? kabupatenKota;
+  final String? provinsi;
+
+  const KtpAddressResult({
+    this.alamat,
+    this.rtRw,
+    this.kelurahanDesa,
+    this.kecamatan,
+    this.kabupatenKota,
+    this.provinsi,
+  });
+
+  bool get hasAnyAddress =>
+      (alamat != null && alamat!.isNotEmpty) ||
+      (rtRw != null && rtRw!.isNotEmpty) ||
+      (kelurahanDesa != null && kelurahanDesa!.isNotEmpty) ||
+      (kecamatan != null && kecamatan!.isNotEmpty) ||
+      (kabupatenKota != null && kabupatenKota!.isNotEmpty) ||
+      (provinsi != null && provinsi!.isNotEmpty);
+
+  /// Gabungan Jalan + RT/RW + Kel/Desa + Kecamatan untuk isian domisili
+  String? get formattedAlamat {
+    final parts = <String>[];
+    if (alamat != null && alamat!.trim().isNotEmpty) {
+      parts.add(alamat!.trim());
+    }
+    if (rtRw != null && rtRw!.trim().isNotEmpty) {
+      final hasRtAlready = (alamat ?? '').toUpperCase().contains('RT');
+      if (!hasRtAlready) {
+        parts.add('RT/RW ${rtRw!.trim()}');
+      }
+    }
+    if (kelurahanDesa != null && kelurahanDesa!.trim().isNotEmpty) {
+      final kel = kelurahanDesa!.trim();
+      final upper = kel.toUpperCase();
+      parts.add((upper.startsWith('KEL') || upper.startsWith('DESA')) ? kel : 'Kel. $kel');
+    }
+    if (kecamatan != null && kecamatan!.trim().isNotEmpty) {
+      final kec = kecamatan!.trim();
+      final upper = kec.toUpperCase();
+      parts.add(upper.startsWith('KEC') ? kec : 'Kec. $kec');
+    }
+    if (parts.isEmpty && kabupatenKota != null && kabupatenKota!.trim().isNotEmpty) {
+      parts.add(kabupatenKota!.trim());
+    }
+    if (parts.isEmpty && provinsi != null && provinsi!.trim().isNotEmpty) {
+      parts.add(provinsi!.trim());
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(', ');
+  }
+}
+
 class KtpOcrResult {
   final String? nik;
   final String? nama;
+  final String? alamat;
+  final KtpAddressResult? addressDetail;
   final String? rawText;
   final bool isSuccess;
 
   const KtpOcrResult({
     this.nik,
     this.nama,
+    this.alamat,
+    this.addressDetail,
     this.rawText,
     this.isSuccess = false,
   });
@@ -85,12 +147,21 @@ class KtpOcrHelper {
     final rawText = recognizedText.text;
     final nik = _extractNik(lineTexts, rawText);
     final nama = _extractNama(allLines, lineTexts, rawText, nik);
+    final visualLines = _mergeVisualLines(allLines);
+    final addressDetail = parseAddressFromLines(
+      visualLines.isNotEmpty ? visualLines : lineTexts,
+    );
+    final alamat = addressDetail.formattedAlamat;
 
     return KtpOcrResult(
       nik: nik,
       nama: nama,
+      alamat: alamat,
+      addressDetail: addressDetail.hasAnyAddress ? addressDetail : null,
       rawText: rawText,
-      isSuccess: (nik != null && nik.isNotEmpty) || (nama != null && nama.isNotEmpty),
+      isSuccess: (nik != null && nik.isNotEmpty) ||
+          (nama != null && nama.isNotEmpty) ||
+          (alamat != null && alamat.isNotEmpty),
     );
   }
 
@@ -408,6 +479,309 @@ class KtpOcrHelper {
     }
 
     return null;
+  }
+
+  // ==========================================
+  // LOGIKA EKSTRAKSI ALAMAT KTP (LINE & SPASIAL)
+  // ==========================================
+
+  /// Menggabungkan segmen TextLine ML Kit yang berada pada baris vertikal sejajar
+  /// agar kolom label (kiri) & nilai (kanan) bersatu dalam satu baris logis.
+  static List<String> _mergeVisualLines(List<TextLine> lines) {
+    if (lines.isEmpty) return [];
+
+    final sorted = List<TextLine>.from(lines)
+      ..sort((a, b) {
+        final ay = a.boundingBox.center.dy;
+        final by = b.boundingBox.center.dy;
+        final rowTol = ((a.boundingBox.height + b.boundingBox.height) / 2) * 0.55;
+        if ((ay - by).abs() <= (rowTol > 6 ? rowTol : 6)) {
+          return a.boundingBox.left.compareTo(b.boundingBox.left);
+        }
+        return ay.compareTo(by);
+      });
+
+    final rows = <List<TextLine>>[];
+    for (final line in sorted) {
+      if (line.text.trim().isEmpty) continue;
+      if (rows.isEmpty) {
+        rows.add([line]);
+        continue;
+      }
+
+      final currentRow = rows.last;
+      final avgY = currentRow
+              .map((l) => l.boundingBox.center.dy)
+              .reduce((a, b) => a + b) /
+          currentRow.length;
+      final avgH = currentRow
+              .map((l) => l.boundingBox.height)
+              .reduce((a, b) => a + b) /
+          currentRow.length;
+      final threshold = (avgH * 0.65).clamp(8.0, 28.0);
+
+      if ((line.boundingBox.center.dy - avgY).abs() <= threshold) {
+        currentRow.add(line);
+      } else {
+        rows.add([line]);
+      }
+    }
+
+    return rows.map((row) {
+      row.sort((a, b) => a.boundingBox.left.compareTo(b.boundingBox.left));
+      return row.map((l) => l.text.trim()).where((t) => t.isNotEmpty).join(' ');
+    }).toList();
+  }
+
+  /// Ekstrak komponen alamat KTP dari daftar baris teks terurut.
+  static KtpAddressResult parseAddressFromLines(List<String> lines) {
+    String? provinsi;
+    String? kabupatenKota;
+    String? alamat;
+    String? rtRw;
+    String? kelurahanDesa;
+    String? kecamatan;
+
+    for (int i = 0; i < lines.length; i++) {
+      final rawLine = lines[i].trim();
+      if (rawLine.isEmpty) continue;
+      final upper = rawLine.toUpperCase();
+
+      // 1. Header Provinsi
+      if (provinsi == null &&
+          RegExp(r'^(?:PROVINSI|PROPINSI|PR0VINSI)\b').hasMatch(upper)) {
+        String val = rawLine
+            .replaceFirst(
+              RegExp(r'^(?:PROVINSI|PROPINSI|PR0VINSI)[\s\:\.\-]*', caseSensitive: false),
+              '',
+            )
+            .trim();
+        if (val.isEmpty && i + 1 < lines.length && !_isAnyKtpFieldLine(lines[i + 1])) {
+          val = lines[i + 1].trim();
+        }
+        val = _cleanAddressValue(val);
+        if (val.isNotEmpty && !_isNonAddressValue(val)) {
+          provinsi = _toReadableTitleCase(val);
+        }
+        continue;
+      }
+
+      // 2. Header Kabupaten / Kota
+      if (kabupatenKota == null &&
+          RegExp(r'^(?:KABUPATEN|KAB\.|KOTA)\b').hasMatch(upper)) {
+        String val = _cleanAddressValue(rawLine);
+        if (val.isNotEmpty && !_isNonAddressValue(val)) {
+          kabupatenKota = _toReadableTitleCase(val);
+        }
+        continue;
+      }
+
+      // 3. Field Alamat (dapat berlanjut ke baris berikutnya)
+      if (alamat == null && _matchesAddressLabel(upper, _alamatLabelPattern)) {
+        String val = _extractAfterLabel(rawLine, _alamatLabelPattern);
+        final parts = <String>[];
+        if (val.isNotEmpty && !_isAnyKtpFieldLine(val) && !_isNonAddressValue(val)) {
+          parts.add(val);
+        }
+
+        // Ambil lanjutan baris alamat (maks 2 baris berikutnya sebelum RT/RW atau label lain)
+        for (int nextIdx = i + 1; nextIdx <= i + 2 && nextIdx < lines.length; nextIdx++) {
+          final nextLine = lines[nextIdx].trim();
+          if (nextLine.isEmpty || _isAnyKtpFieldLine(nextLine)) break;
+
+          final cleanedNext = _cleanAddressValue(nextLine);
+          if (cleanedNext.isEmpty || _isNonAddressValue(cleanedNext)) break;
+
+          final parsedRtCandidate = _extractRtRwDigits(cleanedNext);
+          if (parsedRtCandidate != null &&
+              cleanedNext.replaceAll(RegExp(r'[\d\s/\-\.\:]'), '').isEmpty) {
+            rtRw ??= parsedRtCandidate;
+            break;
+          }
+
+          if (_looksLikeGenderOrBirthValue(cleanedNext)) break;
+          parts.add(cleanedNext);
+        }
+
+        final combined = _cleanAddressValue(parts.join(' '));
+        if (combined.isNotEmpty && !_isNonAddressValue(combined)) {
+          alamat = _toReadableTitleCase(combined);
+        }
+        continue;
+      }
+
+      // 4. Field RT/RW
+      if (rtRw == null && _matchesAddressLabel(upper, _rtRwLabelPattern)) {
+        String val = _extractAfterLabel(rawLine, _rtRwLabelPattern);
+        if (val.isEmpty && i + 1 < lines.length && !_isAnyKtpFieldLine(lines[i + 1])) {
+          val = lines[i + 1].trim();
+        }
+        final extracted = _extractRtRwDigits(val);
+        if (extracted != null) {
+          rtRw = extracted;
+        }
+        continue;
+      }
+
+      // 5. Field Kel/Desa
+      if (kelurahanDesa == null && _matchesAddressLabel(upper, _kelDesaLabelPattern)) {
+        String val = _extractAfterLabel(rawLine, _kelDesaLabelPattern);
+        if (val.isEmpty && i + 1 < lines.length && !_isAnyKtpFieldLine(lines[i + 1])) {
+          val = lines[i + 1].trim();
+        }
+        val = _cleanAddressValue(val);
+        if (val.isNotEmpty && !_isNonAddressValue(val)) {
+          kelurahanDesa = _toReadableTitleCase(val);
+        }
+        continue;
+      }
+
+      // 6. Field Kecamatan
+      if (kecamatan == null && _matchesAddressLabel(upper, _kecamatanLabelPattern)) {
+        String val = _extractAfterLabel(rawLine, _kecamatanLabelPattern);
+        if (val.isEmpty && i + 1 < lines.length && !_isAnyKtpFieldLine(lines[i + 1])) {
+          val = lines[i + 1].trim();
+        }
+        val = _cleanAddressValue(val);
+        if (val.isNotEmpty && !_isNonAddressValue(val)) {
+          kecamatan = _toReadableTitleCase(val);
+        }
+        continue;
+      }
+    }
+
+    return KtpAddressResult(
+      alamat: alamat,
+      rtRw: rtRw,
+      kelurahanDesa: kelurahanDesa,
+      kecamatan: kecamatan,
+      kabupatenKota: kabupatenKota,
+      provinsi: provinsi,
+    );
+  }
+
+  static final RegExp _alamatLabelPattern = RegExp(
+    r'^(?:ALAMAT|ALAMAI|ALANAT|AIAMAT)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _rtRwLabelPattern = RegExp(
+    r'^(?:RT\s*[/\|\\I1\.\-]?\s*RW)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _kelDesaLabelPattern = RegExp(
+    r'^(?:KEL(?:\.|URAHAN)?\s*[/\|\\V\.\-]?\s*DESA|KEV\s*DESA|KELURAHAN|DESA)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _kecamatanLabelPattern = RegExp(
+    r'^(?:KECAMATAN|KECAMAIAN|KEC\.?)\b',
+    caseSensitive: false,
+  );
+
+  static bool _matchesAddressLabel(String upperLine, RegExp labelPattern) {
+    final normalized = upperLine.replaceFirst(RegExp(r'^[\s\:\;\.\-]+'), '');
+    return labelPattern.hasMatch(normalized);
+  }
+
+  static String _extractAfterLabel(String line, RegExp labelPattern) {
+    final normalized = line.replaceFirst(RegExp(r'^[\s\:\;\.\-]+'), '');
+    final withoutLabel = normalized.replaceFirst(labelPattern, '');
+    return _cleanAddressValue(withoutLabel);
+  }
+
+  static String _cleanAddressValue(String raw) {
+    return raw
+        .replaceFirst(RegExp(r'^[\s\:\;\|\-\.=]+'), '')
+        .replaceAll(RegExp(r'[\s\|]+$'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String? _extractRtRwDigits(String raw) {
+    if (raw.trim().isEmpty) return null;
+    final slashMatch = RegExp(
+      r'([A-Za-z0-9]{1,3})\s*[/\\\|]\s*([A-Za-z0-9]{1,3})',
+    ).firstMatch(raw);
+    if (slashMatch != null) {
+      final rtDigits = normalizeOcrDigits(slashMatch.group(1)!);
+      final rwDigits = normalizeOcrDigits(slashMatch.group(2)!);
+      if (rtDigits.isNotEmpty && rwDigits.isNotEmpty) {
+        return '${rtDigits.padLeft(3, '0')}/${rwDigits.padLeft(3, '0')}';
+      }
+    }
+
+    final digitsOnly = normalizeOcrDigits(raw);
+    if (digitsOnly.length == 6) {
+      return '${digitsOnly.substring(0, 3)}/${digitsOnly.substring(3, 6)}';
+    }
+    if (digitsOnly.length == 4) {
+      return '${digitsOnly.substring(0, 2).padLeft(3, '0')}/${digitsOnly.substring(2, 4).padLeft(3, '0')}';
+    }
+    return null;
+  }
+
+  static bool _isAnyKtpFieldLine(String line) {
+    final upper = line.trim().toUpperCase();
+    return RegExp(
+      r'^(?:PROVINSI|PROPINSI|KABUPATEN|KOTA|NIK|NAMA|TEMPAT|JENIS\s*KELAMIN|GOL\.?\s*DARAH|'
+      r'ALAMAT|ALAMAI|RT\s*[/\|I]?\s*RW|KEL|KEV|DESA|KEC|AGAMA|STATUS|PEKERJAAN|'
+      r'KEWARGANEGARAAN|BERLAKU|SEUMUR\s*HIDUP)\b',
+    ).hasMatch(upper);
+  }
+
+  static bool _looksLikeGenderOrBirthValue(String line) {
+    final upper = line.toUpperCase();
+    return upper.contains('LAKI-LAKI') ||
+        upper.contains('PEREMPUAN') ||
+        upper.contains('GOL. DARAH') ||
+        RegExp(r'\b\d{2}-\d{2}-\d{4}\b').hasMatch(upper);
+  }
+
+  static bool _isNonAddressValue(String value) {
+    final upper = value.trim().toUpperCase();
+    return const {
+      'ISLAM',
+      'KRISTEN',
+      'KATOLIK',
+      'HINDU',
+      'BUDDHA',
+      'KONGHUCU',
+      'WNI',
+      'SEUMUR HIDUP',
+      'KAWIN',
+      'BELUM KAWIN',
+      'CERAI HIDUP',
+      'CERAI MATI',
+    }.contains(upper);
+  }
+
+  static String _toReadableTitleCase(String input) {
+    const keepUpper = {'RT', 'RW', 'DKI', 'DIY', 'NTB', 'NTT'};
+    final words = input.trim().split(RegExp(r'\s+'));
+    return words.map((word) {
+      final cleanUpper = word.replaceAll(RegExp(r'[^A-Za-z]'), '').toUpperCase();
+      if (keepUpper.contains(cleanUpper)) {
+        return word.toUpperCase();
+      }
+      if (word.contains('/')) {
+        return word
+            .split('/')
+            .map((part) => keepUpper.contains(part.toUpperCase())
+                ? part.toUpperCase()
+                : _capitalizeSegment(part))
+            .join('/');
+      }
+      return _capitalizeSegment(word);
+    }).join(' ');
+  }
+
+  static String _capitalizeSegment(String seg) {
+    if (seg.isEmpty) return seg;
+    if (RegExp(r'^\d+$').hasMatch(seg)) return seg;
+    if (seg.length == 1) return seg.toUpperCase();
+    return seg[0].toUpperCase() + seg.substring(1).toLowerCase();
   }
 
   /// Cek apakah baris merupakan label "NAMA"

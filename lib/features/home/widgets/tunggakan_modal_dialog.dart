@@ -43,6 +43,12 @@ class TunggakanModalDialog extends StatelessWidget {
 
     final screenHeight = MediaQuery.of(context).size.height;
 
+    final bool needsActivation = saldoPokok <= 0;
+    final Color primaryAccent = needsActivation ? const Color(0xFF0E7955) : const Color(0xFFEA580C);
+    final List<Color> headerGradient = needsActivation
+        ? const [Color(0xFF0E7955), Color(0xFF10B981)]
+        : const [Color(0xFFEA580C), Color(0xFFF59E0B)];
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       elevation: 16,
@@ -71,13 +77,13 @@ class TunggakanModalDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top Header Banner with warm Amber/Rose gradient
+                // Top Header Banner
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFFEA580C), Color(0xFFF59E0B)], // Warm Amber-Orange
+                      colors: headerGradient,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -92,9 +98,9 @@ class TunggakanModalDialog extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
-                            Icons.notifications_active_rounded,
+                            needsActivation ? Icons.how_to_reg_rounded : Icons.notifications_active_rounded,
                             color: Colors.white,
                             size: 32,
                           ),
@@ -107,28 +113,36 @@ class TunggakanModalDialog extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: Color(0xFFEA580C), size: 15),
-                            SizedBox(width: 5),
-                            Text(
-                              'STATUS: MENUNGGAK',
-                              style: TextStyle(
-                                color: Color(0xFFEA580C),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11,
-                                letterSpacing: 0.5,
+                            Icon(
+                              needsActivation ? Icons.verified_user_outlined : Icons.warning_amber_rounded,
+                              color: primaryAccent,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                needsActivation ? 'STATUS: BELUM AKTIF' : 'STATUS: MENUNGGAK',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: primaryAccent,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Tunggakan Simpanan Wajib',
+                      Text(
+                        needsActivation ? 'Aktivasi Keanggotaan' : 'Tunggakan Simpanan Wajib',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -156,15 +170,13 @@ class TunggakanModalDialog extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                             ),
                             TextSpan(
-                              text: saldoPokok == 0
-                                  ? (jumlahBulan > 0
-                                      ? 'Anda memiliki kewajiban Simpanan Pokok awal dan $jumlahBulan bulan Simpanan Wajib yang belum terbayar.'
-                                      : 'Anda memiliki kewajiban Simpanan Pokok awal yang belum terbayar.')
+                              text: needsActivation
+                                  ? 'Selamat bergabung! Silakan bayar Simpanan Pokok dan Simpanan Wajib awal agar akun Anda resmi terdaftar sebagai anggota dengan status Aktif.'
                                   : (jumlahBulan > 0
                                       ? 'Anda memiliki kewajiban Simpanan Wajib yang belum terbayar sebanyak '
                                       : 'Anda memiliki kewajiban Simpanan Wajib yang belum terselesaikan.'),
                             ),
-                            if (saldoPokok != 0 && jumlahBulan > 0)
+                            if (!needsActivation && jumlahBulan > 0)
                               TextSpan(
                                 text: '$jumlahBulan bulan.',
                                 style: const TextStyle(
@@ -178,13 +190,13 @@ class TunggakanModalDialog extends StatelessWidget {
                       const SizedBox(height: 14),
 
                       // Months Box / Rincian Kewajiban
-                      if (saldoPokok == 0) ...[
+                      if (needsActivation) ...[
                         const Text(
                           'Kewajiban Simpanan Pokok:',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1E40AF),
+                            color: Color(0xFF0E7955),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -192,23 +204,23 @@ class TunggakanModalDialog extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
+                            color: const Color(0xFFECFDF5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                            border: Border.all(color: const Color(0xFFA7F3D0)),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.account_balance_wallet_rounded, size: 16, color: Color(0xFF2563EB)),
+                              Icon(Icons.account_balance_wallet_rounded, size: 16, color: Color(0xFF0E7955)),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Simpanan Pokok Awal (Wajib)',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                                  'Simpanan Pokok Awal (1x bayar)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
                                 ),
                               ),
                               Text(
-                                'Rp 100.000',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8)),
+                                'Rp 15.000',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0E7955)),
                               ),
                             ],
                           ),
@@ -216,9 +228,9 @@ class TunggakanModalDialog extends StatelessWidget {
                         const SizedBox(height: 12),
                       ],
                       if (list.isNotEmpty) ...[
-                        const Text(
-                          'Rincian Bulan Tunggakan:',
-                          style: TextStyle(
+                        Text(
+                          needsActivation ? 'Rincian Simpanan Wajib Awal:' : 'Rincian Bulan Tunggakan:',
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF64748B),
@@ -252,21 +264,30 @@ class TunggakanModalDialog extends StatelessWidget {
                                     children: [
                                       const Icon(Icons.calendar_month_outlined, size: 13, color: Color(0xFFB45309)),
                                       const SizedBox(width: 5),
-                                      Text(
-                                        item.label.isNotEmpty ? item.label : '${item.bulan}/${item.tahun}',
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF92400E),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        '(${AppCurrency.format(item.nominal)})',
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF92400E).withValues(alpha: 0.85),
+                                      Flexible(
+                                        child: Text.rich(
+                                          TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: item.label.isNotEmpty ? item.label : '${item.bulan}/${item.tahun}',
+                                                style: const TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF92400E),
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: ' (${AppCurrency.format(item.nominal)})',
+                                                style: TextStyle(
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(0xFF92400E).withValues(alpha: 0.85),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
@@ -283,32 +304,44 @@ class TunggakanModalDialog extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED), // Light orange background
+                          color: needsActivation ? const Color(0xFFECFDF5) : const Color(0xFFFFF7ED),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFFFEDD5)),
+                          border: Border.all(
+                            color: needsActivation ? const Color(0xFFA7F3D0) : const Color(0xFFFFEDD5),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Total Kewajiban',
-                                  style: TextStyle(fontSize: 11.5, color: Color(0xFF7C2D12), fontWeight: FontWeight.w500),
-                                ),
-                                Text(
-                                  saldoPokok == 0 ? 'Simpanan Pokok & Wajib' : 'Simpanan Wajib',
-                                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF9A3412)),
-                                ),
-                              ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    needsActivation ? 'Total Aktivasi Awal' : 'Total Kewajiban',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: needsActivation ? const Color(0xFF065F46) : const Color(0xFF7C2D12),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    needsActivation ? 'Simpanan Pokok & Wajib' : 'Simpanan Wajib',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: needsActivation ? const Color(0xFF047857) : const Color(0xFF9A3412),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 10),
                             Text(
-                              AppCurrency.format(totalNominal + (saldoPokok == 0 ? 100000 : 0)),
-                              style: const TextStyle(
+                              AppCurrency.format(totalNominal + (needsActivation ? 15000 : 0)),
+                              style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFFEA580C),
+                                color: primaryAccent,
                               ),
                             ),
                           ],
@@ -317,15 +350,17 @@ class TunggakanModalDialog extends StatelessWidget {
                       const SizedBox(height: 10),
 
                       // Educational notice
-                      const Row(
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFF94A3B8)),
-                          SizedBox(width: 6),
+                          const Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFF94A3B8)),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Pembayaran Simpanan Wajib rutin menjaga status keanggotaan Anda tetap aktif di koperasi.',
-                              style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
+                              needsActivation
+                                  ? 'Bayar Simpanan Pokok & Wajib sekaligus dalam 1 transaksi agar lebih hemat biaya admin dan akun Anda langsung Aktif.'
+                                  : 'Pembayaran Simpanan Wajib rutin menjaga status keanggotaan Anda tetap aktif di koperasi.',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
                             ),
                           ),
                         ],
@@ -342,7 +377,7 @@ class TunggakanModalDialog extends StatelessWidget {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => TopUpScreen(
-                                  initialType: 'simpanan_wajib',
+                                  initialType: needsActivation ? 'simpanan_pokok_wajib' : 'simpanan_wajib',
                                   initialStartMonth: firstMonth,
                                   initialEndMonth: lastMonth,
                                   initialYear: year,
@@ -357,17 +392,21 @@ class TunggakanModalDialog extends StatelessWidget {
                             shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.payment_rounded, size: 19),
-                              SizedBox(width: 8),
-                              Text(
-                                'Bayar Tunggakan Sekarang',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              const Icon(Icons.payment_rounded, size: 19),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  needsActivation ? 'Bayar Aktivasi Sekarang' : 'Bayar Tunggakan Sekarang',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
                               ),
-                              SizedBox(width: 5),
-                              Icon(Icons.arrow_forward_rounded, size: 16),
+                              const SizedBox(width: 5),
+                              const Icon(Icons.arrow_forward_rounded, size: 16),
                             ],
                           ),
                         ),

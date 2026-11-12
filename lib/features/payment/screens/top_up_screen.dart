@@ -13,6 +13,7 @@ import '../models/payment_model.dart';
 import '../models/payment_channel_model.dart';
 import 'doku_webview_screen.dart';
 import 'native_payment_detail_screen.dart';
+import '../widgets/payment_preparation_dialog.dart';
 import '../widgets/qris_preparation_dialog.dart';
 import '../widgets/pending_payments_modal.dart';
 import '../../../../core/services/storage_service.dart';
@@ -47,6 +48,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
   late int _wajibEndMonth;
   late int _wajibYear;
   bool _isBatchWajib = true; // Default batch mode up to December
+  bool _activationBatchUntilDec = false; // Default Pokok + Wajib bulan ini (Rp 17.500), opsional lunas s/d Des
   String _selectedPaymentMethod = 'bca';
   String? _lastUsedMethodCode; // Default: BCA Virtual Account (Native)
 
@@ -106,7 +108,10 @@ class _TopUpScreenState extends State<TopUpScreen> {
     });
 
     final init = widget.initialType?.toLowerCase();
-    if (init == 'wajib' || init == 'simpanan_wajib') {
+    if (init == 'simpanan_pokok_wajib' || init == 'pokok_wajib' || init == 'registrasi' || init == 'aktivasi') {
+      _selectedType = 'simpanan_pokok_wajib';
+      _updateActivationAmount();
+    } else if (init == 'wajib' || init == 'simpanan_wajib') {
       _selectedType = 'simpanan_wajib';
       _updateWajibAmount();
     } else if (init == 'pokok' || init == 'simpanan_pokok') {
@@ -148,6 +153,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
         _hasInitializedWajib = true;
         if (_selectedType == 'simpanan_wajib') {
           _updateWajibAmount();
+        } else if (_selectedType == 'simpanan_pokok_wajib') {
+          _updateActivationAmount();
         }
       }
     }
@@ -159,8 +166,23 @@ class _TopUpScreenState extends State<TopUpScreen> {
     super.dispose();
   }
 
+  int get _activationEndMonth => _activationBatchUntilDec ? 12 : _wajibStartMonth;
+
+  int get _activationMonthCount =>
+      (_activationEndMonth - _wajibStartMonth + 1).clamp(1, 12);
+
+  int _calculateTotalActivation() {
+    return _pokokNominal + (_activationMonthCount * _wajibPerBulan);
+  }
+
+  void _updateActivationAmount() {
+    _amountController.text =
+        AppCurrency.format(_calculateTotalActivation()).replaceAll('Rp ', '');
+  }
+
   int get _parsedAmount {
     if (_selectedType == 'simpanan_pokok') return _pokokNominal;
+    if (_selectedType == 'simpanan_pokok_wajib') return _calculateTotalActivation();
     if (_selectedType == 'simpanan_wajib') return _calculateTotalWajib();
     final clean = _amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
     return int.tryParse(clean) ?? 0;
@@ -185,7 +207,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   void _onTypeChanged(String type, bool isPokokPaid) {
-    if (type == 'simpanan_pokok' && isPokokPaid) {
+    if ((type == 'simpanan_pokok' || type == 'simpanan_pokok_wajib') && isPokokPaid) {
       _showPokokAlreadyPaidDialog();
       return;
     }
@@ -202,6 +224,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
           _wajibYear = anggota.tunggakanWajib.first.tahun;
         }
         _updateWajibAmount();
+      } else if (type == 'simpanan_pokok_wajib') {
+        final anggota = context.read<DashboardProvider>().dashboardData?.anggota;
+        if (anggota != null && anggota.tunggakanWajib.isNotEmpty && widget.initialStartMonth == null) {
+          _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
+          _wajibYear = anggota.tunggakanWajib.first.tahun;
+        }
+        _updateActivationAmount();
       } else if (type == 'simpanan_pokok') {
         _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
       }
@@ -264,87 +293,60 @@ class _TopUpScreenState extends State<TopUpScreen> {
     StorageService.saveLastPaymentMethod(_selectedPaymentMethod);
     final paymentProvider = context.read<PaymentProvider>();
 
+    PaymentChannelModel? selectedChannel;
+    for (final channel in activeChannels) {
+      if (channel.code.toLowerCase() == _selectedPaymentMethod.toLowerCase()) {
+        selectedChannel = channel;
+        break;
+      }
+    }
+
     final isQrisSelected = _selectedPaymentMethod.toLowerCase() == 'qris';
 
     Future<SnapTokenResponse?> triggerCreatePayment() {
+      final int? paramBulan = (_selectedType == 'simpanan_wajib' || _selectedType == 'simpanan_pokok_wajib')
+          ? _wajibStartMonth
+          : null;
+      final int? paramBulanAkhir = _selectedType == 'simpanan_wajib'
+          ? (_isBatchWajib ? _wajibEndMonth : null)
+          : (_selectedType == 'simpanan_pokok_wajib' ? _activationEndMonth : null);
+      final int? paramTahun = (_selectedType == 'simpanan_wajib' || _selectedType == 'simpanan_pokok_wajib')
+          ? _wajibYear
+          : null;
+
       return paymentProvider.createPayment(
         type: _selectedType,
         nominal: amount,
         paymentMethod: _selectedPaymentMethod,
         bank: _selectedPaymentMethod != 'checkout' ? _selectedPaymentMethod : null,
-        bulan: _selectedType == 'simpanan_wajib' ? _wajibStartMonth : null,
-        bulanAkhir: (_selectedType == 'simpanan_wajib' && _isBatchWajib) ? _wajibEndMonth : null,
-        tahun: _selectedType == 'simpanan_wajib' ? _wajibYear : null,
+        bulan: paramBulan,
+        bulanAkhir: paramBulanAkhir,
+        tahun: paramTahun,
       );
     }
 
     bool? success;
 
-    // Untuk QRIS: muat transaksi & kode QRIS sampai siap di dialog sebelum membuka layar pembayaran QRIS
+    // Untuk QRIS maupun VA / Bank: tampilkan popup persiapan terpadu yang seragam
     if (isQrisSelected) {
       success = await QrisPreparationHelper.open(
         context,
         onGeneratePayment: triggerCreatePayment,
+        accentColor: selectedChannel?.tagColor ?? const Color(0xFFDC2626),
       );
     } else {
-      // Untuk VA / Checkout: tampilkan dialog persiapan pembayaran sebelum membuka layar instruksi
-      AppDialog.showShell(
+      final accentColor = selectedChannel?.tagColor ?? Theme.of(context).colorScheme.primary;
+      final outcome = await PaymentPreparationHelper.run<SnapTokenResponse?>(
         context: context,
-        barrierDismissible: false,
-        child: PopScope(
-          canPop: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 68,
-                  height: 68,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 34,
-                    height: 34,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Menyiapkan Pembayaran...',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Menghubungkan ke server bank untuk menerbitkan kode pembayaran. Mohon tunggu...',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.5),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
+        task: triggerCreatePayment,
+        accentColor: accentColor,
+        title: 'Menyiapkan Pembayaran...',
+        statusText: 'Menghubungkan ke server pembayaran...',
+        helperText: 'Halaman instruksi pembayaran akan terbuka otomatis setelah kode siap.',
       );
 
-      SnapTokenResponse? result;
-      try {
-        result = await triggerCreatePayment();
-      } catch (_) {
-        result = null;
-      } finally {
-        if (mounted && Navigator.canPop(context)) {
-          Navigator.pop(context); // Tutup loading dialog
-        }
-      }
-
-      if (!mounted) return;
+      if (!mounted || outcome.cancelled) return;
+      final result = outcome.data;
 
       if (result != null) {
         final isQris = result.isDirectQris ||
@@ -408,7 +410,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Saldo Info Banner
-                  _buildBalanceBanner(dashboard),
+                  _buildBalanceBanner(dashboard, anggota),
                   if (paymentProvider.pendingPayments.isNotEmpty) ...[
                       const SizedBox(height: 14),
                       _buildActivePendingBanner(context, paymentProvider.pendingPayments),
@@ -432,6 +434,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   // Content based on selected type
                   if (_selectedType == 'pembukaan_sijaka') ...[
                     _buildSijakaPromoCard(),
+                  ] else if (_selectedType == 'simpanan_pokok_wajib' && !isPokokPaid) ...[
+                    _buildPokokWajibSection(),
                   ] else if (_selectedType == 'simpanan_pokok') ...[
                     _buildPokokSection(isPokokPaid),
                   ] else if (_selectedType == 'simpanan_wajib') ...[
@@ -478,10 +482,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
-  Widget _buildBalanceBanner(dynamic dashboard) {
+  Widget _buildBalanceBanner(dynamic dashboard, [DashboardAnggota? anggota]) {
     num activeBalance = 0;
     String label = 'Saldo Sirela (Sukarela)';
-    if (_selectedType == 'simpanan_wajib') {
+    if (_selectedType == 'simpanan_pokok_wajib') {
+      activeBalance = (dashboard?.saldoPokok ?? 0) + (dashboard?.saldoWajib ?? 0);
+      label = 'Saldo Aktivasi (Pokok + Wajib)';
+    } else if (_selectedType == 'simpanan_wajib') {
       activeBalance = dashboard?.saldoWajib ?? 0;
       label = 'Saldo Simpanan Wajib';
     } else if (_selectedType == 'simpanan_pokok') {
@@ -493,6 +500,37 @@ class _TopUpScreenState extends State<TopUpScreen> {
     } else {
       activeBalance = dashboard?.saldoSukarela ?? 0;
       label = 'Saldo Sirela (Sukarela)';
+    }
+
+    final statusInfo = MemberStatusResolver.resolve(
+      saldoPokok: dashboard?.saldoPokok,
+      saldoWajib: dashboard?.saldoWajib,
+      apiIsPokokPaid: anggota?.isPokokPaid,
+      apiIsWajibPaid: anggota?.isWajibPaid,
+      rawStatus: anggota?.statusKeanggotaan ?? anggota?.status,
+    );
+
+    late final String badgeLabel;
+    late final Color badgeBg;
+    late final Color badgeTextColor;
+
+    if (_selectedType == 'simpanan_pokok') {
+      final paid = activeBalance >= _pokokNominal;
+      badgeLabel = paid ? 'Lunas' : 'Belum Bayar';
+      badgeBg = paid ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7);
+      badgeTextColor = paid ? const Color(0xFF059669) : const Color(0xFFD97706);
+    } else if (statusInfo.isActive) {
+      badgeLabel = 'Aktif';
+      badgeBg = const Color(0xFFECFDF5);
+      badgeTextColor = const Color(0xFF059669);
+    } else if (statusInfo.displayStatus == 'MENUNGGAK') {
+      badgeLabel = 'Menunggak';
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeTextColor = const Color(0xFFD97706);
+    } else {
+      badgeLabel = 'Belum Aktif';
+      badgeBg = const Color(0xFFFEF3C7);
+      badgeTextColor = const Color(0xFFD97706);
     }
 
     return Container(
@@ -512,37 +550,42 @@ class _TopUpScreenState extends State<TopUpScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFECFDF5),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.account_balance_wallet_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text(
-                    AppCurrency.format(activeBalance),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFECFDF5),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
-            ],
+                  child: Icon(Icons.account_balance_wallet_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppCurrency.format(activeBalance),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: badgeBg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Aktif', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+            child: Text(badgeLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: badgeTextColor)),
           )
         ],
       ),
@@ -552,6 +595,18 @@ class _TopUpScreenState extends State<TopUpScreen> {
   Widget _buildTypeSelector(bool isPokokPaid) {
     return Column(
       children: [
+        if (!isPokokPaid) ...[
+          _buildTypeCard(
+            type: 'simpanan_pokok_wajib',
+            title: 'Aktivasi Anggota (Pokok + Wajib)',
+            subtitle: 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x admin',
+            badgeText: 'Khusus Baru',
+            icon: Icons.how_to_reg_rounded,
+            isHighlight: true,
+            isSuccessBadge: true,
+          ),
+          const SizedBox(height: 10),
+        ],
         _buildTypeCard(
           type: 'simpanan_sukarela',
           title: 'Sirela (Simpanan Sukarela)',
@@ -954,10 +1009,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _isBatchWajib ? 'Pilih Rentang Bulan' : 'Pilih Bulan Iuran',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  Expanded(
+                    child: Text(
+                      _isBatchWajib ? 'Pilih Rentang Bulan' : 'Pilih Bulan Iuran',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -995,9 +1053,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    _months[_wajibStartMonth - 1]['name'] as String,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                  Expanded(
+                                    child: Text(
+                                      _months[_wajibStartMonth - 1]['name'] as String,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                   const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B), size: 18),
                                 ],
@@ -1027,9 +1088,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    _months[_wajibEndMonth - 1]['name'] as String,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                  Expanded(
+                                    child: Text(
+                                      _months[_wajibEndMonth - 1]['name'] as String,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                   const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B), size: 18),
                                 ],
@@ -1600,6 +1664,153 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
+  // --- 3A. PAKET AKTIVASI ANGGOTA BARU (POKOK + WAJIB SEKALIGUS) ---
+  Widget _buildPokokWajibSection() {
+    final startMonthName = _months.firstWhere(
+      (m) => m['id'] == _wajibStartMonth,
+      orElse: () => {'name': 'Bulan $_wajibStartMonth'},
+    )['name'];
+    final int monthCount = _activationMonthCount;
+    final int wajibSubtotal = monthCount * _wajibPerBulan;
+    final int total = _calculateTotalActivation();
+    final int sisaUntilDec = (12 - _wajibStartMonth + 1).clamp(1, 12);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInfoCard(
+          title: 'Paket Aktivasi Anggota Baru (Hemat Biaya Admin)',
+          desc:
+              'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib dalam 1 transaksi agar status keanggotaan Anda langsung Aktif tanpa bayar admin 2 kali.',
+          icon: Icons.how_to_reg_rounded,
+          iconColor: const Color(0xFF0E7955),
+          bgColor: const Color(0xFFECFDF5),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFA7F3D0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Rincian Biaya Registrasi',
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      '1X BAYAR',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF0E7955)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: Text('Simpanan Pokok (1x seumur hidup)', style: TextStyle(fontSize: 12.5, color: Color(0xFF475569))),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppCurrency.format(_pokokNominal),
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _activationBatchUntilDec
+                          ? 'Simpanan Wajib ($startMonthName - Des $_wajibYear)'
+                          : 'Simpanan Wajib ($startMonthName $_wajibYear)',
+                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppCurrency.format(wajibSubtotal),
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  ),
+                ],
+              ),
+              if (sisaUntilDec > 1) ...[
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: CheckboxListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                      activeColor: const Color(0xFF0E7955),
+                      value: _activationBatchUntilDec,
+                      onChanged: (val) {
+                        setState(() {
+                          _activationBatchUntilDec = val ?? false;
+                          _updateActivationAmount();
+                        });
+                      },
+                      title: Text(
+                        'Sekalian lunasi Wajib s/d Des $_wajibYear ($sisaUntilDec bulan)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      ),
+                      subtitle: Text(
+                        'Tambahan ${AppCurrency.format(sisaUntilDec * _wajibPerBulan)} • Bebas iuran sampai akhir tahun',
+                        style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const Divider(height: 22, color: Color(0xFFE2E8F0)),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total Aktivasi Keanggotaan',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0E7955)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppCurrency.format(total),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0E7955)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // --- 3. SIMPANAN POKOK SECTION ---
   Widget _buildPokokSection(bool isPokokPaid) {
     return Column(
@@ -1626,7 +1837,10 @@ class _TopUpScreenState extends State<TopUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Nominal Simpanan Pokok', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  const Expanded(
+                    child: Text('Nominal Simpanan Pokok', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -2055,12 +2269,16 @@ class _TopUpScreenState extends State<TopUpScreen> {
                             children: [
                               Icon(Icons.bolt_rounded, size: 12, color: Color(0xFF059669)),
                               SizedBox(width: 2),
-                              Text(
-                                'Instan 24 Jam',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF059669),
+                              Flexible(
+                                child: Text(
+                                  'Instan 24 Jam',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF059669),
+                                  ),
                                 ),
                               ),
                             ],
@@ -2124,23 +2342,30 @@ class _TopUpScreenState extends State<TopUpScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF0F766E)),
-                const SizedBox(width: 5),
-                Text(
-                  _lastUsedMethodCode != null
-                      ? 'SARAN METODE (TERAKHIR DIGUNAKAN)'
-                      : 'SARAN METODE REKOMENDASI',
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF64748B),
-                    letterSpacing: 0.4,
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF0F766E)),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      _lastUsedMethodCode != null
+                          ? 'SARAN METODE (TERAKHIR DIGUNAKAN)'
+                          : 'SARAN METODE REKOMENDASI',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             InkWell(
               onTap: () => _showPaymentMethodSelector(context, channels),
               child: const Text(
@@ -2190,64 +2415,81 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                      decoration: BoxDecoration(
-                        color: isSel
-                            ? const Color(0xFFDCFCE7)
-                            : primarySuggestion.badgeColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Icon(
-                            primarySuggestion.badgeIcon,
-                            size: 11,
-                            color: isSel ? const Color(0xFF15803D) : primarySuggestion.badgeColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            primarySuggestion.badgeText,
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              color: isSel ? const Color(0xFF15803D) : primarySuggestion.badgeColor,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? const Color(0xFFDCFCE7)
+                                  : primarySuggestion.badgeColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  primarySuggestion.badgeIcon,
+                                  size: 11,
+                                  color: isSel ? const Color(0xFF15803D) : primarySuggestion.badgeColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    primarySuggestion.badgeText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSel ? const Color(0xFF15803D) : primarySuggestion.badgeColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                primarySuggestion.channel.icon,
+                                size: 18,
+                                color: primarySuggestion.channel.tagColor,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  primarySuggestion.channel.name,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                    color: isSel ? const Color(0xFF0F766E) : const Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Icon(
-                      primarySuggestion.channel.icon,
-                      size: 18,
-                      color: primarySuggestion.channel.tagColor,
-                    ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        primarySuggestion.channel.name,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
-                          color: isSel ? const Color(0xFF0F766E) : const Color(0xFF1E293B),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
                     if (isSel) ...[
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(Icons.check_rounded, size: 12, color: Color(0xFF15803D)),
                             SizedBox(width: 3),
                             Text(
@@ -2704,7 +2946,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   Widget _buildBottomBar(bool isCreating, bool isPokokPaid) {
-    final isDisabled = _selectedType == 'simpanan_pokok' && isPokokPaid;
+    final isDisabled = (_selectedType == 'simpanan_pokok' || _selectedType == 'simpanan_pokok_wajib') && isPokokPaid;
     final channels = context.watch<PaymentProvider>().activeChannels;
     final selectedChannel = channels.where((c) => c.code == _selectedPaymentMethod).firstOrNull;
     final int adminFee = selectedChannel?.calculateFee(_parsedAmount) ?? 0;
@@ -2726,42 +2968,60 @@ class _TopUpScreenState extends State<TopUpScreen> {
         ),
         child: Row(
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Total Tagihan', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                    if (adminFee > 0) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '+ Admin ${AppCurrency.format(adminFee)}',
-                        style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontWeight: FontWeight.bold),
-                      ),
-                    ] else ...[
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Gratis Admin',
-                        style: TextStyle(fontSize: 10, color: Color(0xFF059669), fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  AppCurrency.format(totalPayment),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
             Expanded(
+              flex: 5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Total Tagihan',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                      if (adminFee > 0)
+                        Text(
+                          '+ Admin ${AppCurrency.format(adminFee)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFFB45309),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else
+                        const Text(
+                          'Gratis Admin',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF059669),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      AppCurrency.format(totalPayment),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 5,
               child: ElevatedButton(
                 onPressed: (isCreating || isDisabled)
                     ? (isDisabled ? () => _showPokokAlreadyPaidDialog() : null)

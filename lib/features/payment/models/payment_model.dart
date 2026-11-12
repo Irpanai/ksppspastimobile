@@ -100,6 +100,8 @@ class SnapTokenResponse {
         return 'Simpanan Wajib';
       case 'simpanan_pokok':
         return 'Simpanan Pokok';
+      case 'simpanan_pokok_wajib':
+        return 'Aktivasi (Pokok + Wajib)';
       case 'pembukaan_sijaka':
         return 'Deposito SIJAKA';
       default:

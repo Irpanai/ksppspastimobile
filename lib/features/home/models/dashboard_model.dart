@@ -1,4 +1,4 @@
-﻿class TunggakanItem {
+class TunggakanItem {
   final int bulan;
   final int tahun;
   final String label;
@@ -30,6 +30,74 @@
   }
 }
 
+class MemberStatusResolver {
+  final bool isPokokPaid;
+  final bool isWajibPaid;
+  final bool isActive;
+  final String displayStatus;
+
+  const MemberStatusResolver({
+    required this.isPokokPaid,
+    required this.isWajibPaid,
+    required this.isActive,
+    required this.displayStatus,
+  });
+
+  static MemberStatusResolver resolve({
+    num? saldoPokok,
+    num? saldoWajib,
+    bool? apiIsPokokPaid,
+    bool? apiIsWajibPaid,
+    String? rawStatus,
+  }) {
+    final normalizedRaw = (rawStatus ?? '').trim().toLowerCase();
+    if (normalizedRaw == 'keluar') {
+      return const MemberStatusResolver(
+        isPokokPaid: false,
+        isWajibPaid: false,
+        isActive: false,
+        displayStatus: 'KELUAR',
+      );
+    }
+
+    final bool hasBalanceData = saldoPokok != null && saldoWajib != null;
+    final bool effectivePokokPaid = hasBalanceData
+        ? saldoPokok > 0
+        : (apiIsPokokPaid ?? (normalizedRaw == 'aktif'));
+    final bool effectiveWajibPaid = hasBalanceData
+        ? saldoWajib > 0
+        : (apiIsWajibPaid ?? (normalizedRaw == 'aktif'));
+
+    if (!effectivePokokPaid ||
+        !effectiveWajibPaid ||
+        normalizedRaw == 'belum_aktif' ||
+        normalizedRaw == 'nonaktif') {
+      return MemberStatusResolver(
+        isPokokPaid: effectivePokokPaid,
+        isWajibPaid: effectiveWajibPaid,
+        isActive: false,
+        displayStatus: 'BELUM AKTIF',
+      );
+    }
+
+    if (normalizedRaw == 'menunggak') {
+      return MemberStatusResolver(
+        isPokokPaid: effectivePokokPaid,
+        isWajibPaid: effectiveWajibPaid,
+        isActive: false,
+        displayStatus: 'MENUNGGAK',
+      );
+    }
+
+    return MemberStatusResolver(
+      isPokokPaid: effectivePokokPaid,
+      isWajibPaid: effectiveWajibPaid,
+      isActive: true,
+      displayStatus: 'AKTIF',
+    );
+  }
+}
+
 class DashboardAnggota {
   final int id;
   final String noAnggota;
@@ -37,6 +105,8 @@ class DashboardAnggota {
   final String status;
   final String statusKeanggotaan;
   final bool isPokokPaid;
+  final bool isWajibPaid;
+  final bool isMemberActive;
   final String cabang;
   final bool isMenunggak;
   final List<TunggakanItem> tunggakanWajib;
@@ -50,13 +120,20 @@ class DashboardAnggota {
     required this.status,
     String? statusKeanggotaan,
     bool? isPokokPaid,
+    bool? isWajibPaid,
+    bool? isMemberActive,
     required this.cabang,
     this.isMenunggak = false,
     this.tunggakanWajib = const [],
     this.totalTunggakanWajib = 0,
     this.jumlahBulanMenunggak = 0,
   })  : statusKeanggotaan = statusKeanggotaan ?? status,
-        isPokokPaid = isPokokPaid ?? (status.toLowerCase() == 'aktif');
+        isPokokPaid = isPokokPaid ?? (status.toLowerCase() == 'aktif'),
+        isWajibPaid = isWajibPaid ?? (status.toLowerCase() == 'aktif'),
+        isMemberActive = isMemberActive ??
+            ((isPokokPaid ?? (status.toLowerCase() == 'aktif')) &&
+                (isWajibPaid ?? (status.toLowerCase() == 'aktif')) &&
+                status.toLowerCase() == 'aktif');
 
   factory DashboardAnggota.fromJson(Map<String, dynamic> json) {
     final rawTunggakan = json['tunggakan_wajib'];
@@ -68,15 +145,24 @@ class DashboardAnggota {
           .toList();
     }
 
-    final statusStr = json['status']?.toString() ?? json['status_keanggotaan']?.toString() ?? 'aktif';
-    final isMenunggakVal = json['is_menunggak'] == true ||
-        (statusStr.toLowerCase() == 'menunggak') ||
-        tunggakanList.isNotEmpty;
+    bool parseBool(dynamic v) => v == true || v == 1 || v == '1' || v == 'true';
 
-    final parsedPokokPaid = json['is_pokok_paid'] == true ||
-        json['is_pokok_paid'] == 1 ||
-        json['is_pokok_paid'] == '1' ||
-        (statusStr.toLowerCase() == 'aktif');
+    final statusStr = json['status']?.toString() ?? json['status_keanggotaan']?.toString() ?? 'belum_aktif';
+    final hasPokokFlag = json.containsKey('is_pokok_paid') && json['is_pokok_paid'] != null;
+    final hasWajibFlag = json.containsKey('is_wajib_paid') && json['is_wajib_paid'] != null;
+    final hasActiveFlag = json.containsKey('is_member_active') && json['is_member_active'] != null;
+
+    final parsedPokokPaid = hasPokokFlag ? parseBool(json['is_pokok_paid']) : (statusStr.toLowerCase() == 'aktif');
+    final parsedWajibPaid = hasWajibFlag ? parseBool(json['is_wajib_paid']) : (statusStr.toLowerCase() == 'aktif');
+    final parsedMemberActive = hasActiveFlag
+        ? parseBool(json['is_member_active'])
+        : (parsedPokokPaid && parsedWajibPaid && statusStr.toLowerCase() == 'aktif');
+
+    final isMenunggakVal = parsedPokokPaid &&
+        parsedWajibPaid &&
+        (json['is_menunggak'] == true ||
+            (statusStr.toLowerCase() == 'menunggak') ||
+            tunggakanList.isNotEmpty);
 
     return DashboardAnggota(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
@@ -85,6 +171,8 @@ class DashboardAnggota {
       status: statusStr,
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? statusStr,
       isPokokPaid: parsedPokokPaid,
+      isWajibPaid: parsedWajibPaid,
+      isMemberActive: parsedMemberActive,
       cabang: json['cabang']?.toString() ?? 'Pusat',
       isMenunggak: isMenunggakVal,
       tunggakanWajib: tunggakanList,
@@ -105,6 +193,8 @@ class DashboardAnggota {
       'status': status,
       'status_keanggotaan': statusKeanggotaan,
       'is_pokok_paid': isPokokPaid,
+      'is_wajib_paid': isWajibPaid,
+      'is_member_active': isMemberActive,
       'cabang': cabang,
       'is_menunggak': isMenunggak,
       'tunggakan_wajib': tunggakanWajib.map((e) => e.toJson()).toList(),

@@ -34,7 +34,7 @@ class PaymentService {
       body['bank'] = bank;
     }
 
-    if (type == 'simpanan_wajib') {
+    if (type == 'simpanan_wajib' || type == 'simpanan_pokok_wajib') {
       if (bulan != null) body['bulan'] = bulan;
       if (bulanAkhir != null) body['bulan_akhir'] = bulanAkhir;
       if (tahun != null) body['tahun'] = tahun;

@@ -9,6 +9,7 @@ import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
 import '../screens/native_qris_screen.dart';
 import 'doku_qris_web_bridge.dart';
+import 'payment_preparation_dialog.dart';
 
 /// Hasil persiapan QRIS sebelum masuk ke layar Pembayaran QRIS.
 class QrisPreparationResult {
@@ -39,6 +40,7 @@ class QrisPreparationHelper {
     Future<SnapTokenResponse?> Function()? onGeneratePayment,
     SnapTokenResponse? existingPayment,
     bool forceStatusCheckForExisting = true,
+    Color accentColor = const Color(0xFFDC2626),
   }) async {
     assert(
       onGeneratePayment != null || existingPayment != null,
@@ -47,14 +49,15 @@ class QrisPreparationHelper {
 
     final paymentProvider = context.read<PaymentProvider>();
 
-    final prepResult = await showDialog<QrisPreparationResult>(
+    final prepResult = await AppDialog.showShell<QrisPreparationResult>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => _QrisPreparationDialog(
+      child: _QrisPreparationDialog(
         paymentProvider: paymentProvider,
         onGeneratePayment: onGeneratePayment,
         existingPayment: existingPayment,
         forceStatusCheckForExisting: forceStatusCheckForExisting,
+        accentColor: accentColor,
       ),
     );
 
@@ -98,12 +101,14 @@ class _QrisPreparationDialog extends StatefulWidget {
   final Future<SnapTokenResponse?> Function()? onGeneratePayment;
   final SnapTokenResponse? existingPayment;
   final bool forceStatusCheckForExisting;
+  final Color accentColor;
 
   const _QrisPreparationDialog({
     required this.paymentProvider,
     this.onGeneratePayment,
     this.existingPayment,
     required this.forceStatusCheckForExisting,
+    this.accentColor = const Color(0xFFDC2626),
   });
 
   @override
@@ -354,116 +359,42 @@ class _QrisPreparationDialogState extends State<_QrisPreparationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    const qrisRed = Color(0xFFDC2626);
     final webController = _webCtrl?.webViewController;
 
     return PopScope(
       canPop: false,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (webController != null)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: 0.01,
-                      child: OverflowBox(
-                        maxWidth: 380,
-                        maxHeight: 480,
-                        child: SizedBox(
-                          width: 340,
-                          height: 440,
-                          child: WebViewWidget(
-                            key: ValueKey('qris_preload_wv_${identityHashCode(webController)}'),
-                            controller: webController,
-                          ),
-                        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (webController != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: 0.01,
+                  child: OverflowBox(
+                    maxWidth: 380,
+                    maxHeight: 480,
+                    child: SizedBox(
+                      width: 340,
+                      height: 440,
+                      child: WebViewWidget(
+                        key: ValueKey('qris_preload_wv_${identityHashCode(webController)}'),
+                        controller: webController,
                       ),
                     ),
                   ),
                 ),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        color: qrisRed.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: const SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(qrisRed),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Menyiapkan Kode QRIS...',
-                      style: TextStyle(
-                        fontSize: 17.5,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _statusText,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                        height: 1.45,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'QRIS sedang dimuat hingga siap dipakai sebelum halaman pembayaran dibuka.',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF94A3B8),
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 14),
-                    TextButton(
-                      onPressed: _handleCancel,
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF64748B),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      child: const Text(
-                        'Batalkan',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ],
+            ),
+          PaymentPreparationCard(
+            accentColor: widget.accentColor,
+            title: 'Menyiapkan Kode QRIS...',
+            statusText: _statusText,
+            helperText:
+                'QRIS sedang dimuat hingga siap dipakai sebelum halaman pembayaran dibuka.',
+            onCancel: _handleCancel,
           ),
-        ),
+        ],
       ),
     );
   }

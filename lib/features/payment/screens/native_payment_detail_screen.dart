@@ -199,6 +199,8 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
         .replaceAll('simpanan_sukarela', 'Sirela')
         .replaceAll('PEMBUKAAN_SIJAKA', 'Sijaka')
         .replaceAll('pembukaan_sijaka', 'Sijaka')
+        .replaceAll('SIMPANAN_POKOK_WAJIB', 'RegAwal')
+        .replaceAll('simpanan_pokok_wajib', 'RegAwal')
         .replaceAll('SIMPANAN_POKOK', 'Sipokok')
         .replaceAll('simpanan_pokok', 'Sipokok')
         .replaceAll('SIMPANAN_WAJIB', 'Siwajib')
@@ -518,50 +520,57 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                           const SizedBox(height: 16),
 
                           // Total Pembayaran Section
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'TOTAL PEMBAYARAN',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF64748B),
-                                      letterSpacing: 0.5,
+                          SizedBox(
+                            width: double.infinity,
+                            child: Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 10,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'TOTAL PEMBAYARAN',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF64748B),
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    res.grossAmountFormat,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      res.grossAmountFormat,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: bankColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _copyToClipboard(res.grossAmount.toString(), 'Nominal Pembayaran'),
+                                  icon: Icon(Icons.copy_rounded, size: 15, color: bankColor),
+                                  label: Text(
+                                    'Salin Nominal',
                                     style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
                                       color: bankColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                ],
-                              ),
-                              TextButton.icon(
-                                onPressed: () => _copyToClipboard(res.grossAmount.toString(), 'Nominal Pembayaran'),
-                                icon: Icon(Icons.copy_rounded, size: 15, color: bankColor),
-                                label: Text(
-                                  'Salin Nominal',
-                                  style: TextStyle(
-                                    color: bankColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: bankColor.withValues(alpha: 0.08),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                 ),
-                                style: TextButton.styleFrom(
-                                  backgroundColor: bankColor.withValues(alpha: 0.08),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -593,18 +602,22 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: primaryGreen.withOpacity(0.1),
+                                  color: primaryGreen.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(Icons.receipt_long_rounded, color: primaryGreen, size: 18),
                               ),
                               const SizedBox(width: 10),
-                              const Text(
-                                'Rincian Transaksi',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
+                              const Expanded(
+                                child: Text(
+                                  'Rincian Transaksi',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0F172A),
+                                  ),
                                 ),
                               ),
                             ],
@@ -720,10 +733,17 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                       foregroundColor: const Color(0xFF475569),
                       backgroundColor: const Color(0xFFF8FAFC),
                       side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('Bayar Nanti', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Bayar Nanti',
+                        maxLines: 1,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -736,7 +756,7 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: bankColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
@@ -748,12 +768,19 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: const [
                               Icon(Icons.refresh_rounded, size: 18),
-                              SizedBox(width: 8),
-                              Text(
-                                'Cek Status Pembayaran',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                              SizedBox(width: 6),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Cek Status Pembayaran',
+                                    maxLines: 1,
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -898,6 +925,8 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
         return 'Simpanan Wajib Bulanan';
       case 'simpanan_pokok':
         return 'Simpanan Pokok Anggota';
+      case 'simpanan_pokok_wajib':
+        return 'Aktivasi Anggota (Pokok + Wajib)';
       case 'pembukaan_sijaka':
         return 'Setoran Deposito Sijaka';
       default:

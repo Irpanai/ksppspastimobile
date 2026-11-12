@@ -17,6 +17,7 @@ import '../widgets/tunggakan_modal_dialog.dart';
 import '../widgets/wajib_simpanan_modal_dialog.dart';
 import '../../payment/models/payment_model.dart';
 import '../../payment/providers/payment_provider.dart';
+import '../../payment/screens/top_up_screen.dart';
 import '../../payment/widgets/pending_payments_modal.dart';
 import '../../../core/services/in_app_update_service.dart';
 import '../../../shared/widgets/app_dialog.dart';
@@ -69,9 +70,26 @@ class _BerandaScreenState extends State<BerandaScreen> {
     );
   }
 
+  MemberStatusResolver _resolveCurrentMemberStatus(BuildContext context, {bool listen = false}) {
+    final dashboardProvider = listen ? context.watch<DashboardProvider>() : context.read<DashboardProvider>();
+    final authUser = listen ? context.watch<AuthProvider>().user : context.read<AuthProvider>().user;
+    final dashboardData = dashboardProvider.dashboardData;
+    final anggota = dashboardData?.anggota;
+
+    return MemberStatusResolver.resolve(
+      saldoPokok: dashboardData?.ringkasanSaldo.saldoPokok,
+      saldoWajib: dashboardData?.ringkasanSaldo.saldoWajib,
+      apiIsPokokPaid: anggota?.isPokokPaid ?? authUser?.isPokokPaid ?? authUser?.anggota?.isPokokPaid,
+      apiIsWajibPaid: anggota?.isWajibPaid ?? authUser?.isWajibPaid ?? authUser?.anggota?.isWajibPaid,
+      rawStatus: anggota?.statusKeanggotaan ??
+          anggota?.status ??
+          authUser?.statusKeanggotaan ??
+          authUser?.anggota?.status,
+    );
+  }
+
   void _checkAndShowTunggakanPopup() {
     final dashboardProvider = context.read<DashboardProvider>();
-    final authUser = context.read<AuthProvider>().user;
     final dashboardAnggota = dashboardProvider.dashboardData?.anggota;
     final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
 
@@ -80,26 +98,26 @@ class _BerandaScreenState extends State<BerandaScreen> {
       return;
     }
 
-    // Anggota dianggap aktif jika status di DB aktif, status user aktif, atau isPokokPaid true
-    final isAnggotaAktif = (dashboardAnggota?.status.toLowerCase() == 'aktif') ||
-        (dashboardAnggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
-        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
-        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
-        (dashboardAnggota?.isPokokPaid == true);
+    final statusInfo = _resolveCurrentMemberStatus(context);
 
-    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
-
-    // Cek jika akun benar-benar belum aktif dan belum bayar simpanan pokok
-    if (!isPokokPaid && !isAnggotaAktif) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          WajibSimpananModalDialog.show(context);
-        }
-      });
-      return; // Jangan lanjut cek tunggakan lain jika pokok belum dibayar
+    // Nasabah baru / anggota belum aktif (belum melunasi Simpanan Pokok & Wajib)
+    if (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid) {
+      if (!dashboardProvider.hasShownTunggakanDialog) {
+        dashboardProvider.markTunggakanDialogShown();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            if (!statusInfo.isPokokPaid) {
+              WajibSimpananModalDialog.show(context);
+            } else if (dashboardAnggota != null) {
+              TunggakanModalDialog.show(context, dashboardAnggota, saldoPokok);
+            }
+          }
+        });
+      }
+      return;
     }
 
-    // Cek tunggakan simpanan wajib bulanan jika ada
+    // Cek tunggakan simpanan wajib bulanan (hanya jika Pokok & Wajib awal sudah pernah dibayar)
     final anggota = dashboardAnggota;
     if (anggota != null &&
         (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty) &&
@@ -130,23 +148,17 @@ class _BerandaScreenState extends State<BerandaScreen> {
   Widget build(BuildContext context) {
     final dashboardProvider = context.watch<DashboardProvider>();
     final paymentProvider = context.watch<PaymentProvider>();
-    final authUser = context.watch<AuthProvider>().user;
     final anggota = dashboardProvider.dashboardData?.anggota;
     final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
 
-    final isAnggotaAktif = (anggota?.status.toLowerCase() == 'aktif') ||
-        (anggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
-        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
-        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
-        (anggota?.isPokokPaid == true);
-
-    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
-    final isMenunggak = anggota != null && (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
+    final statusInfo = _resolveCurrentMemberStatus(context, listen: true);
+    final isMenunggak = statusInfo.isPokokPaid &&
+        statusInfo.isWajibPaid &&
+        anggota != null &&
+        (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
     final pendingPayments = paymentProvider.pendingPayments;
 
-    // Banner hanya ditampilkan jika benar-benar belum aktif, belum lunas pokok, dan data sudah selesai dimuat
-    final bool shouldShowPokokBanner = !isPokokPaid &&
-        !isAnggotaAktif &&
+    final bool shouldShowActivationBanner = (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid) &&
         dashboardProvider.dashboardData != null &&
         !dashboardProvider.isLoading;
 
@@ -179,8 +191,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
                       _buildCustomAppBar(context),
                       if (pendingPayments.isNotEmpty)
                         _buildPendingPaymentBanner(context, pendingPayments),
-                      if (shouldShowPokokBanner)
-                        _buildSimpananPokokBanner(context),
+                      if (shouldShowActivationBanner)
+                        _buildSimpananPokokBanner(context, needsPokok: !statusInfo.isPokokPaid),
                       if (isMenunggak)
                         _buildTunggakanWarningBanner(context, anggota, saldoPokok),
                       const SizedBox(height: 24),
@@ -225,14 +237,36 @@ class _BerandaScreenState extends State<BerandaScreen> {
     );
   }
 
-  Widget _buildSimpananPokokBanner(BuildContext context) {
+  Widget _buildSimpananPokokBanner(BuildContext context, {bool needsPokok = true}) {
+    final targetType = needsPokok ? 'simpanan_pokok_wajib' : 'simpanan_wajib';
+
     return DashboardAlertBanner.emerald(
-      title: 'Kewajiban: Simpanan Pokok',
-      subtitle: 'Anda diwajibkan membayar Simpanan Pokok awal.',
+      title: needsPokok
+          ? 'Bayar Simpanan Pokok & Wajib'
+          : 'Aktivasi: Bayar Simpanan Wajib',
+      subtitle: needsPokok
+          ? 'Bayar Simpanan Pokok Rp 15.000 & Wajib Rp 2.500 agar status anggota Anda Aktif.'
+          : 'Lunasi Simpanan Wajib Rp 2.500 untuk mengaktifkan status anggota Anda.',
       actionLabel: 'Bayar',
-      icon: Icons.priority_high_rounded,
-      onCardTap: () => WajibSimpananModalDialog.show(context),
-      onActionTap: () => WajibSimpananModalDialog.show(context),
+      icon: Icons.how_to_reg_rounded,
+      onCardTap: () {
+        if (needsPokok) {
+          WajibSimpananModalDialog.show(context);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TopUpScreen(initialType: 'simpanan_wajib'),
+            ),
+          );
+        }
+      },
+      onActionTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TopUpScreen(initialType: targetType),
+        ),
+      ),
     );
   }
 
@@ -257,36 +291,16 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final authUser = context.watch<AuthProvider>().user;
     final dashboardProvider = context.watch<DashboardProvider>();
     final dashboardAnggota = dashboardProvider.dashboardData?.anggota;
-    final saldoPokok = dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
-
-    final isAnggotaAktif = (dashboardAnggota?.status.toLowerCase() == 'aktif') ||
-        (dashboardAnggota?.statusKeanggotaan.toLowerCase() == 'aktif') ||
-        (authUser?.statusKeanggotaan?.toLowerCase() == 'aktif') ||
-        (authUser?.anggota?.status?.toLowerCase() == 'aktif') ||
-        (dashboardAnggota?.isPokokPaid == true);
-
-    final isPokokPaid = isAnggotaAktif || (saldoPokok > 0);
+    final statusInfo = _resolveCurrentMemberStatus(context, listen: true);
 
     final displayName = dashboardAnggota?.nama.isNotEmpty == true
         ? dashboardAnggota!.nama
         : (authUser?.name.isNotEmpty == true ? authUser!.name : 'Nasabah');
 
-    final rawStatus = (dashboardAnggota?.statusKeanggotaan ??
-            dashboardAnggota?.status ??
-            authUser?.statusKeanggotaan ??
-            authUser?.anggota?.status ??
-            (isAnggotaAktif ? 'Aktif' : 'Belum Aktif'))
-        .trim();
-
     final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? authUser?.anggota?.noAnggota ?? '';
-    final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? authUser?.anggota?.cabang ?? 'Pusat';
-
-    // Status display: Jika anggota sudah aktif atau pokok paid, tampilkan status resminya (AKTIF)
-    final String statusDisplay = (isAnggotaAktif || isPokokPaid)
-        ? (rawStatus.toLowerCase() == 'belum_aktif' ? 'AKTIF' : rawStatus.toUpperCase())
-        : 'BELUM AKTIF';
-
-    final isBadgedActive = isAnggotaAktif || isPokokPaid;
+    final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? authUser?.anggota?.cabang ?? 'KSPPS PASTI';
+    final String statusDisplay = statusInfo.displayStatus;
+    final bool isBadgedActive = statusInfo.isActive;
 
     final photoUrl = authUser?.fullProfilePhotoUrl ?? ApiConstants.resolveImageUrl(authUser?.profilePhotoUrl);
 

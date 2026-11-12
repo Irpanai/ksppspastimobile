@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:digital_coop/features/payment/widgets/payment_preparation_dialog.dart';
 import 'package:digital_coop/shared/widgets/app_dialog.dart';
 import 'package:digital_coop/shared/widgets/dashboard_alert_banner.dart';
 import 'package:digital_coop/features/home/widgets/wajib_simpanan_modal_dialog.dart';
@@ -215,5 +216,77 @@ void main() {
     final dialog = tester.widget<Dialog>(find.byType(Dialog));
     final shape = dialog.shape as RoundedRectangleBorder;
     expect(shape.borderRadius, BorderRadius.circular(26));
+  });
+
+  testWidgets('AppDialog.showShell wraps content inside solid white 26px card shell', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => AppDialog.showShell(
+                context: context,
+                child: const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('Menyiapkan Pembayaran...'),
+                ),
+              ),
+              child: const Text('Open Shell'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open Shell'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menyiapkan Pembayaran...'), findsOneWidget);
+
+    final container = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.text('Menyiapkan Pembayaran...'),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final decoration = container.decoration as BoxDecoration;
+    expect(decoration.color, Colors.white);
+    expect(decoration.borderRadius, BorderRadius.circular(26));
+  });
+
+  testWidgets('PaymentPreparationHelper.run renders unified PaymentPreparationCard inside 26px white shell', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () {
+                PaymentPreparationHelper.run<void>(
+                  context: context,
+                  accentColor: const Color(0xFF00A39D),
+                  task: () => Future<void>.delayed(const Duration(milliseconds: 50)),
+                );
+              },
+              child: const Text('Start Prep'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start Prep'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(find.byType(PaymentPreparationCard), findsOneWidget);
+    expect(find.text('Menyiapkan Pembayaran...'), findsOneWidget);
+    expect(find.text('Menghubungkan ke server pembayaran...'), findsOneWidget);
+    expect(find.text('Batalkan'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentPreparationCard), findsNothing);
   });
 }

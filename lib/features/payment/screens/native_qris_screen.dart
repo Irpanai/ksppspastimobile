@@ -538,6 +538,8 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
         .replaceAll('simpanan_sukarela', 'Sirela')
         .replaceAll('PEMBUKAAN_SIJAKA', 'Sijaka')
         .replaceAll('pembukaan_sijaka', 'Sijaka')
+        .replaceAll('SIMPANAN_POKOK_WAJIB', 'RegAwal')
+        .replaceAll('simpanan_pokok_wajib', 'RegAwal')
         .replaceAll('SIMPANAN_POKOK', 'Sipokok')
         .replaceAll('simpanan_pokok', 'Sipokok')
         .replaceAll('SIMPANAN_WAJIB', 'Siwajib')

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/location_address_service.dart';
 import '../../../core/utils/ktp_ocr_helper.dart';
 import 'kyc_camera_screen.dart';
 import 'login_screen.dart';
@@ -52,11 +53,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoadingProvinces = false;
   bool _isLoadingCabangs = false;
 
-  // Fitur Deteksi Lokasi Cabang Terdekat (GPS)
+  // Fitur Deteksi Lokasi Cabang Terdekat & Alamat Domisili (GPS)
   bool _isDetectingLocation = false;
+  bool _isDetectingAddress = false;
   String? _nearestCabangDetectedMessage;
   double? _userLatitude;
   double? _userLongitude;
+
+  // Data Wilayah Tambahan (terisi otomatis dari OCR e-KTP atau GPS)
+  String? _alamatProvinsi;
+  String? _alamatKabupatenKota;
+  String? _alamatKecamatan;
+  String? _alamatKelurahan;
+  String? _detectedAddressSource;
 
   bool _isObscure1 = true;
   bool _isObscure2 = true;
@@ -134,6 +143,106 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  /// Mengambil koordinat GPS terkini dengan pemeriksaan layanan & izin lokasi.
+  Future<Position?> _acquireCurrentPosition() async {
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showWarning('Layanan lokasi/GPS perangkat nonaktif. Silakan aktifkan GPS Anda.');
+      return null;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showWarning('Izin akses lokasi ditolak oleh pengguna.');
+        return null;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showWarning('Izin lokasi ditolak permanen. Silakan aktifkan izin lokasi di Pengaturan.');
+      return null;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 12),
+      ),
+    );
+
+    _userLatitude = position.latitude;
+    _userLongitude = position.longitude;
+    return position;
+  }
+
+  /// Mengisi field alamat & sub-wilayah dari koordinat GPS via reverse geocoding.
+  Future<bool> _applyAddressFromCoordinates(
+    double latitude,
+    double longitude, {
+    bool forceOverwrite = true,
+  }) async {
+    final detected = await LocationAddressService.reverseGeocode(latitude, longitude);
+    if (!mounted || detected == null || !detected.hasAny) {
+      return false;
+    }
+
+    if (!forceOverwrite && _addressController.text.trim().isNotEmpty) {
+      return false;
+    }
+
+    setState(() {
+      if (detected.formattedAddress.isNotEmpty) {
+        _addressController.text = detected.formattedAddress;
+      }
+      if (detected.provinsi != null && detected.provinsi!.isNotEmpty) {
+        _alamatProvinsi = detected.provinsi;
+      }
+      if (detected.kabupatenKota != null && detected.kabupatenKota!.isNotEmpty) {
+        _alamatKabupatenKota = detected.kabupatenKota;
+      }
+      if (detected.kecamatan != null && detected.kecamatan!.isNotEmpty) {
+        _alamatKecamatan = detected.kecamatan;
+      }
+      if (detected.kelurahan != null && detected.kelurahan!.isNotEmpty) {
+        _alamatKelurahan = detected.kelurahan;
+      }
+      _detectedAddressSource = 'GPS Lokasi Sekarang';
+    });
+
+    return true;
+  }
+
+  /// Mendeteksi alamat domisili berdasarkan lokasi GPS saat ini.
+  Future<void> _detectAddressFromCurrentLocation() async {
+    setState(() => _isDetectingAddress = true);
+
+    try {
+      final position = await _acquireCurrentPosition();
+      if (position == null) return;
+
+      final updated = await _applyAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+        forceOverwrite: true,
+      );
+
+      if (updated) {
+        _showSuccess('Alamat domisili berhasil dideteksi dari lokasi GPS Anda.');
+      } else {
+        _showWarning('Koordinat GPS didapat, namun nama jalan/wilayah tidak ditemukan. Silakan lengkapi alamat secara manual.');
+      }
+    } catch (e) {
+      debugPrint('[RegisterScreen] Error reverse geocoding address: $e');
+      _showWarning('Gagal mendeteksi alamat dari GPS. Pastikan GPS aktif dan terhubung ke internet.');
+    } finally {
+      if (mounted) {
+        setState(() => _isDetectingAddress = false);
+      }
+    }
+  }
+
   /// Mendeteksi cabang terdekat dari posisi koordinat GPS pengguna
   Future<void> _detectNearestCabang() async {
     setState(() {
@@ -142,47 +251,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // 1. Cek ketersediaan layanan GPS
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showWarning('Layanan lokasi/GPS perangkat nonaktif. Silakan aktifkan GPS Anda.');
-        if (mounted) setState(() => _isDetectingLocation = false);
-        return;
-      }
+      final position = await _acquireCurrentPosition();
+      if (position == null) return;
 
-      // 2. Periksa & minta izin lokasi
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _showWarning('Izin akses lokasi ditolak oleh pengguna.');
-          if (mounted) setState(() => _isDetectingLocation = false);
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _showWarning('Izin lokasi ditolak permanen. Silakan aktifkan izin lokasi di Pengaturan.');
-        if (mounted) setState(() => _isDetectingLocation = false);
-        return;
-      }
-
-      // 3. Ambil posisi GPS pengguna
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 12),
-        ),
-      );
-
-      _userLatitude = position.latitude;
-      _userLongitude = position.longitude;
-
-      // 4. Hitung & urutkan cabang terdekat
-      final sortedCabangs = await CabangService.getCabangsSortedByDistance(
+      // Hitung & urutkan cabang terdekat + isi alamat jika masih kosong
+      final sortedFuture = CabangService.getCabangsSortedByDistance(
         position.latitude,
         position.longitude,
       );
+      final addressFuture = _addressController.text.trim().isEmpty
+          ? _applyAddressFromCoordinates(
+              position.latitude,
+              position.longitude,
+              forceOverwrite: false,
+            )
+          : Future.value(false);
+
+      final sortedCabangs = await sortedFuture;
+      await addressFuture;
 
       if (sortedCabangs.isNotEmpty) {
         final nearest = sortedCabangs.first;
@@ -309,6 +395,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final String? nik = ocrResult.nik;
       final String? nama = ocrResult.nama;
+      final String? alamat = ocrResult.alamat;
+      final addrDetail = ocrResult.addressDetail;
 
       if (nik != null && nik.isNotEmpty) {
         _nikController.text = nik;
@@ -316,15 +404,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (nama != null && nama.isNotEmpty) {
         _nameController.text = nama;
       }
+      if (alamat != null && alamat.isNotEmpty) {
+        final streetParts = <String>[
+          if (addrDetail?.alamat != null && addrDetail!.alamat!.isNotEmpty)
+            addrDetail.alamat!,
+          if (addrDetail?.rtRw != null &&
+              addrDetail!.rtRw!.isNotEmpty &&
+              !(addrDetail.alamat ?? '').toUpperCase().contains('RT'))
+            'RT/RW ${addrDetail.rtRw!}',
+        ];
+        _addressController.text = streetParts.isNotEmpty
+            ? streetParts.join(', ')
+            : alamat;
 
-      if (nik != null && nama != null) {
-        _showSuccess('KTP berhasil dipindai! NIK dan Nama terisi otomatis.');
-      } else if (nik != null) {
-        _showSuccess('NIK ($nik) berhasil terbaca. Silakan lengkapi Nama Anda.');
-      } else if (nama != null) {
-        _showSuccess('Nama ($nama) berhasil terbaca. Silakan lengkapi NIK Anda.');
+        if (mounted) {
+          setState(() {
+            if (addrDetail?.provinsi != null && addrDetail!.provinsi!.isNotEmpty) {
+              _alamatProvinsi = addrDetail.provinsi;
+            }
+            if (addrDetail?.kabupatenKota != null &&
+                addrDetail!.kabupatenKota!.isNotEmpty) {
+              _alamatKabupatenKota = addrDetail.kabupatenKota;
+            }
+            if (addrDetail?.kecamatan != null &&
+                addrDetail!.kecamatan!.isNotEmpty) {
+              _alamatKecamatan = addrDetail.kecamatan;
+            }
+            if (addrDetail?.kelurahanDesa != null &&
+                addrDetail!.kelurahanDesa!.isNotEmpty) {
+              _alamatKelurahan = addrDetail.kelurahanDesa;
+            }
+            _detectedAddressSource = 'e-KTP (OCR)';
+          });
+        }
+      }
+
+      final detectedFields = <String>[
+        if (nik != null && nik.isNotEmpty) 'NIK',
+        if (nama != null && nama.isNotEmpty) 'Nama',
+        if (alamat != null && alamat.isNotEmpty) 'Alamat',
+      ];
+
+      if (detectedFields.length == 3) {
+        _showSuccess('KTP berhasil dipindai! NIK, Nama, dan Alamat terisi otomatis.');
+      } else if (detectedFields.isNotEmpty) {
+        _showSuccess(
+          '${detectedFields.join(' & ')} berhasil terbaca dari KTP. Silakan periksa & lengkapi kolom yang masih kosong.',
+        );
       } else {
-        _showWarning('Foto KTP tersimpan. AI belum dapat mendeteksi NIK/Nama dengan jelas, mohon isi manual.');
+        _showWarning('Foto KTP tersimpan. AI belum dapat mendeteksi data dengan jelas, mohon isi manual.');
       }
 
       textRecognizer.close();
@@ -395,6 +523,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (address.isEmpty) {
+      _showWarning('Alamat domisili wajib diisi (ketik manual, scan e-KTP, atau deteksi lokasi GPS).');
+      return;
+    }
+
     if (_selectedProvinceCabang == null || _selectedProvinceCabang!.isEmpty) {
       _showWarning('Silakan pilih provinsi kantor cabang terlebih dahulu.');
       return;
@@ -418,7 +551,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       passwordConfirmation: confirmPassword,
       nik: nik,
       noHp: phone,
-      alamat: address.isNotEmpty ? address : null,
+      alamat: address,
+      provinsi: _alamatProvinsi,
+      kabupatenKota: _alamatKabupatenKota,
+      kecamatan: _alamatKecamatan,
+      kelurahan: _alamatKelurahan,
       cabangId: _selectedCabangModel!.id,
       cabang: _selectedCabangModel!.name,
       fotoWajah: _fotoWajah,
@@ -879,10 +1016,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Tersedia ${filteredList.length} kantor cabang',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                          Expanded(
+                            child: Text(
+                              'Tersedia ${filteredList.length} kantor cabang',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Row(
                             children: [
                               InkWell(
@@ -1098,9 +1238,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                   ),
                                                   if (cabang.city != null && cabang.city!.isNotEmpty) ...[
                                                     const SizedBox(width: 6),
-                                                    Text(
-                                                      cabang.city!,
-                                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                                    Flexible(
+                                                      child: Text(
+                                                        cabang.city!,
+                                                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
                                                     ),
                                                   ],
                                                 ],
@@ -1228,12 +1371,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 children: const [
                                   Icon(Icons.privacy_tip_outlined, size: 14, color: Color(0xFF0F766E)),
                                   SizedBox(width: 6),
-                                  Text(
-                                    'UU PDP No. 27/2022 • Kebijakan Privasi & Data',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF0F766E),
+                                  Flexible(
+                                    child: Text(
+                                      'UU PDP No. 27/2022 • Kebijakan Privasi & Data',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF0F766E),
+                                      ),
                                     ),
                                   ),
                                   SizedBox(width: 4),
@@ -1251,7 +1396,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 12),
                     _buildInputCard([
                       _buildInfoAlert(
-                        'Unggah foto selfie wajah dan scan e-KTP. AI OCR akan otomatis membaca NIK dan Nama Anda.',
+                        'Unggah foto selfie wajah (otomatis menjadi foto profil akun) dan scan e-KTP. AI OCR akan otomatis membaca NIK, Nama, dan Alamat KTP Anda.',
                       ),
                       Row(
                         children: [
@@ -1373,12 +1518,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 12),
                     _buildInputCard([
                       _buildTextField(
-                        label: 'Alamat Domisili (Opsional)',
+                        label: 'Alamat Domisili *',
                         controller: _addressController,
-                        hint: 'Jl. Pemuda No. 10, Semarang',
+                        hint: 'Contoh: Jl. Merdeka No. 12, RT 01/RW 02',
                         icon: Icons.location_on_outlined,
                         enabled: !isLoading,
                       ),
+                      const SizedBox(height: 10),
+                      _buildAddressLocationHelperCard(isLoading),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
 
                       // Fitur Deteksi Cabang Terdekat via GPS
@@ -1528,12 +1675,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: isLoading ? null : _submitRegister,
+                        onPressed: (isLoading || !_isConsentChecked) ? null : _submitRegister,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFFE2E8F0),
+                          disabledForegroundColor: const Color(0xFF94A3B8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 3,
+                          elevation: _isConsentChecked ? 3 : 0,
                           shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                         ),
                         child: isLoading
@@ -1586,9 +1735,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          ),
         ),
       ],
     );
@@ -1825,6 +1976,119 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Widget _buildAddressLocationHelperCard(bool isLoading) {
+    final regionParts = <String>[
+      if (_alamatKelurahan != null && _alamatKelurahan!.isNotEmpty) _alamatKelurahan!,
+      if (_alamatKecamatan != null && _alamatKecamatan!.isNotEmpty) _alamatKecamatan!,
+      if (_alamatKabupatenKota != null && _alamatKabupatenKota!.isNotEmpty) _alamatKabupatenKota!,
+      if (_alamatProvinsi != null && _alamatProvinsi!.isNotEmpty) _alamatProvinsi!,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: (isLoading || _isDetectingAddress)
+              ? null
+              : _detectAddressFromCurrentLocation,
+          icon: _isDetectingAddress
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  Icons.my_location_rounded,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          label: Text(
+            _isDetectingAddress
+                ? 'Mendeteksi alamat dari GPS...'
+                : 'Deteksi Alamat dari Lokasi Sekarang',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.primary,
+            backgroundColor: const Color(0xFFF0FDF4),
+            side: const BorderSide(color: Color(0xFFBBF7D0)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            minimumSize: const Size(0, 40),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        if (regionParts.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.check_circle_outline_rounded,
+                  size: 16,
+                  color: Color(0xFF15803D),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_detectedAddressSource != null)
+                        Text(
+                          'Wilayah terdeteksi ($_detectedAddressSource)',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      Text(
+                        regionParts.join(', '),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: Color(0xFF475569),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  onTap: isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _alamatKelurahan = null;
+                            _alamatKecamatan = null;
+                            _alamatKabupatenKota = null;
+                            _alamatProvinsi = null;
+                            _detectedAddressSource = null;
+                          });
+                        },
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildGpsDetectCard() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1966,7 +2230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 135,
+        constraints: const BoxConstraints(minHeight: 135),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: hasImage ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
@@ -1988,6 +2252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               )
             : Column(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (hasImage && bytes != null)
@@ -2017,6 +2282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
                   Text(
                     title,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -2185,9 +2451,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const Icon(Icons.phone_rounded, size: 15, color: Color(0xFF059669)),
                 const SizedBox(width: 6),
-                Text(
-                  cabang.phone!,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                Expanded(
+                  child: Text(
+                    cabang.phone!,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                  ),
                 ),
               ],
             ),

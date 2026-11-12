@@ -182,17 +182,18 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
       badgeBg = const Color(0xFFFEF3C7);
       badgeTextColor = const Color(0xFFD97706);
     } else {
-      final isPokokPaid = (status.ringkasanSaldo.saldoPokok) > 0;
-      iconBg = isPokokPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
-      iconColor = isPokokPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706);
-      icon = isPokokPaid ? Icons.verified_user_rounded : Icons.info_outline_rounded;
-      statusTitle = isPokokPaid ? 'Status: Anggota Aktif' : 'Status: Anggota Belum Aktif';
-      statusSubtitle = isPokokPaid
+      final isMemberActivated = (status.ringkasanSaldo.saldoPokok) > 0 &&
+          (status.ringkasanSaldo.saldoWajib) > 0;
+      iconBg = isMemberActivated ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
+      iconColor = isMemberActivated ? const Color(0xFF16A34A) : const Color(0xFFD97706);
+      icon = isMemberActivated ? Icons.verified_user_rounded : Icons.info_outline_rounded;
+      statusTitle = isMemberActivated ? 'Status: Anggota Aktif' : 'Status: Anggota Belum Aktif';
+      statusSubtitle = isMemberActivated
           ? 'Keanggotaan Anda terdaftar resmi di KSPPS PASTI'
-          : 'Selesaikan pembayaran Simpanan Pokok untuk mengaktifkan keanggotaan';
-      badgeText = isPokokPaid ? 'AKTIF' : 'BELUM AKTIF';
-      badgeBg = isPokokPaid ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
-      badgeTextColor = isPokokPaid ? const Color(0xFF16A34A) : const Color(0xFFD97706);
+          : 'Selesaikan pembayaran Simpanan Pokok & Simpanan Wajib untuk mengaktifkan keanggotaan';
+      badgeText = isMemberActivated ? 'AKTIF' : 'BELUM AKTIF';
+      badgeBg = isMemberActivated ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
+      badgeTextColor = isMemberActivated ? const Color(0xFF16A34A) : const Color(0xFFD97706);
     }
 
     return Container(
@@ -336,26 +337,32 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Dana Dikembalikan',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Hak pencairan dana anggota',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF4ADE80)),
-                    ),
-                  ],
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Dana Dikembalikan',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Hak pencairan dana anggota',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF4ADE80)),
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  AppCurrency.format(ringkasan.totalKembali),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: Color(0xFF15803D),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    AppCurrency.format(ringkasan.totalKembali),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Color(0xFF15803D),
+                    ),
                   ),
                 ),
               ],
@@ -594,13 +601,15 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
                   children: [
                     Icon(Icons.shield_outlined, size: 14, color: Color(0xFF9F1239)),
                     SizedBox(width: 6),
-                    Text(
-                      'KALIMAT KONFIRMASI WAJIB:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                        color: Color(0xFF9F1239),
+                    Expanded(
+                      child: Text(
+                        'KALIMAT KONFIRMASI WAJIB:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                          color: Color(0xFF9F1239),
+                        ),
                       ),
                     ),
                   ],
@@ -641,9 +650,11 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
                         children: [
                           Icon(Icons.copy_rounded, size: 14, color: Color(0xFFDC2626)),
                           SizedBox(width: 6),
-                          Text(
-                            'Salin & Tempel Kalimat',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFFDC2626)),
+                          Flexible(
+                            child: Text(
+                              'Salin & Tempel Kalimat',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFFDC2626)),
+                            ),
                           ),
                         ],
                       ),
@@ -707,9 +718,11 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
                 SizedBox(width: 4),
-                Text(
-                  'Kalimat konfirmasi sesuai, tombol pengajuan aktif.',
-                  style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 11),
+                Expanded(
+                  child: Text(
+                    'Kalimat konfirmasi sesuai, tombol pengajuan aktif.',
+                    style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
                 ),
               ],
             )
@@ -857,9 +870,11 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
                 child: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 20),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Keanggotaan Anda Telah Berakhir',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF991B1B)),
+              const Expanded(
+                child: Text(
+                  'Keanggotaan Anda Telah Berakhir',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF991B1B)),
+                ),
               ),
             ],
           ),

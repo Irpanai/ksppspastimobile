@@ -6,6 +6,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../history/providers/history_provider.dart';
 import '../../history/screens/transaction_history_screen.dart';
+import '../../home/models/dashboard_model.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
@@ -174,17 +175,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userName = user?.name.isNotEmpty == true ? user!.name : 'Nasabah KSPPS';
     final userEmail = user?.email.isNotEmpty == true ? user!.email : 'email@ksppspasti.com';
     final noAnggota = anggota?.noAnggota ?? user?.noAnggota ?? 'PASTI-0000';
-    final statusKeanggotaan = anggota?.statusKeanggotaan ?? anggota?.status ?? user?.statusKeanggotaan ?? 'Aktif';
     final cabang = anggota?.cabang ?? user?.cabang ?? 'Pusat';
+    final statusKeanggotaan = anggota?.statusKeanggotaan ??
+        anggota?.status ??
+        user?.statusKeanggotaan ??
+        dashboardProvider.dashboardData?.anggota?.statusKeanggotaan ??
+        'belum_aktif';
 
-    final saldoPokok = profileProvider.profileData?.ringkasanSaldo?.saldoPokok ??
-        dashboardProvider.dashboardData?.ringkasanSaldo.saldoPokok ?? 0;
-    final isPokokPaid = saldoPokok > 0;
+    final profileSaldo = profileProvider.profileData?.ringkasanSaldo;
+    final dashboardSaldo = dashboardProvider.dashboardData?.ringkasanSaldo;
+    final statusInfo = MemberStatusResolver.resolve(
+      saldoPokok: profileSaldo?.saldoPokok ?? dashboardSaldo?.saldoPokok,
+      saldoWajib: profileSaldo?.saldoWajib ?? dashboardSaldo?.saldoWajib,
+      apiIsPokokPaid: anggota?.isPokokPaid ??
+          user?.isPokokPaid ??
+          dashboardProvider.dashboardData?.anggota?.isPokokPaid,
+      apiIsWajibPaid: anggota?.isWajibPaid ??
+          user?.isWajibPaid ??
+          dashboardProvider.dashboardData?.anggota?.isWajibPaid,
+      rawStatus: statusKeanggotaan,
+    );
 
-    // User requirement: Jangan tulis Anggota Aktif jika belum bayar simpanan pokok
-    final String displayStatus = isPokokPaid
-        ? (statusKeanggotaan.toLowerCase() == 'belum_aktif' ? 'BELUM AKTIF' : statusKeanggotaan.toUpperCase())
-        : 'BELUM AKTIF';
+    final String displayStatus = statusInfo.displayStatus;
+    final bool isMemberActive = statusInfo.isActive;
     final photoUrl = user?.fullProfilePhotoUrl ?? anggota?.fullFotoUrl ?? ApiConstants.resolveImageUrl(user?.profilePhotoUrl ?? anggota?.foto);
 
     return Scaffold(
@@ -281,12 +294,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
-                              color: isPokokPaid
+                              color: isMemberActive
                                   ? Colors.white.withValues(alpha: 0.2)
                                   : const Color(0xFFF59E0B).withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: isPokokPaid
+                                color: isMemberActive
                                     ? Colors.white.withValues(alpha: 0.35)
                                     : const Color(0xFFFDE68A),
                               ),
@@ -298,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   width: 6,
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: isPokokPaid ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B),
+                                    color: isMemberActive ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B),
                                     shape: BoxShape.circle,
                                   ),
                                 ),
