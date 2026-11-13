@@ -374,7 +374,7 @@ _Transaksi syariah aman, amanah, dan terpercaya._
                               _buildReceiptRow('No. Anggota', widget.data.noAnggota),
                               if (widget.data.cabang != null && widget.data.cabang!.isNotEmpty)
                                 _buildReceiptRow('Kantor Cabang', widget.data.cabang!),
-                              _buildReceiptRow('Biaya Admin', 'Rp 0 (GRATIS)', valueColor: const Color(0xFF059669)),
+                              _buildReceiptRow('Biaya Layanan', 'Rp 0 (GRATIS)', valueColor: const Color(0xFF059669)),
                               _buildReceiptRow('Keterangan', widget.data.keterangan),
                             ],
                           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/member_activation_guard.dart';
 import '../../../shared/widgets/app_dialog.dart';
 import '../../history/screens/transaction_history_screen.dart';
 import '../../payment/screens/top_up_screen.dart';
@@ -36,6 +37,7 @@ class QuickActionsGrid extends StatelessWidget {
                   ),
                   child: InkWell(
                     onTap: () {
+                      if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
                       if (action['label'] == 'Top Up') {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const TopUpScreen()));
                       } else if (action['label'] == 'Mutasi') {

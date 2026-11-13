@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/screens/login_screen.dart';
 import '../models/dashboard_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/balance_card.dart';
@@ -51,13 +52,41 @@ class _BerandaScreenState extends State<BerandaScreen> {
   }
 
   void _checkDashboardErrorModal() {
-    final err = context.read<DashboardProvider>().errorMessage?.trim() ?? '';
+    final dashboardProvider = context.read<DashboardProvider>();
+    final err = dashboardProvider.errorMessage?.trim() ?? '';
     if (err.isEmpty || err.toLowerCase().contains('timeout')) {
       _lastShownError = null;
       return;
     }
     if (_lastShownError == err) return;
     _lastShownError = err;
+
+    final isUnauthenticated = dashboardProvider.lastStatusCode == 401 ||
+        err.toLowerCase().contains('unauthenticated') ||
+        err.toLowerCase().contains('tidak terautentikasi') ||
+        err.toLowerCase().contains('bukan lagi anggota');
+
+    if (isUnauthenticated) {
+      AppDialog.showError(
+        context,
+        title: 'Status Akun / Sesi Berakhir',
+        message:
+            'Akun Anda tidak ditemukan atau sudah tidak terdaftar aktif di sistem KSPPS PASTI (Anda bukan lagi anggota aktif). Silakan keluar ke halaman masuk jika ingin melakukan pendaftaran akun baru atau masuk kembali.',
+        buttonText: 'Keluar',
+        barrierDismissible: false,
+        onConfirm: () async {
+          await context.read<AuthProvider>().logout();
+          if (!mounted) return;
+          context.read<DashboardProvider>().reset();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        },
+      );
+      return;
+    }
+
     AppDialog.showError(
       context,
       title: 'Gagal Memuat Beranda',

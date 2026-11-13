@@ -41,7 +41,7 @@ class PaymentChannelModel {
     this.maintenanceMessage,
   });
 
-  /// Hitung biaya admin riil berdasarkan nominal setoran
+  /// Hitung biaya layanan riil berdasarkan nominal setoran
   int calculateFee(int amount) {
     if (feeType == 'percent') {
       return (amount * (feePercent / 100)).round();

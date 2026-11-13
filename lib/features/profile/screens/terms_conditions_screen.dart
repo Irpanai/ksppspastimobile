@@ -99,7 +99,7 @@ class TermsConditionsScreen extends StatelessWidget {
                     title: 'Akad & Pengelolaan Simpanan',
                     icon: Icons.mosque_outlined,
                     points: const [
-                      'Simpanan Sukarela (Sirela): Dikelola dengan akad Wadi\'ah Yad Dhamanah (titipan amanah). Saldo bebas disetor dan ditarik sewaktu-waktu tanpa potongan biaya administrasi bulanan.',
+                      'Simpanan Sukarela (Sirela): Dikelola dengan akad Wadi\'ah Yad Dhamanah (titipan amanah). Saldo bebas disetor dan ditarik sewaktu-waktu tanpa potongan biaya layanan bulanan.',
                       'Simpanan Berjangka (Sijaka): Dikelola dengan akad Mudharabah Mutlaqah (investasi bagi hasil). Modal simpanan disalurkan pada pembiayaan sektor produktif halal, dengan nisbah bagi hasil yang dibagikan setiap bulan sesuai tenor (1, 6, atau 12 bulan).',
                       'Seluruh produk simpanan diawasi oleh Dewan Pengawas Syariah (DPS) dan terbebas dari unsur Riba, Gharar, dan Maysir.',
                     ],

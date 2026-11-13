@@ -151,6 +151,8 @@ class AppDialog {
     String? secondaryButtonText,
     VoidCallback? onSecondaryPressed,
     bool barrierDismissible = false,
+    bool showCloseButton = false,
+    VoidCallback? onClose,
   }) {
     return _showAnimatedDialog<T>(
       context: context,
@@ -166,6 +168,8 @@ class AppDialog {
         primaryButtonText: buttonText,
         primaryButtonColor: const Color(0xFF16A34A),
         secondaryButtonText: secondaryButtonText,
+        showCloseButton: showCloseButton,
+        onClose: onClose,
         onPrimaryPressed: () {
           final nav = Navigator.maybeOf(context, rootNavigator: true);
           if (nav != null && nav.canPop()) nav.pop();
@@ -496,6 +500,8 @@ class _AppDialogContent extends StatelessWidget {
   final String? secondaryButtonText;
   final VoidCallback onPrimaryPressed;
   final VoidCallback? onSecondaryPressed;
+  final bool showCloseButton;
+  final VoidCallback? onClose;
 
   const _AppDialogContent({
     required this.icon,
@@ -510,15 +516,20 @@ class _AppDialogContent extends StatelessWidget {
     this.secondaryButtonText,
     required this.onPrimaryPressed,
     this.onSecondaryPressed,
+    this.showCloseButton = false,
+    this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
     return _AppDialogCardShell(
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Centered Icon Badge
             Container(
               width: 68,
@@ -669,6 +680,37 @@ class _AppDialogContent extends StatelessWidget {
               ),
           ],
         ),
+        if (showCloseButton)
+          Positioned(
+            top: -6,
+            right: -2,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  final nav = Navigator.maybeOf(context, rootNavigator: true);
+                  if (nav != null && nav.canPop()) nav.pop();
+                  if (onClose != null) onClose!();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

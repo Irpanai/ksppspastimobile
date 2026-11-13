@@ -66,6 +66,9 @@ class MainActivity : FlutterFragmentActivity() {
                     "normalizeCapturedPhoto" -> {
                         val path = call.argument<String>("path")
                         val mirrorHorizontal = call.argument<Boolean>("mirrorHorizontal") ?: false
+                        val cropToKtpLandscape = call.argument<Boolean>("cropToKtpLandscape") ?: false
+                        val rotateDegrees = call.argument<Int>("rotateDegrees") ?: 0
+                        val targetAspectRatio = call.argument<Double>("targetAspectRatio") ?: 1.585
                         if (path.isNullOrBlank()) {
                             result.error("INVALID_ARGS", "Path foto tidak valid.", null)
                         } else {
@@ -75,6 +78,9 @@ class MainActivity : FlutterFragmentActivity() {
                                     cacheDir = cacheDir,
                                     sourcePath = path,
                                     mirrorHorizontal = mirrorHorizontal,
+                                    cropToKtpLandscape = cropToKtpLandscape,
+                                    rotateDegrees = rotateDegrees,
+                                    targetAspectRatio = targetAspectRatio,
                                 )
                                 mainHandler.post { result.success(normalizedPath) }
                             }

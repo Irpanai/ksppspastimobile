@@ -34,35 +34,41 @@ void main() {
           .setMockMethodCallHandler(channel, null);
     });
 
-    test('passes mirrorHorizontal flag to Android native normalizer and handles fallback safely',
+    test('passes cropToKtpLandscape and rotateDegrees flags for KTP landscape normalization',
         () async {
       final calls = <MethodCall>[];
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
         calls.add(call);
-        if (calls.length == 1) {
-          return '/tmp/KYC_NORM_selfie.jpg';
-        }
-        throw PlatformException(code: 'ERR', message: 'decode failed');
+        return '/tmp/KYC_NORM_ktp_landscape.jpg';
       });
 
-      final selfieResult = await KycImageNormalizationService.normalizeCapturedPhoto(
-        path: '/tmp/raw_selfie.jpg',
-        mirrorHorizontal: true,
-      );
-      expect(selfieResult, '/tmp/KYC_NORM_selfie.jpg');
-      expect(calls.single.method, 'normalizeCapturedPhoto');
-      expect(calls.single.arguments, <String, dynamic>{
-        'path': '/tmp/raw_selfie.jpg',
-        'mirrorHorizontal': true,
-      });
-
-      final fallbackResult = await KycImageNormalizationService.normalizeCapturedPhoto(
+      final ktpResult = await KycImageNormalizationService.normalizeCapturedPhoto(
         path: '/tmp/raw_ktp.jpg',
         mirrorHorizontal: false,
+        cropToKtpLandscape: true,
       );
-      expect(fallbackResult, '/tmp/raw_ktp.jpg');
+      expect(ktpResult, '/tmp/KYC_NORM_ktp_landscape.jpg');
+      expect(calls.single.method, 'normalizeCapturedPhoto');
+      expect(calls.single.arguments, <String, dynamic>{
+        'path': '/tmp/raw_ktp.jpg',
+        'mirrorHorizontal': false,
+        'cropToKtpLandscape': true,
+      });
+
+      calls.clear();
+      final rotateResult = await KycImageNormalizationService.normalizeCapturedPhoto(
+        path: '/tmp/raw_ktp.jpg',
+        mirrorHorizontal: false,
+        rotateDegrees: 90,
+      );
+      expect(rotateResult, '/tmp/KYC_NORM_ktp_landscape.jpg');
+      expect(calls.single.arguments, <String, dynamic>{
+        'path': '/tmp/raw_ktp.jpg',
+        'mirrorHorizontal': false,
+        'rotateDegrees': 90,
+      });
     });
   });
 
@@ -153,7 +159,17 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('KTP preview omits Balik toggle and avoids overflow on 360px', (tester) async {
+    testWidgets('KTP preview renders Putar 90 button, omits Balik toggle, and avoids overflow on 360px', (tester) async {
+      final channelCalls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('com.ksppspasti.mobile/kyc_image'),
+              (call) async {
+        channelCalls.add(call);
+        return flippedFile.path;
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('com.ksppspasti.mobile/kyc_image'), null));
+
       tester.view.physicalSize = const Size(360, 780);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -171,9 +187,63 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Periksa Foto e-KTP'), findsOneWidget);
+      expect(find.text('Putar'), findsOneWidget);
       expect(find.text('Balik'), findsNothing);
       expect(find.text('Foto Ulang'), findsOneWidget);
       expect(find.text('Gunakan Foto Ini'), findsOneWidget);
+
+      await tester.tap(find.text('Putar'));
+      await tester.pumpAndSettle();
+
+      expect(channelCalls, hasLength(1));
+      expect(channelCalls.single.arguments['rotateDegrees'], 90);
+      expect(find.byKey(ValueKey(flippedFile.path)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('KTP preview in landscape orientation (780x360) renders compactly without overflow', (tester) async {
+      final channelCalls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('com.ksppspasti.mobile/kyc_image'),
+              (call) async {
+        channelCalls.add(call);
+        return flippedFile.path;
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('com.ksppspasti.mobile/kyc_image'), null));
+
+      tester.view.physicalSize = const Size(780, 360);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: KycCameraScreen(
+            mode: KycCameraMode.ktp,
+            initialCapturedFile: originalFile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Periksa Foto e-KTP'), findsOneWidget);
+      expect(find.text('Putar'), findsOneWidget);
+      expect(find.text('Foto Ulang'), findsOneWidget);
+      expect(find.text('Gunakan Foto Ini'), findsOneWidget);
+
+      final retakeBox = tester.getSize(find.byType(OutlinedButton));
+      final confirmBox = tester.getSize(find.byType(ElevatedButton));
+      expect(retakeBox.height, closeTo(40.0, 0.5));
+      expect(confirmBox.height, closeTo(40.0, 0.5));
+
+      await tester.tap(find.text('Putar'));
+      await tester.pumpAndSettle();
+
+      expect(channelCalls, hasLength(1));
+      expect(channelCalls.single.arguments['rotateDegrees'], 90);
+      expect(tester.takeException(), isNull);
     });
   });
 }

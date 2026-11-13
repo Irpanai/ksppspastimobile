@@ -358,7 +358,7 @@ class TunggakanModalDialog extends StatelessWidget {
                           Expanded(
                             child: Text(
                               needsActivation
-                                  ? 'Bayar Simpanan Pokok & Wajib sekaligus dalam 1 transaksi agar lebih hemat biaya admin dan akun Anda langsung Aktif.'
+                                  ? 'Bayar Simpanan Pokok & Wajib sekaligus dalam 1 transaksi agar lebih hemat biaya layanan dan akun Anda langsung Aktif.'
                                   : 'Pembayaran Simpanan Wajib rutin menjaga status keanggotaan Anda tetap aktif di koperasi.',
                               style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
                             ),

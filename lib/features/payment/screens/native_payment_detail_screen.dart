@@ -633,7 +633,7 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildDetailRow('Nominal Simpanan', res.nominalFormat),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
-                          _buildDetailRow('Biaya Admin', res.adminFee > 0 ? res.adminFeeFormat : 'Gratis'),
+                          _buildDetailRow('Biaya Layanan', res.adminFee > 0 ? res.adminFeeFormat : 'Gratis'),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),
                           _buildDetailRow('Total Tagihan', res.grossAmountFormat),
                           const Divider(height: 16, color: Color(0xFFF1F5F9)),

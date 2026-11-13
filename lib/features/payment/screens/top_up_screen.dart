@@ -93,7 +93,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
       _wajibYear = widget.initialYear ?? firstT.tahun;
       _hasInitializedWajib = true;
     } else {
-      _wajibStartMonth = widget.initialStartMonth ?? now.month;
+      final minMonth = (dashboardAnggota?.tahunDaftar == now.year && dashboardAnggota?.bulanDaftar != null)
+          ? dashboardAnggota!.bulanDaftar!
+          : now.month;
+      final effectiveStart = widget.initialStartMonth ?? (now.month < minMonth ? minMonth : now.month);
+      _wajibStartMonth = effectiveStart;
       _wajibEndMonth = widget.initialEndMonth ?? 12; // Default up to December (end of year)
       _wajibYear = widget.initialYear ?? now.year;
     }
@@ -144,12 +148,22 @@ class _TopUpScreenState extends State<TopUpScreen> {
     super.didChangeDependencies();
     if (!_hasInitializedWajib && widget.initialStartMonth == null) {
       final dashboardAnggota = context.read<DashboardProvider>().dashboardData?.anggota;
-      if (dashboardAnggota != null && dashboardAnggota.tunggakanWajib.isNotEmpty) {
-        final firstT = dashboardAnggota.tunggakanWajib.first;
-        final lastT = dashboardAnggota.tunggakanWajib.last;
-        _wajibStartMonth = firstT.bulan;
-        _wajibEndMonth = lastT.bulan;
-        _wajibYear = firstT.tahun;
+      final now = DateTime.now();
+      if (dashboardAnggota != null) {
+        if (dashboardAnggota.tunggakanWajib.isNotEmpty) {
+          final firstT = dashboardAnggota.tunggakanWajib.first;
+          final lastT = dashboardAnggota.tunggakanWajib.last;
+          _wajibStartMonth = firstT.bulan;
+          _wajibEndMonth = lastT.bulan;
+          _wajibYear = firstT.tahun;
+        } else {
+          final minMonth = (dashboardAnggota.tahunDaftar == now.year && dashboardAnggota.bulanDaftar != null)
+              ? dashboardAnggota.bulanDaftar!
+              : now.month;
+          _wajibStartMonth = now.month < minMonth ? minMonth : now.month;
+          _wajibEndMonth = 12;
+          _wajibYear = now.year;
+        }
         _hasInitializedWajib = true;
         if (_selectedType == 'simpanan_wajib') {
           _updateWajibAmount();
@@ -502,37 +516,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
       label = 'Saldo Sirela (Sukarela)';
     }
 
-    final statusInfo = MemberStatusResolver.resolve(
-      saldoPokok: dashboard?.saldoPokok,
-      saldoWajib: dashboard?.saldoWajib,
-      apiIsPokokPaid: anggota?.isPokokPaid,
-      apiIsWajibPaid: anggota?.isWajibPaid,
-      rawStatus: anggota?.statusKeanggotaan ?? anggota?.status,
-    );
-
-    late final String badgeLabel;
-    late final Color badgeBg;
-    late final Color badgeTextColor;
-
-    if (_selectedType == 'simpanan_pokok') {
-      final paid = activeBalance >= _pokokNominal;
-      badgeLabel = paid ? 'Lunas' : 'Belum Bayar';
-      badgeBg = paid ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7);
-      badgeTextColor = paid ? const Color(0xFF059669) : const Color(0xFFD97706);
-    } else if (statusInfo.isActive) {
-      badgeLabel = 'Aktif';
-      badgeBg = const Color(0xFFECFDF5);
-      badgeTextColor = const Color(0xFF059669);
-    } else if (statusInfo.displayStatus == 'MENUNGGAK') {
-      badgeLabel = 'Menunggak';
-      badgeBg = const Color(0xFFFEF3C7);
-      badgeTextColor = const Color(0xFFD97706);
-    } else {
-      badgeLabel = 'Belum Aktif';
-      badgeBg = const Color(0xFFFEF3C7);
-      badgeTextColor = const Color(0xFFD97706);
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
@@ -541,52 +524,36 @@ class _TopUpScreenState extends State<TopUpScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 3),
           )
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFECFDF5),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.account_balance_wallet_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFECFDF5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.account_balance_wallet_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
-                      Text(
-                        AppCurrency.format(activeBalance),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                      ),
-                    ],
-                  ),
+                Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(
+                  AppCurrency.format(activeBalance),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(badgeLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: badgeTextColor)),
-          )
         ],
       ),
     );
@@ -599,7 +566,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           _buildTypeCard(
             type: 'simpanan_pokok_wajib',
             title: 'Aktivasi Anggota (Pokok + Wajib)',
-            subtitle: 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x admin',
+            subtitle: 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x biaya layanan',
             badgeText: 'Khusus Baru',
             icon: Icons.how_to_reg_rounded,
             isHighlight: true,
@@ -916,11 +883,20 @@ class _TopUpScreenState extends State<TopUpScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
+                    final now = DateTime.now();
                     setState(() {
                       _isBatchWajib = true;
                       if (anggota != null && anggota.tunggakanWajib.isNotEmpty) {
+                        _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
                         _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
+                        _wajibYear = anggota.tunggakanWajib.first.tahun;
                       } else {
+                        if (anggota != null &&
+                            (anggota.isBeforeRegistration(_wajibStartMonth, _wajibYear) ||
+                                anggota.isMonthPaid(_wajibStartMonth, _wajibYear, now: now))) {
+                          _wajibStartMonth = now.month;
+                          _wajibYear = now.year;
+                        }
                         _wajibEndMonth = 12;
                       }
                       _updateWajibAmount();
@@ -957,8 +933,18 @@ class _TopUpScreenState extends State<TopUpScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
+                    final now = DateTime.now();
                     setState(() {
                       _isBatchWajib = false;
+                      if (anggota != null && anggota.tunggakanWajib.isNotEmpty) {
+                        _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
+                        _wajibYear = anggota.tunggakanWajib.first.tahun;
+                      } else if (anggota != null &&
+                          (anggota.isBeforeRegistration(_wajibStartMonth, _wajibYear) ||
+                              anggota.isMonthPaid(_wajibStartMonth, _wajibYear, now: now))) {
+                        _wajibStartMonth = now.month;
+                        _wajibYear = now.year;
+                      }
                       _updateWajibAmount();
                     });
                   },
@@ -1106,86 +1092,68 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Quick shortcuts for batch
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    if (anggota != null && anggota.tunggakanWajib.isNotEmpty)
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-                            _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-                            _wajibYear = anggota.tunggakanWajib.first.tahun;
-                            _updateWajibAmount();
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEB),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
+                // Quick shortcuts for batch (single neat row)
+                Builder(
+                  builder: (context) {
+                    final now = DateTime.now();
+                    final hasTunggakan = anggota != null && anggota.tunggakanWajib.isNotEmpty;
+                    final isAllTunggakanActive = hasTunggakan &&
+                        _wajibStartMonth == anggota.tunggakanWajib.first.bulan &&
+                        _wajibEndMonth == anggota.tunggakanWajib.last.bulan &&
+                        _wajibYear == anggota.tunggakanWajib.first.tahun;
+                    final isUntilDecActive = _wajibEndMonth == 12;
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildBatchShortcutButton(
+                            icon: hasTunggakan ? Icons.flash_on_rounded : Icons.calendar_today_rounded,
+                            iconColor: hasTunggakan ? const Color(0xFFD97706) : const Color(0xFF059669),
+                            label: hasTunggakan
+                                ? 'Semua Tunggakan (${anggota.tunggakanWajib.length} bln)'
+                                : 'Bulan Ini (${_months[now.month - 1]['name']})',
+                            isActive: hasTunggakan ? isAllTunggakanActive : (_wajibStartMonth == now.month && _wajibEndMonth == now.month),
+                            onTap: () {
+                              setState(() {
+                                if (hasTunggakan) {
+                                  _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
+                                  _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
+                                  _wajibYear = anggota.tunggakanWajib.first.tahun;
+                                } else {
+                                  _wajibStartMonth = now.month;
+                                  _wajibEndMonth = now.month;
+                                  _wajibYear = now.year;
+                                }
+                                _updateWajibAmount();
+                              });
+                            },
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.flash_on_rounded, size: 13, color: Color(0xFFD97706)),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Semua Tunggakan (${anggota.tunggakanWajib.length} bln)',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildBatchShortcutButton(
+                            icon: Icons.date_range_rounded,
+                            iconColor: const Color(0xFF0F766E),
+                            label: 's/d Desember',
+                            isActive: isUntilDecActive,
+                            onTap: () {
+                              setState(() {
+                                if (hasTunggakan) {
+                                  _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
+                                  _wajibYear = anggota.tunggakanWajib.first.tahun;
+                                } else {
+                                  _wajibStartMonth = now.month;
+                                  _wajibYear = now.year;
+                                }
+                                _wajibEndMonth = 12;
+                                _updateWajibAmount();
+                              });
+                            },
                           ),
                         ),
-                      ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _wajibEndMonth = 12;
-                          _updateWajibAmount();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Text(
-                          'Hingga Desember',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _wajibStartMonth = 1;
-                          _wajibEndMonth = 12;
-                          _updateWajibAmount();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Text(
-                          '1 Tahun Penuh (Jan-Des)',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                        ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ] else ...[
                 Column(
@@ -1259,6 +1227,50 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBatchShortcutButton({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+            width: isActive ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: isActive ? const Color(0xFF059669) : iconColor),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? const Color(0xFF065F46) : const Color(0xFF334155),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1437,13 +1449,16 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         ) ??
                         false;
 
+                    final isBeforeReg = anggota?.isBeforeRegistration(monthId, _wajibYear) ?? false;
                     final isPast = monthId < now.month && _wajibYear <= now.year;
                     final isCurrent = monthId == now.month && _wajibYear == now.year;
-                    final isLunas = isPast && !isTunggakan;
+                    final isLunas = !isBeforeReg && (anggota?.isMonthPaid(monthId, _wajibYear, now: now) ?? (isPast && !isTunggakan));
 
                     // Disabled condition:
-                    // If picking end month, monthId cannot be before _wajibStartMonth
-                    final isDisabled = !isStart && _isBatchWajib && monthId < _wajibStartMonth;
+                    // Bulan sebelum daftar, bulan yang sudah lunas (untuk start/single), atau sebelum bulan mulai untuk end month
+                    final isDisabled = isBeforeReg ||
+                        isLunas ||
+                        (!isStart && _isBatchWajib && monthId < _wajibStartMonth);
 
                     return _buildMonthGridItem(
                       monthId: monthId,
@@ -1452,17 +1467,57 @@ class _TopUpScreenState extends State<TopUpScreen> {
                       isInBatchRange: isInBatchRange,
                       isTunggakan: isTunggakan,
                       isLunas: isLunas,
+                      isBeforeReg: isBeforeReg,
                       isCurrent: isCurrent,
                       isDisabled: isDisabled,
                       onTap: () {
-                        if (isDisabled) return;
-                        if (isLunas && !_isBatchWajib) {
+                        if (isBeforeReg) {
                           AppDialog.showInfo(
                             context,
-                            title: 'Iuran Sudah Lunas',
-                            message: 'Bulan $monthName $_wajibYear sudah lunas dibayar dan tidak perlu dibayar lagi.',
-                            icon: Icons.verified_rounded,
-                            primaryColor: const Color(0xFF0E7955),
+                            title: 'Belum Terdaftar',
+                            message: 'Bulan $monthName $_wajibYear tidak dapat dipilih karena Anda belum terdaftar sebagai anggota KSPPS PASTI pada periode tersebut.',
+                            icon: Icons.info_outline_rounded,
+                            primaryColor: const Color(0xFF64748B),
+                          );
+                          return;
+                        }
+
+                        if (isLunas) {
+                          if (!_isBatchWajib) {
+                            AppDialog.showInfo(
+                              context,
+                              title: 'Iuran Sudah Lunas',
+                              message: 'Bulan $monthName $_wajibYear sudah lunas dibayar dan tidak perlu dibayar lagi.',
+                              icon: Icons.verified_rounded,
+                              primaryColor: const Color(0xFF0E7955),
+                            );
+                          } else if (isStart) {
+                            AppDialog.showInfo(
+                              context,
+                              title: 'Bulan Sudah Lunas',
+                              message: 'Bulan $monthName $_wajibYear sudah lunas dibayar. Silakan pilih bulan yang menunggak atau bulan berjalan/mendatang untuk memulai pembayaran batch.',
+                              icon: Icons.verified_rounded,
+                              primaryColor: const Color(0xFF0E7955),
+                            );
+                          } else {
+                            AppDialog.showInfo(
+                              context,
+                              title: 'Iuran Sudah Lunas',
+                              message: 'Bulan $monthName $_wajibYear sudah lunas dibayar.',
+                              icon: Icons.verified_rounded,
+                              primaryColor: const Color(0xFF0E7955),
+                            );
+                          }
+                          return;
+                        }
+
+                        if (!isStart && _isBatchWajib && monthId < _wajibStartMonth) {
+                          AppDialog.showInfo(
+                            context,
+                            title: 'Rentang Bulan Tidak Sesuai',
+                            message: 'Bulan selesai tidak boleh lebih awal dari bulan mulai (${_months[_wajibStartMonth - 1]['name']}).',
+                            icon: Icons.info_outline_rounded,
+                            primaryColor: const Color(0xFFD97706),
                           );
                           return;
                         }
@@ -1491,15 +1546,16 @@ class _TopUpScreenState extends State<TopUpScreen> {
               const SizedBox(height: 18),
               // Legend
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 6,
                   children: [
                     _buildLegendItem(const Color(0xFFEF4444), 'Menunggak'),
-                    const SizedBox(width: 14),
                     _buildLegendItem(Theme.of(context).colorScheme.primary, 'Dipilih'),
-                    const SizedBox(width: 14),
-                    _buildLegendItem(const Color(0xFF94A3B8), 'Lunas'),
+                    _buildLegendItem(const Color(0xFF475569), 'Lunas'),
+                    _buildLegendItem(const Color(0xFF94A3B8), 'Belum Terdaftar'),
                   ],
                 ),
               ),
@@ -1536,6 +1592,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
     required bool isInBatchRange,
     required bool isTunggakan,
     required bool isLunas,
+    required bool isBeforeReg,
     required bool isCurrent,
     required bool isDisabled,
     required VoidCallback onTap,
@@ -1544,7 +1601,15 @@ class _TopUpScreenState extends State<TopUpScreen> {
     Color borderColor = const Color(0xFFE2E8F0);
     Color textColor = const Color(0xFF1E293B);
 
-    if (isDisabled) {
+    if (isBeforeReg) {
+      bgColor = const Color(0xFFF1F5F9);
+      borderColor = const Color(0xFFE2E8F0);
+      textColor = const Color(0xFF94A3B8);
+    } else if (isLunas) {
+      bgColor = const Color(0xFFF8FAFC);
+      borderColor = const Color(0xFFE2E8F0);
+      textColor = const Color(0xFF64748B);
+    } else if (isDisabled) {
       bgColor = const Color(0xFFF1F5F9);
       borderColor = const Color(0xFFE2E8F0);
       textColor = const Color(0xFFCBD5E1);
@@ -1563,7 +1628,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
     }
 
     return InkWell(
-      onTap: isDisabled ? null : onTap,
+      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -1615,6 +1680,22 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   ),
                 ),
               )
+            else if (isBeforeReg && !isSelected)
+              Positioned(
+                top: 3,
+                right: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Belum Terdaftar',
+                    style: TextStyle(fontSize: 6.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                  ),
+                ),
+              )
             else if (isLunas && !isSelected)
               Positioned(
                 top: 4,
@@ -1627,7 +1708,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   ),
                   child: const Text(
                     'Lunas',
-                    style: TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                    style: TextStyle(fontSize: 7, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                   ),
                 ),
               )
@@ -1679,9 +1760,9 @@ class _TopUpScreenState extends State<TopUpScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoCard(
-          title: 'Paket Aktivasi Anggota Baru (Hemat Biaya Admin)',
+          title: 'Paket Aktivasi Anggota Baru (Hemat Biaya Layanan)',
           desc:
-              'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib dalam 1 transaksi agar status keanggotaan Anda langsung Aktif tanpa bayar admin 2 kali.',
+              'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib dalam 1 transaksi agar status keanggotaan Anda langsung Aktif tanpa bayar biaya layanan 2 kali.',
           icon: Icons.how_to_reg_rounded,
           iconColor: const Color(0xFF0E7955),
           bgColor: const Color(0xFFECFDF5),
@@ -2289,8 +2370,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               final currentFee = selectedChannel.calculateFee(_parsedAmount);
                               return Text(
                                 currentFee > 0
-                                    ? 'Biaya Admin ${AppCurrency.format(currentFee)}'
-                                    : 'Bebas Biaya Admin',
+                                    ? 'Biaya Layanan ${AppCurrency.format(currentFee)}'
+                                    : 'Bebas Biaya Layanan',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -2342,30 +2423,21 @@ class _TopUpScreenState extends State<TopUpScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF0F766E)),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      _lastUsedMethodCode != null
-                          ? 'SARAN METODE (TERAKHIR DIGUNAKAN)'
-                          : 'SARAN METODE REKOMENDASI',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF0F766E)),
+                SizedBox(width: 5),
+                Text(
+                  'SARAN METODE',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF64748B),
+                    letterSpacing: 0.4,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
             InkWell(
               onTap: () => _showPaymentMethodSelector(context, channels),
               child: const Text(
@@ -2820,9 +2892,9 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         if (ch.feeType == 'conditional' && _parsedAmount == 0) {
                           feeText = '≤ 100k: ${AppCurrency.format(ch.feeBelowThreshold)} | > 100k: ${ch.feeAboveThresholdPercent}%';
                         } else if (fee > 0) {
-                          feeText = 'Biaya Admin ${AppCurrency.format(fee)}';
+                          feeText = 'Biaya Layanan ${AppCurrency.format(fee)}';
                         } else {
-                          feeText = 'Bebas Biaya Admin';
+                          feeText = 'Bebas Biaya Layanan';
                         }
                         final isPaid = fee > 0 || (ch.feeType == 'conditional' && _parsedAmount == 0);
 
@@ -2985,7 +3057,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                       ),
                       if (adminFee > 0)
                         Text(
-                          '+ Admin ${AppCurrency.format(adminFee)}',
+                          '+ Layanan ${AppCurrency.format(adminFee)}',
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFFB45309),
@@ -2994,7 +3066,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         )
                       else
                         const Text(
-                          'Gratis Admin',
+                          'Gratis Layanan',
                           style: TextStyle(
                             fontSize: 10,
                             color: Color(0xFF059669),

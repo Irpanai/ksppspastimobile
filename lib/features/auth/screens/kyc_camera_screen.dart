@@ -10,22 +10,37 @@ class KycImageNormalizationService {
   static const MethodChannel _channel = MethodChannel('com.ksppspasti.mobile/kyc_image');
 
   /// Menormalkan orientasi EXIF dan menerapkan cermin horizontal untuk kamera depan
-  /// agar hasil tangkapan selfie konsisten dengan pratinjau cermin saat memotret.
+  /// agar hasil tangkapan selfie konsisten dengan pratinjau cermin saat memotret,
+  /// serta mendukung crop landscape e-KTP dan rotasi 90 derajat.
   static Future<String> normalizeCapturedPhoto({
     required String path,
     required bool mirrorHorizontal,
+    bool cropToKtpLandscape = false,
+    int rotateDegrees = 0,
+    double targetAspectRatio = 1.585,
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return path;
     }
 
     try {
+      final args = <String, dynamic>{
+        'path': path,
+        'mirrorHorizontal': mirrorHorizontal,
+      };
+      if (cropToKtpLandscape) {
+        args['cropToKtpLandscape'] = true;
+      }
+      if (rotateDegrees != 0) {
+        args['rotateDegrees'] = rotateDegrees;
+      }
+      if ((targetAspectRatio - 1.585).abs() > 0.001) {
+        args['targetAspectRatio'] = targetAspectRatio;
+      }
+
       final normalized = await _channel.invokeMethod<String>(
         'normalizeCapturedPhoto',
-        <String, dynamic>{
-          'path': path,
-          'mirrorHorizontal': mirrorHorizontal,
-        },
+        args,
       );
       if (normalized != null && normalized.isNotEmpty) {
         return normalized;
@@ -64,6 +79,7 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
   String? _errorMessage;
   bool _isTakingPicture = false;
   bool _isFlippingPreview = false;
+  bool _isRotatingPreview = false;
   bool _isFrontCamera = false;
   FlashMode _flashMode = FlashMode.off;
   bool _hasFlash = false;
@@ -76,6 +92,16 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.mode == KycCameraMode.ktp) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
     if (widget.initialCapturedFile != null) {
       _isInitializing = false;
       _isFrontCamera = widget.mode == KycCameraMode.selfie;
@@ -88,6 +114,9 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     _controller?.dispose();
     super.dispose();
   }
@@ -225,9 +254,12 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
       }
 
       // Selaraskan orientasi EXIF & hilangkan perbedaan cerminan antara preview kamera depan dan file hasil.
+      // Untuk KTP: otomatis potong (crop) ke mode landscape kartu (~1.585:1, sekira 4:3 s.d 16:9).
       final normalizedPath = await KycImageNormalizationService.normalizeCapturedPhoto(
         path: photo.path,
         mirrorHorizontal: _isFrontCamera,
+        cropToKtpLandscape: widget.mode == KycCameraMode.ktp,
+        targetAspectRatio: 1.585,
       );
       if (normalizedPath != photo.path) {
         _generatedTempPaths.add(normalizedPath);
@@ -247,6 +279,31 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
         title: 'Gagal Mengambil Foto',
         message: 'Tidak dapat memotret menggunakan kamera: $e',
       );
+    }
+  }
+
+  Future<void> _rotatePreviewImage() async {
+    if (_capturedFile == null || _isRotatingPreview) return;
+    final previousPath = _capturedFile!.path;
+    setState(() => _isRotatingPreview = true);
+    try {
+      final rotatedPath = await KycImageNormalizationService.normalizeCapturedPhoto(
+        path: previousPath,
+        mirrorHorizontal: false,
+        rotateDegrees: 90,
+      );
+      if (!mounted) return;
+      if (rotatedPath != previousPath) {
+        _generatedTempPaths.add(rotatedPath);
+        setState(() {
+          _capturedFile = XFile(rotatedPath);
+        });
+        await _deleteTempFileIfOwned(previousPath);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRotatingPreview = false);
+      }
     }
   }
 
@@ -284,6 +341,9 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
 
   void _confirmPicture() {
     if (_capturedFile != null) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
       Navigator.pop(context, File(_capturedFile!.path));
     }
   }
@@ -299,6 +359,9 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
         imageQuality: 90,
       );
       if (file != null && mounted) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
         Navigator.pop(context, File(file.path));
       }
     } catch (e) {
@@ -317,16 +380,77 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
     final isKtp = widget.mode == KycCameraMode.ktp;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: SafeArea(
-          top: false,
-          bottom: true,
-          child: _capturedFile != null
-              ? _buildPreviewUI(primaryColor, isKtp)
-              : _buildCameraUI(primaryColor, isKtp),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: SafeArea(
+            top: false,
+            bottom: true,
+            child: _capturedFile != null
+                ? _buildPreviewUI(primaryColor, isKtp)
+                : _buildCameraUI(primaryColor, isKtp),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShutterButton(Color primaryColor, bool isKtp, {double size = 82}) {
+    return GestureDetector(
+      onTap: _isTakingPicture ? null : _takePicture,
+      child: Container(
+        width: size,
+        height: size,
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: primaryColor,
+            width: 4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.4),
+              blurRadius: 16,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: _isTakingPicture
+              ? Center(
+                  child: SizedBox(
+                    width: size * 0.35,
+                    height: size * 0.35,
+                    child: CircularProgressIndicator(
+                      color: primaryColor,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                )
+              : Icon(
+                  isKtp ? Icons.camera_alt_rounded : Icons.face_rounded,
+                  color: primaryColor,
+                  size: size * 0.42,
+                ),
         ),
       ),
     );
@@ -359,6 +483,7 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
+        final isLandscape = size.width > size.height;
 
         return Stack(
           fit: StackFit.expand,
@@ -377,11 +502,11 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
               ),
             ),
 
-            // C. Top Controls & Guidance Bar
+            // C. Top Controls Bar
             Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
+              top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 12),
               left: 16,
-              right: 16,
+              right: isLandscape ? 100 : 16,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -393,7 +518,12 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        SystemChrome.setPreferredOrientations([
+                          DeviceOrientation.portraitUp,
+                        ]);
+                        Navigator.pop(context);
+                      },
                       tooltip: 'Tutup Kamera',
                     ),
                   ),
@@ -455,118 +585,121 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
               ),
             ),
 
-            // D. Header Hint / Instructions
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 68,
-              left: 24,
-              right: 24,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      isKtp ? 'Posisikan e-KTP di Dalam Kotak' : 'Posisikan Wajah di Dalam Lingkaran',
+            // D. Hint / Instructions
+            if (isLandscape)
+              Positioned(
+                bottom: 12,
+                left: 16,
+                right: 100,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Text(
+                      isKtp
+                          ? 'Posisikan e-KTP di dalam kotak • NIK, nama & foto terlihat jelas'
+                          : 'Posisikan wajah di dalam lingkaran',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isKtp
-                          ? 'Pastikan NIK, nama, dan foto terlihat terang tanpa pantulan cahaya'
-                          : 'Lepas masker/kacamata & pastikan wajah berada di dalam bingkai',
-                      style: const TextStyle(
-                        color: Color(0xFFE2E8F0),
                         fontSize: 12,
-                        height: 1.3,
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 68,
+                left: 24,
+                right: 24,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        isKtp ? 'Posisikan e-KTP di Dalam Kotak' : 'Posisikan Wajah di Dalam Lingkaran',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isKtp
+                            ? 'Pastikan NIK, nama, dan foto terlihat terang tanpa pantulan cahaya'
+                            : 'Lepas masker/kacamata & pastikan wajah berada di dalam bingkai',
+                        style: const TextStyle(
+                          color: Color(0xFFE2E8F0),
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // E. Shutter Controls: Samping Kanan saat Landscape (ergonomis jempol), Bawah saat Portrait
+            if (isLandscape)
+              Positioned(
+                right: 18,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildShutterButton(primaryColor, isKtp, size: 74),
+                      const SizedBox(height: 8),
+                      Text(
+                        isKtp ? 'Foto e-KTP' : 'Foto Selfie',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Positioned(
+                bottom: 24,
+                left: 0,
+                right: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildShutterButton(primaryColor, isKtp, size: 82),
+                    const SizedBox(height: 12),
+                    Text(
+                      isKtp ? 'Ketuk untuk foto e-KTP' : 'Ketuk untuk foto selfie',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-
-            // E. Bottom Shutter Controls
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Shutter Button
-                  GestureDetector(
-                    onTap: _isTakingPicture ? null : _takePicture,
-                    child: Container(
-                      width: 82,
-                      height: 82,
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: primaryColor,
-                          width: 4,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.4),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: _isTakingPicture
-                            ? Center(
-                                child: SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    color: primaryColor,
-                                    strokeWidth: 3,
-                                  ),
-                                ),
-                              )
-                            : Icon(
-                                isKtp ? Icons.camera_alt_rounded : Icons.face_rounded,
-                                color: primaryColor,
-                                size: 34,
-                              ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-                  Text(
-                    isKtp ? 'Ketuk untuk foto e-KTP' : 'Ketuk untuk foto selfie',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         );
       },
@@ -577,205 +710,253 @@ class _KycCameraScreenState extends State<KycCameraScreen> with WidgetsBindingOb
   // 2. PRATINJAU HASIL FOTO (CONFIRM / RETAKE)
   // ─────────────────────────────────────────────
   Widget _buildPreviewUI(Color primaryColor, bool isKtp) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Display Captured Image
-        Center(
-          child: Image.file(
-            File(_capturedFile!.path),
-            key: ValueKey(_capturedFile!.path),
-            fit: BoxFit.contain,
-          ),
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLandscape = constraints.biggest.width > constraints.biggest.height;
 
-        // Semi-transparent top bar
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 16,
-          left: 16,
-          right: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.78),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white24),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // Display Captured Image
+            Center(
+              child: Image.file(
+                File(_capturedFile!.path),
+                key: ValueKey(_capturedFile!.path),
+                fit: BoxFit.contain,
+              ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  color: primaryColor,
-                  size: 22,
+
+            // Semi-transparent top bar
+            Positioned(
+              top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 16),
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: isLandscape ? 8 : 12,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isKtp ? 'Periksa Foto e-KTP' : 'Periksa Foto Selfie',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isKtp
-                            ? 'Pastikan NIK dan nama terbaca jelas tanpa blur atau pantulan.'
-                            : 'Pastikan wajah Anda terlihat terang dan jelas.',
-                        style: const TextStyle(
-                          color: Color(0xFFCBD5E1),
-                          fontSize: 11.5,
-                        ),
-                      ),
-                    ],
-                  ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white24),
                 ),
-                if (!isKtp) ...[
-                  const SizedBox(width: 8),
-                  Material(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: _isFlippingPreview ? null : _flipPreviewImage,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _isFlippingPreview
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.flip_rounded, color: Colors.white, size: 17),
-                            const SizedBox(width: 5),
-                            const Text(
-                              'Balik',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: primaryColor,
+                      size: isLandscape ? 20 : 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            isKtp ? 'Periksa Foto e-KTP' : 'Periksa Foto Selfie',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isLandscape ? 13 : 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (!isLandscape) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              isKtp
+                                  ? 'Pastikan NIK dan nama terbaca jelas tanpa blur atau pantulan.'
+                                  : 'Pastikan wajah Anda terlihat terang dan jelas.',
+                              style: const TextStyle(
+                                color: Color(0xFFCBD5E1),
+                                fontSize: 11.5,
                               ),
                             ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-
-        // Bottom Action Bar: Retake vs Confirm
-        Positioned(
-          bottom: 20,
-          left: 16,
-          right: 16,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.86),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Retake Button
-                Expanded(
-                  flex: 9,
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: _isFlippingPreview ? null : _retakePicture,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.white.withValues(alpha: 0.10),
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.35), width: 1.2),
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.refresh_rounded, size: 18),
-                            SizedBox(width: 6),
-                            Text(
-                              'Foto Ulang',
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                    if (isKtp) ...[
+                      const SizedBox(width: 8),
+                      Material(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: _isRotatingPreview ? null : _rotatePreviewImage,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _isRotatingPreview
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.rotate_right_rounded, color: Colors.white, size: 17),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  'Putar',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // Confirm Button
-                Expanded(
-                  flex: 12,
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _isFlippingPreview ? null : _confirmPicture,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_rounded, size: 18),
-                            SizedBox(width: 6),
-                            Text(
-                              'Gunakan Foto Ini',
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                    ] else ...[
+                      const SizedBox(width: 8),
+                      Material(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: _isFlippingPreview ? null : _flipPreviewImage,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _isFlippingPreview
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.flip_rounded, color: Colors.white, size: 17),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  'Balik',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            // Bottom Action Bar: Retake vs Confirm
+            Positioned(
+              bottom: isLandscape ? 10 : 20,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: EdgeInsets.all(isLandscape ? 8 : 12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.86),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Retake Button
+                    Expanded(
+                      flex: 9,
+                      child: SizedBox(
+                        height: isLandscape ? 40 : 48,
+                        child: OutlinedButton(
+                          onPressed: _isFlippingPreview ? null : _retakePicture,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.white.withValues(alpha: 0.10),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.35), width: 1.2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.refresh_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Foto Ulang',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+
+                    // Confirm Button
+                    Expanded(
+                      flex: 12,
+                      child: SizedBox(
+                        height: isLandscape ? 40 : 48,
+                        child: ElevatedButton(
+                          onPressed: _isFlippingPreview ? null : _confirmPicture,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Gunakan Foto Ini',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -878,10 +1059,34 @@ class KycOverlayPainter extends CustomPainter {
 
     if (mode == KycCameraMode.ktp) {
       // ── KTP WIREFRAME (CARD RATIO 1.585) ──
-      final cardWidth = size.width * 0.88;
-      final cardHeight = cardWidth / 1.585;
-      final left = (size.width - cardWidth) / 2;
-      final top = (size.height - cardHeight) / 2 - 20; // Sedikit ke atas agar seimbang dengan kontrol
+      final double cardWidth;
+      final double cardHeight;
+      final double left;
+      final double top;
+
+      if (size.width > size.height) {
+        // Landscape Mode:
+        // Layar horizontal HP (misal 780x360 atau 840x390).
+        // Berikan ruang untuk tombol rana/shutter di kanan (~100px).
+        final availableWidth = size.width - 100;
+        final maxHeight = size.height * 0.74;
+
+        if (maxHeight * 1.585 <= availableWidth * 0.90) {
+          cardHeight = maxHeight;
+          cardWidth = cardHeight * 1.585;
+        } else {
+          cardWidth = availableWidth * 0.90;
+          cardHeight = cardWidth / 1.585;
+        }
+        left = (availableWidth - cardWidth) / 2 + 8;
+        top = (size.height - cardHeight) / 2;
+      } else {
+        // Portrait Mode (fallback)
+        cardWidth = size.width * 0.88;
+        cardHeight = cardWidth / 1.585;
+        left = (size.width - cardWidth) / 2;
+        top = (size.height - cardHeight) / 2 - 20; // Sedikit ke atas agar seimbang dengan kontrol
+      }
       final cardRect = Rect.fromLTWH(left, top, cardWidth, cardHeight);
       final cardRRect = RRect.fromRectAndRadius(cardRect, const Radius.circular(16));
 

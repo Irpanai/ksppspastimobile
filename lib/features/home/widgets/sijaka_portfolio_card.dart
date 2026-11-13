@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/member_activation_guard.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../providers/dashboard_provider.dart';
 
@@ -35,6 +36,7 @@ class SijakaPortfolioCard extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
+                  if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),
@@ -56,6 +58,7 @@ class SijakaPortfolioCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
+                if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SijakaPortfolioScreen(showBackButton: true)),

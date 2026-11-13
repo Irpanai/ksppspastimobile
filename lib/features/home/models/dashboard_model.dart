@@ -112,6 +112,10 @@ class DashboardAnggota {
   final List<TunggakanItem> tunggakanWajib;
   final int totalTunggakanWajib;
   final int jumlahBulanMenunggak;
+  final DateTime? tanggalDaftar;
+  final int? bulanDaftar;
+  final int? tahunDaftar;
+  final List<Map<String, int>> wajibTerbayar;
 
   DashboardAnggota({
     required this.id,
@@ -127,6 +131,10 @@ class DashboardAnggota {
     this.tunggakanWajib = const [],
     this.totalTunggakanWajib = 0,
     this.jumlahBulanMenunggak = 0,
+    this.tanggalDaftar,
+    this.bulanDaftar,
+    this.tahunDaftar,
+    this.wajibTerbayar = const [],
   })  : statusKeanggotaan = statusKeanggotaan ?? status,
         isPokokPaid = isPokokPaid ?? (status.toLowerCase() == 'aktif'),
         isWajibPaid = isWajibPaid ?? (status.toLowerCase() == 'aktif'),
@@ -134,6 +142,34 @@ class DashboardAnggota {
             ((isPokokPaid ?? (status.toLowerCase() == 'aktif')) &&
                 (isWajibPaid ?? (status.toLowerCase() == 'aktif')) &&
                 status.toLowerCase() == 'aktif');
+
+  /// Apakah bulan tertentu berada sebelum tanggal anggota terdaftar di KSPPS PASTI
+  bool isBeforeRegistration(int bulan, int tahun) {
+    final tgl = tanggalDaftar;
+    final bDaftar = bulanDaftar ?? (tgl?.month ?? (tunggakanWajib.isNotEmpty ? tunggakanWajib.first.bulan : null));
+    final tDaftar = tahunDaftar ?? (tgl?.year ?? (tunggakanWajib.isNotEmpty ? tunggakanWajib.first.tahun : null));
+    if (bDaftar == null || tDaftar == null) return false;
+    if (tahun < tDaftar) return true;
+    if (tahun == tDaftar && bulan < bDaftar) return true;
+    return false;
+  }
+
+  /// Apakah bulan tertentu sudah lunas dibayar
+  bool isMonthPaid(int bulan, int tahun, {required DateTime now}) {
+    if (isBeforeRegistration(bulan, tahun)) return false;
+    // Cek di list transaksi wajib terbayar
+    if (wajibTerbayar.any((item) => item['bulan'] == bulan && item['tahun'] == tahun)) {
+      return true;
+    }
+    // Jika tidak menunggak dan periode sudah lewat atau bulan berjalan
+    final isTunggakan = tunggakanWajib.any((t) => t.bulan == bulan && t.tahun == tahun);
+    if (!isTunggakan) {
+      if (tahun < now.year) return true;
+      if (tahun == now.year && bulan < now.month) return true;
+      if (tahun == now.year && bulan == now.month && isWajibPaid) return true;
+    }
+    return false;
+  }
 
   factory DashboardAnggota.fromJson(Map<String, dynamic> json) {
     final rawTunggakan = json['tunggakan_wajib'];
@@ -164,6 +200,29 @@ class DashboardAnggota {
             (statusStr.toLowerCase() == 'menunggak') ||
             tunggakanList.isNotEmpty);
 
+    final tglDaftarStr = json['tanggal_daftar']?.toString() ?? json['created_at']?.toString();
+    final parsedTanggalDaftar = tglDaftarStr != null ? DateTime.tryParse(tglDaftarStr) : null;
+    final parsedBulanDaftar = json['bulan_daftar'] is int
+        ? json['bulan_daftar'] as int
+        : (int.tryParse(json['bulan_daftar']?.toString() ?? '') ?? parsedTanggalDaftar?.month);
+    final parsedTahunDaftar = json['tahun_daftar'] is int
+        ? json['tahun_daftar'] as int
+        : (int.tryParse(json['tahun_daftar']?.toString() ?? '') ?? parsedTanggalDaftar?.year);
+
+    final rawWajibTerbayar = json['wajib_terbayar'];
+    List<Map<String, int>> terbayarList = [];
+    if (rawWajibTerbayar is List) {
+      for (final item in rawWajibTerbayar) {
+        if (item is Map) {
+          final b = item['bulan'] is int ? item['bulan'] as int : int.tryParse(item['bulan']?.toString() ?? '') ?? 0;
+          final t = item['tahun'] is int ? item['tahun'] as int : int.tryParse(item['tahun']?.toString() ?? '') ?? 0;
+          if (b > 0 && t > 0) {
+            terbayarList.add({'bulan': b, 'tahun': t});
+          }
+        }
+      }
+    }
+
     return DashboardAnggota(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       noAnggota: json['no_anggota']?.toString() ?? '',
@@ -182,6 +241,10 @@ class DashboardAnggota {
       jumlahBulanMenunggak: json['jumlah_bulan_menunggak'] is int
           ? json['jumlah_bulan_menunggak']
           : int.tryParse(json['jumlah_bulan_menunggak']?.toString() ?? '0') ?? tunggakanList.length,
+      tanggalDaftar: parsedTanggalDaftar,
+      bulanDaftar: parsedBulanDaftar,
+      tahunDaftar: parsedTahunDaftar,
+      wajibTerbayar: terbayarList,
     );
   }
 
@@ -200,6 +263,10 @@ class DashboardAnggota {
       'tunggakan_wajib': tunggakanWajib.map((e) => e.toJson()).toList(),
       'total_tunggakan_wajib': totalTunggakanWajib,
       'jumlah_bulan_menunggak': jumlahBulanMenunggak,
+      'tanggal_daftar': tanggalDaftar?.toIso8601String(),
+      'bulan_daftar': bulanDaftar,
+      'tahun_daftar': tahunDaftar,
+      'wajib_terbayar': wajibTerbayar,
     };
   }
 }

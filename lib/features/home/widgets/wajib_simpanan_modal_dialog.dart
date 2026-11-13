@@ -75,7 +75,7 @@ class WajibSimpananModalDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Rincian biaya aktivasi dalam 1 transaksi (hemat biaya admin)
+              // Rincian biaya aktivasi dalam 1 transaksi (hemat biaya layanan)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -156,7 +156,7 @@ class WajibSimpananModalDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              // Action Button -> langsung ke paket gabungan Pokok + Wajib (1x admin)
+              // Action Button -> langsung ke paket gabungan Pokok + Wajib (1x biaya layanan)
               SizedBox(
                 width: double.infinity,
                 height: 46,

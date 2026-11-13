@@ -939,7 +939,7 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Biaya Admin', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        const Text('Biaya Layanan', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                         Text(
                           res.adminFee > 0 ? res.adminFeeFormat : 'Gratis',
                           style: TextStyle(

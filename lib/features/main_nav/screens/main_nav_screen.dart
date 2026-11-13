@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/member_activation_guard.dart';
 import '../../home/screens/beranda_screen.dart';
 import '../../savings/screens/simpanan_screen.dart';
 import '../../sijaka/screens/sijaka_portfolio_screen.dart';
@@ -78,7 +79,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
                           Expanded(
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => setState(() => _currentIndex = 1),
+                              onTap: () {
+                                if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
+                                setState(() => _currentIndex = 1);
+                              },
                               child: Center(child: _buildNavItem(1)),
                             ),
                           ),
@@ -94,7 +98,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
                           Expanded(
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => setState(() => _currentIndex = 2),
+                              onTap: () {
+                                if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
+                                setState(() => _currentIndex = 2);
+                              },
                               child: Center(child: _buildNavItem(2)),
                             ),
                           ),
@@ -115,6 +122,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
               // Floating Rahn Button di tengah - Direct ke Menu Rahn
               GestureDetector(
                 onTap: () {
+                  if (!MemberActivationGuard.checkAndRequireActivation(context)) return;
                   AppDialog.showComingSoon(
                     context,
                     title: 'Segera Hadir',

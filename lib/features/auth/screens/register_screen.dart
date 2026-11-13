@@ -161,8 +161,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _formatIndonesianDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -868,6 +868,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_fotoKtp == null) {
+      _showWarning('Foto e-KTP wajib dipindai / diambil terlebih dahulu untuk verifikasi pendaftaran.');
+      return;
+    }
+
     if (_fotoWajah == null) {
       _showWarning('Foto selfie wajah wajib diambil terlebih dahulu untuk verifikasi identitas (KYC).');
       return;
@@ -970,7 +975,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: 'Pendaftaran Berhasil',
         message: 'Selamat datang di KSPPS PASTI. Akun Anda telah berhasil dibuat.',
         buttonText: 'Masuk Beranda',
-        barrierDismissible: false,
+        barrierDismissible: true,
+        showCloseButton: true,
       );
 
       // Aktifkan sesi login dan arahkan langsung ke Beranda
@@ -1816,8 +1822,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(width: 14),
                           Expanded(
                             child: _buildPhotoUploadCard(
-                              title: 'Scan e-KTP',
-                              subtitle: 'Pindai KTP',
+                              title: 'Scan e-KTP *',
+                              subtitle: 'Pindai KTP (Wajib)',
                               file: _fotoKtp,
                               bytes: _fotoKtpBytes,
                               onTap: _pickKtp,
@@ -1857,64 +1863,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       
-                      // Tempat & Tanggal Lahir
-                      Row(
+                      // Tempat Lahir
+                      _buildTextField(
+                        label: 'Tempat Lahir *',
+                        controller: _birthPlaceController,
+                        hint: 'Contoh: Banyumas',
+                        icon: Icons.location_city_outlined,
+                        enabled: !isLoading,
+                      ),
+                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
+
+                      // Tanggal Lahir
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: _buildTextField(
-                              label: 'Tempat Lahir *',
-                              controller: _birthPlaceController,
-                              hint: 'Contoh: Banyumas',
-                              icon: Icons.location_city_outlined,
-                              enabled: !isLoading,
-                            ),
+                          const Text(
+                            'Tanggal Lahir *',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Tanggal Lahir *',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                                ),
-                                const SizedBox(height: 6),
-                                InkWell(
-                                  onTap: isLoading ? null : _selectBirthDate,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    height: 48,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 18),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            _selectedBirthDate != null
-                                                ? _formatIndonesianDate(_selectedBirthDate!)
-                                                : 'Pilih Tanggal',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: _selectedBirthDate != null
-                                                  ? const Color(0xFF1E293B)
-                                                  : const Color(0xFF94A3B8),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                          const SizedBox(height: 6),
+                          InkWell(
+                            onTap: isLoading ? null : _selectBirthDate,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              height: 48,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedBirthDate != null
+                                          ? _formatIndonesianDate(_selectedBirthDate!)
+                                          : 'Pilih Tanggal',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: _selectedBirthDate != null
+                                            ? const Color(0xFF1E293B)
+                                            : const Color(0xFF94A3B8),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -2389,7 +2388,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
@@ -2403,16 +2402,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             Icon(
               icon,
-              size: 20,
+              size: 18,
               color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF64748B),
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF334155),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF334155),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -2428,15 +2431,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Pekerjaan / Profesi *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+            const Flexible(
+              child: Text(
+                'Pekerjaan / Profesi *',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 8),
             InkWell(
               onTap: isLoading ? null : _openJobSelector,
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.list_alt_rounded, size: 14, color: Color(0xFF0F766E)),
                     SizedBox(width: 4),

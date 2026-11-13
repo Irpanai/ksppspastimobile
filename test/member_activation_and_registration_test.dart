@@ -21,6 +21,8 @@ import 'package:digital_coop/features/home/widgets/tunggakan_modal_dialog.dart';
 import 'package:digital_coop/features/home/widgets/wajib_simpanan_modal_dialog.dart';
 import 'package:digital_coop/features/payment/models/payment_model.dart';
 import 'package:digital_coop/shared/widgets/dashboard_alert_banner.dart';
+import 'package:digital_coop/core/utils/member_activation_guard.dart';
+import 'package:digital_coop/shared/widgets/app_dialog.dart';
 
 void main() {
   group('MemberStatusResolver & status sync', () {
@@ -105,6 +107,44 @@ void main() {
       });
 
       expect(snap.displayType, 'Aktivasi (Pokok + Wajib)');
+    });
+
+    test('DashboardAnggota tracks registration date and prevents picking pre-registration or paid months', () {
+      final anggotaNov = DashboardAnggota.fromJson({
+        'id': 10,
+        'no_anggota': '1211260001',
+        'nama': 'ZOYA NUJULA',
+        'status': 'aktif',
+        'status_keanggotaan': 'aktif',
+        'is_pokok_paid': true,
+        'is_wajib_paid': true,
+        'is_member_active': true,
+        'cabang': 'KC TELUK DALAM BJM',
+        'is_menunggak': false,
+        'bulan_daftar': 11,
+        'tahun_daftar': 2026,
+        'wajib_terbayar': [
+          {'bulan': 11, 'tahun': 2026},
+        ],
+        'tunggakan_wajib': [],
+      });
+
+      final now = DateTime(2026, 11, 15);
+
+      // Bulan 1 - 10 tahun 2026 adalah sebelum terdaftar
+      expect(anggotaNov.isBeforeRegistration(1, 2026), isTrue);
+      expect(anggotaNov.isBeforeRegistration(10, 2026), isTrue);
+      expect(anggotaNov.isBeforeRegistration(11, 2026), isFalse);
+      expect(anggotaNov.isBeforeRegistration(12, 2026), isFalse);
+
+      // Bulan sebelum daftar tidak dianggap lunas
+      expect(anggotaNov.isMonthPaid(1, 2026, now: now), isFalse);
+
+      // Bulan 11 tercatat terbayar
+      expect(anggotaNov.isMonthPaid(11, 2026, now: now), isTrue);
+
+      // Bulan 12 belum terbayar
+      expect(anggotaNov.isMonthPaid(12, 2026, now: now), isFalse);
     });
   });
 
@@ -310,6 +350,105 @@ void main() {
       expect(result.kelurahanDesa, 'Teluk Dalam');
       expect(result.kecamatan, 'Banjarmasin Tengah');
     });
+
+    test('normalizes OCR typos in address and administrative regions (Banjarmasin, Surgi Mufti, Jl. Adam)', () {
+      final result = KtpOcrHelper.parseAddressFromLines([
+        'PROVINSI KALIMANTAN SEATAN',
+        'KOTA BANJARMASIN',
+        'NIK : 1371040903070804',
+        'Nama : MOHAMMAD ARIFIN',
+        'Tempat/Tgl Lahir : BANJARMASIN, 09-03-2007',
+        'Jenis Kelamin : LAKI-LAKI',
+        'Alamat : Lsadam Kompiaekwondo Permai',
+        'RIRW : 001/002',
+        'Kel/Desa : Surgiufh',
+        'Kecamatan : Banjarmasin Utaha',
+        'Agama : ISLAM',
+      ]);
+
+      expect(result.provinsi, 'Kalimantan Selatan');
+      expect(result.kabupatenKota, 'Kota Banjarmasin');
+      expect(result.alamat, 'Jl. Adam Komp. Taekwondo Permai');
+      expect(result.rtRw, '001/002');
+      expect(result.kelurahanDesa, 'Surgi Mufti');
+      expect(result.kecamatan, 'Banjarmasin Utara');
+      expect(
+        result.formattedAlamat,
+        'Jl. Adam Komp. Taekwondo Permai, RT/RW 001/002, Kel. Surgi Mufti, Kec. Banjarmasin Utara',
+      );
+    });
+
+    test('validates and rejects non-names and OCR RT/RW label typos', () {
+      expect(KtpOcrHelper.isValidNamaForTesting('RIRW'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('RTRW'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('RTIRW'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('RT/RW'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('RW'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('RT'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('ISLAM'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('SEUMUR HIDUP'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('BELUM KAWIN'), isFalse);
+      expect(KtpOcrHelper.isValidNamaForTesting('JL. GAJAH MADA'), isFalse);
+
+      expect(KtpOcrHelper.isValidNamaForTesting('MOHAMMAD ARIFIN'), isTrue);
+      expect(KtpOcrHelper.isValidNamaForTesting('AHMAD FAUZI'), isTrue);
+      expect(KtpOcrHelper.isValidNamaForTesting('BUDI'), isTrue);
+      expect(KtpOcrHelper.isValidNamaForTesting('SUHARTO'), isTrue);
+    });
+
+    test('extracts and cleans birth place and birth date accurately (resolves Ahir Banjarmasn D anomaly)', () {
+      final birthData = KtpOcrHelper.extractBirthDataForTesting([
+        'Tempat/Tgl Lahir : Ahir Banjarmasn D 09-03-2007',
+      ], 'Tempat/Tgl Lahir : Ahir Banjarmasn D 09-03-2007', '6371940903070004');
+
+      expect(birthData['tempat'], 'Banjarmasin');
+      expect(birthData['tanggal'], DateTime(2007, 3, 9));
+      expect(KtpOcrHelper.cleanPlaceTextForTesting('Ahir Banjarmasn D'), 'Banjarmasin');
+      expect(KtpOcrHelper.cleanPlaceTextForTesting('Banjarmasn'), 'Banjarmasin');
+      expect(KtpOcrHelper.cleanPlaceTextForTesting('Sidoarjo'), 'Sidoarjo');
+      expect(KtpOcrHelper.cleanPlaceTextForTesting('TEMPAT LAHIR BANYUMAS'), 'Banyumas');
+    });
+
+    test('extracts RT/RW digits accurately across various formats (slash, colon, labels, space)', () {
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('RT/RW : 001/002'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('RIRW : 001/002'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('RT 01 RW 02'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('001/002'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('01/02'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('1/2'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('001002'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('0102'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('RT. 001 / RW. 002'), '001/002');
+      expect(KtpOcrHelper.extractRtRwDigitsForTesting('PW 001/002'), '001/002');
+    });
+
+    test('auto-corrects NIK OCR typos using administrative context and birth date', () {
+      // 1. Kasus typo kecamatan Banjarmasin Utara: 637194 -> 637104
+      final correctedKec = KtpOcrHelper.correctNikForTesting(
+        '6371940903070004',
+        detectedProvince: 'Kalimantan Selatan',
+        detectedKabupatenKota: 'Kota Banjarmasin',
+        detectedKecamatan: 'Banjarmasin Utara',
+        detectedBirthDate: DateTime(2007, 3, 9),
+        detectedGender: 'Laki-laki',
+      );
+      expect(correctedKec, '6371040903070004');
+
+      // 2. Kasus typo provinsi 13 -> 63 dan nomor urut 0804 -> 0004
+      final correctedProvAndUrut = KtpOcrHelper.correctNikForTesting(
+        '1371040903070804',
+        detectedProvince: 'Kalimantan Selatan',
+        detectedKabupatenKota: 'Kota Banjarmasin',
+        detectedKecamatan: 'Banjarmasin Utara',
+        detectedBirthDate: DateTime(2007, 3, 9),
+        detectedGender: 'Laki-laki',
+      );
+      expect(correctedProvAndUrut, '6371040903070004');
+
+      // 3. Kasus normalisasi alamat Lsadam Kompiaekwondo Perma
+      final normalizedAlamat = KtpOcrHelper.normalizeAlamatForTesting('Lsadam Kompiaekwondo Perma');
+      expect(normalizedAlamat, 'Jl. Adam Komp. Taekwondo Permai');
+    });
   });
 
   group('LocationAddressService reverse-geocode parser', () {
@@ -380,6 +519,25 @@ void main() {
         find.text('UU PDP No. 27/2022 • Kebijakan Privasi & Data'),
         findsOneWidget,
       );
+
+      // Verifikasi tombol Scan e-KTP dan Foto Selfie berstatus wajib (*)
+      expect(find.text('Foto Selfie *'), findsOneWidget);
+      expect(find.text('Ambil Selfie (Wajib)'), findsOneWidget);
+      expect(find.text('Scan e-KTP *'), findsOneWidget);
+      expect(find.text('Pindai KTP (Wajib)'), findsOneWidget);
+
+      // Verifikasi kolom Tempat Lahir dan Tanggal Lahir berjejer vertikal (stacked), bukan bersampingan
+      final tempatLahirLabel = find.text('Tempat Lahir *');
+      final tanggalLahirLabel = find.text('Tanggal Lahir *');
+      await tester.ensureVisible(tempatLahirLabel);
+      await tester.pump();
+      expect(tempatLahirLabel, findsOneWidget);
+      expect(tanggalLahirLabel, findsOneWidget);
+
+      final tempatY = tester.getTopLeft(tempatLahirLabel).dy;
+      final tanggalY = tester.getTopLeft(tanggalLahirLabel).dy;
+      expect(tanggalY, greaterThan(tempatY + 40),
+          reason: 'Tanggal Lahir harus berada di bawah Tempat Lahir (vertikal), tidak bersampingan.');
 
       final submitFinder = find.widgetWithText(ElevatedButton, 'Daftar Sekarang');
       await tester.ensureVisible(submitFinder);
@@ -812,6 +970,66 @@ void main() {
         expect(qrisShellSize.height, closeTo(vaShellSize.height, 2.0));
       },
     );
+
+    testWidgets('MemberActivationGuard blocks inactive member and shows WajibSimpananModalDialog',
+        (tester) async {
+      final dashboardProvider = _FakeDashboardProvider(
+        DashboardData(
+          anggota: DashboardAnggota(
+            id: 1,
+            noAnggota: '12345',
+            nama: 'Nasabah Baru',
+            status: 'belum_aktif',
+            isPokokPaid: false,
+            isWajibPaid: false,
+            isMemberActive: false,
+            cabang: 'KC Banjarmasin',
+            isMenunggak: false,
+            tunggakanWajib: const [],
+            totalTunggakanWajib: 0,
+            jumlahBulanMenunggak: 0,
+          ),
+          ringkasanSaldo: RingkasanSaldo(
+            saldoPokok: 0,
+            saldoWajib: 0,
+            saldoSukarela: 0,
+            saldoSijaka: 0,
+            saldoBagihasilSijaka: 0,
+            totalSimpanan: 0,
+          ),
+          statistiks: DashboardStatistik(jumlahBilyetSijakaAktif: 0),
+        ),
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DashboardProvider>.value(
+          value: dashboardProvider,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  return ElevatedButton(
+                    onPressed: () {
+                      MemberActivationGuard.checkAndRequireActivation(context);
+                    },
+                    child: const Text('Klik Menu'),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Aktivasi Keanggotaan'), findsNothing);
+      await tester.tap(find.text('Klik Menu'));
+      await tester.pumpAndSettle();
+
+      // Memastikan popup modal aktivasi muncul
+      expect(find.text('Aktivasi Keanggotaan'), findsOneWidget);
+      expect(find.text('Bayar Sekarang'), findsOneWidget);
+      expect(find.text('Rp 17.500'), findsOneWidget);
+    });
   });
 }
 

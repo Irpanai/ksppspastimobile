@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/storage_service.dart';
 import '../models/dashboard_model.dart';
@@ -10,6 +10,7 @@ class DashboardProvider extends ChangeNotifier {
   DashboardData? _dashboardData;
   bool _isLoading = false;
   String? _errorMessage;
+  int? _lastStatusCode;
 
   bool _hasShownTunggakanDialog = false;
 
@@ -20,6 +21,7 @@ class DashboardProvider extends ChangeNotifier {
   DashboardData? get dashboardData => _dashboardData;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  int? get lastStatusCode => _lastStatusCode;
   bool get hasShownTunggakanDialog => _hasShownTunggakanDialog;
 
   Future<void> _loadCachedDashboard() async {
@@ -52,15 +54,18 @@ class DashboardProvider extends ChangeNotifier {
       _dashboardData = data;
       _isLoading = false;
       _errorMessage = null;
+      _lastStatusCode = 200;
       // Simpan ke cache lokal agar pembukaan berikutnya instan (0 ms)
       await StorageService.saveDashboardData(data.toJson());
       notifyListeners();
     } on ApiException catch (e) {
       _errorMessage = e.message;
+      _lastStatusCode = e.statusCode;
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Terjadi kesalahan saat memuat dashboard: ${e.toString()}';
+      _lastStatusCode = null;
       _isLoading = false;
       notifyListeners();
     }
@@ -70,6 +75,7 @@ class DashboardProvider extends ChangeNotifier {
     _dashboardData = null;
     _isLoading = false;
     _errorMessage = null;
+    _lastStatusCode = null;
     _hasShownTunggakanDialog = false;
     StorageService.clearDashboardData();
     notifyListeners();
