@@ -157,6 +157,7 @@ class AuthProvider extends ChangeNotifier {
     String? cabang,
     File? fotoWajah,
     File? fotoKtp,
+    bool autoAuthenticate = false,
   }) async {
     _status = AuthStatus.authenticating;
     _errorMessage = null;
@@ -187,7 +188,13 @@ class AuthProvider extends ChangeNotifier {
       );
       _token = loginData.token;
       _user = loginData.user;
-      _status = AuthStatus.authenticated;
+      if (autoAuthenticate) {
+        _status = AuthStatus.authenticated;
+      } else {
+        // Tahan transisi AuthWrapper agar halaman registrasi & pop up dialog
+        // tidak langsung di-unmount sebelum pengguna menekan tombol "Masuk Beranda".
+        _status = AuthStatus.unauthenticated;
+      }
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -201,6 +208,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Aktifkan status authenticated setelah user mengonfirmasi pendaftaran
+  void setAuthenticated() {
+    _status = AuthStatus.authenticated;
+    notifyListeners();
   }
 
   /// Fetch updated profile info from /auth/me

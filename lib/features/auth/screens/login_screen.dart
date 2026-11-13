@@ -7,6 +7,7 @@ import 'forgot_password_screen.dart';
 import '../widgets/data_consent_modal.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../main_nav/screens/main_nav_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool initialIsRegister;
@@ -99,7 +100,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.loginWithBiometrics();
-    if (!success && mounted) {
+    if (success && mounted) {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavScreen()),
+        (route) => false,
+      );
+    } else if (!success && mounted) {
       AppDialog.showError(
         context,
         title: 'Sesi Telah Berakhir',
@@ -177,96 +183,87 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      showDialog(
+      await showDialog(
         context: context,
-        barrierDismissible: true,
+        barrierDismissible: false,
         builder: (dialogContext) {
-          return GestureDetector(
-            onTap: () {
-              if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
-                Navigator.of(dialogContext, rootNavigator: true).pop();
-              }
-            },
-            behavior: HitTestBehavior.opaque,
-            child: Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-              child: GestureDetector(
-                onTap: () {
-                  if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
-                    Navigator.of(dialogContext, rootNavigator: true).pop();
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFECFDF5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Login Berhasil!',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Selamat datang kembali,\n${authProvider.user?.name ?? "Nasabah"}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
-                              Navigator.of(dialogContext, rootNavigator: true).pop();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1B5E20),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
-                          child: const Text('Lanjutkan', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFECFDF5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 48),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Login Berhasil!',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Selamat datang kembali,\n${authProvider.user?.name ?? "Nasabah"}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+                          Navigator.of(dialogContext, rootNavigator: true).pop();
+                        }
+                        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const MainNavScreen()),
+                          (route) => false,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F766E),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Masuk Beranda',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         },
       );
 
-      await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) {
-        final nav = Navigator.of(context, rootNavigator: true);
-        if (nav.canPop()) {
-          nav.pop();
-        }
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainNavScreen()),
+          (route) => false,
+        );
       }
     } else {
       final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';

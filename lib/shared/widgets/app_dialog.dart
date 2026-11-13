@@ -35,12 +35,14 @@ class AppDialog {
         primaryButtonColor: const Color(0xFFDC2626),
         secondaryButtonText: secondaryButtonText,
         onPrimaryPressed: () {
-          Navigator.of(context, rootNavigator: true).pop();
+          final nav = Navigator.maybeOf(context, rootNavigator: true);
+          if (nav != null && nav.canPop()) nav.pop();
           if (onConfirm != null) onConfirm();
         },
         onSecondaryPressed: secondaryButtonText != null
             ? () {
-                Navigator.of(context, rootNavigator: true).pop();
+                final nav = Navigator.maybeOf(context, rootNavigator: true);
+                if (nav != null && nav.canPop()) nav.pop();
                 if (onSecondaryPressed != null) onSecondaryPressed();
               }
             : null,
@@ -76,12 +78,14 @@ class AppDialog {
         primaryButtonColor: const Color(0xFFD97706),
         secondaryButtonText: secondaryButtonText,
         onPrimaryPressed: () {
-          Navigator.of(context, rootNavigator: true).pop();
+          final nav = Navigator.maybeOf(context, rootNavigator: true);
+          if (nav != null && nav.canPop()) nav.pop();
           if (onConfirm != null) onConfirm();
         },
         onSecondaryPressed: secondaryButtonText != null
             ? () {
-                Navigator.of(context, rootNavigator: true).pop();
+                final nav = Navigator.maybeOf(context, rootNavigator: true);
+                if (nav != null && nav.canPop()) nav.pop();
                 if (onSecondaryPressed != null) onSecondaryPressed();
               }
             : null,
@@ -121,12 +125,14 @@ class AppDialog {
         primaryButtonColor: primaryColor,
         secondaryButtonText: secondaryButtonText,
         onPrimaryPressed: () {
-          Navigator.of(context, rootNavigator: true).pop();
+          final nav = Navigator.maybeOf(context, rootNavigator: true);
+          if (nav != null && nav.canPop()) nav.pop();
           if (onConfirm != null) onConfirm();
         },
         onSecondaryPressed: secondaryButtonText != null
             ? () {
-                Navigator.of(context, rootNavigator: true).pop();
+                final nav = Navigator.maybeOf(context, rootNavigator: true);
+                if (nav != null && nav.canPop()) nav.pop();
                 if (onSecondaryPressed != null) onSecondaryPressed();
               }
             : null,
@@ -161,12 +167,14 @@ class AppDialog {
         primaryButtonColor: const Color(0xFF16A34A),
         secondaryButtonText: secondaryButtonText,
         onPrimaryPressed: () {
-          Navigator.of(context, rootNavigator: true).pop();
+          final nav = Navigator.maybeOf(context, rootNavigator: true);
+          if (nav != null && nav.canPop()) nav.pop();
           if (onConfirm != null) onConfirm();
         },
         onSecondaryPressed: secondaryButtonText != null
             ? () {
-                Navigator.of(context, rootNavigator: true).pop();
+                final nav = Navigator.maybeOf(context, rootNavigator: true);
+                if (nav != null && nav.canPop()) nav.pop();
                 if (onSecondaryPressed != null) onSecondaryPressed();
               }
             : null,

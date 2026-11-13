@@ -63,6 +63,11 @@ class KtpOcrResult {
   final String? nama;
   final String? alamat;
   final KtpAddressResult? addressDetail;
+  final String? tempatLahir;
+  final DateTime? tanggalLahir;
+  final String? jenisKelamin;
+  final String? agama;
+  final String? pekerjaan;
   final String? rawText;
   final bool isSuccess;
 
@@ -71,6 +76,11 @@ class KtpOcrResult {
     this.nama,
     this.alamat,
     this.addressDetail,
+    this.tempatLahir,
+    this.tanggalLahir,
+    this.jenisKelamin,
+    this.agama,
+    this.pekerjaan,
     this.rawText,
     this.isSuccess = false,
   });
@@ -148,16 +158,25 @@ class KtpOcrHelper {
     final nik = _extractNik(lineTexts, rawText);
     final nama = _extractNama(allLines, lineTexts, rawText, nik);
     final visualLines = _mergeVisualLines(allLines);
-    final addressDetail = parseAddressFromLines(
-      visualLines.isNotEmpty ? visualLines : lineTexts,
-    );
+    final targetLines = visualLines.isNotEmpty ? visualLines : lineTexts;
+    final addressDetail = parseAddressFromLines(targetLines);
     final alamat = addressDetail.formattedAlamat;
+
+    final birthData = _extractBirthData(targetLines, rawText, nik);
+    final gender = _extractGender(targetLines, rawText, nik);
+    final religion = _extractReligion(targetLines, rawText);
+    final job = _extractJob(targetLines, rawText);
 
     return KtpOcrResult(
       nik: nik,
       nama: nama,
       alamat: alamat,
       addressDetail: addressDetail.hasAnyAddress ? addressDetail : null,
+      tempatLahir: birthData['tempat'] as String?,
+      tanggalLahir: birthData['tanggal'] as DateTime?,
+      jenisKelamin: gender,
+      agama: religion,
+      pekerjaan: job,
       rawText: rawText,
       isSuccess: (nik != null && nik.isNotEmpty) ||
           (nama != null && nama.isNotEmpty) ||
@@ -898,5 +917,203 @@ class KtpOcrHelper {
     }
 
     return true;
+  }
+
+  // ==========================================
+  // PARSER TAMBAHAN: TEMPAT/TGL LAHIR, KELAMIN, AGAMA, PEKERJAAN
+  // ==========================================
+
+  /// Bersihkan teks nama tempat lahir dari noise OCR dan kata label KTP
+  static String _cleanPlaceText(String raw) {
+    var s = raw;
+    // Hapus label KTP dan variasi salah baca OCR
+    s = s.replaceAll(
+      RegExp(r'\b(?:TEMPAT|TENPAT|TEMPATIGL|TEMPATGL|TMP|TGL|TG1|IGL|LAHIR|LAHR|LAKIR)\b', caseSensitive: false),
+      ' ',
+    );
+    // Hapus karakter non huruf seperti simbol atau tanda baca
+    s = s.replaceAll(RegExp(r'[^a-zA-Z\s]'), ' ');
+    // Rapikan spasi ganda
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return s;
+  }
+
+  /// Ekstraksi Tempat dan Tanggal Lahir
+  static Map<String, dynamic> _extractBirthData(
+    List<String> lines,
+    String rawText,
+    String? nik,
+  ) {
+    String? tempat;
+    DateTime? tanggal;
+
+    // Pola 1: Baris TEMPAT / TGL LAHIR
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.contains('TEMPAT') || upper.contains('LAHIR') || upper.contains('TGL') || upper.contains('IGL')) {
+        // Hapus label awal jika ada
+        var cleaned = line.replaceFirst(
+          RegExp(r'^(?:TEMPAT|TENPAT|TMP)?[\s\/\&\|Iil!1]*(?:TGL|GL|IGL|TG1|TG|1GL|TGI)?[\s\/\&\|Iil!1]*(?:LAHIR|LAHR|LAKIR)?[\s\:\;\-\.]*', caseSensitive: false),
+          '',
+        ).trim();
+
+        // Cari pola tanggal dd-mm-yyyy / dd/mm/yyyy
+        final dateMatch = RegExp(r'(\d{1,2})[\s\-\/\.](\d{1,2})[\s\-\/\.](\d{2,4})').firstMatch(cleaned);
+        if (dateMatch != null) {
+          final d = int.tryParse(dateMatch.group(1)!);
+          final m = int.tryParse(dateMatch.group(2)!);
+          var y = int.tryParse(dateMatch.group(3)!);
+          if (y != null && y < 100) {
+            final curYear2D = DateTime.now().year % 100;
+            y = (y > curYear2D) ? (1900 + y) : (2000 + y);
+          }
+          if (d != null && m != null && y != null && d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+            try {
+              tanggal = DateTime(y, m, d);
+            } catch (_) {}
+          }
+
+          var placeCandidate = cleaned.substring(0, dateMatch.start);
+          final cleanedPlace = _cleanPlaceText(placeCandidate);
+          if (cleanedPlace.isNotEmpty && cleanedPlace.length >= 3 && !RegExp(r'\d').hasMatch(cleanedPlace)) {
+            tempat = _capitalizeWords(cleanedPlace);
+          }
+        } else if (tempat == null) {
+          final cleanedPlace = _cleanPlaceText(cleaned);
+          if (cleanedPlace.isNotEmpty && cleanedPlace.length >= 3 && !RegExp(r'\d').hasMatch(cleanedPlace)) {
+            tempat = _capitalizeWords(cleanedPlace);
+          }
+        }
+      }
+    }
+
+    // Pola 2: Fallback tanggal lahir dari NIK jika belum terdeteksi dari teks
+    if (tanggal == null && nik != null && nik.length == 16) {
+      final nikData = parseNikData(nik);
+      if (nikData != null && nikData['dateTime'] is DateTime) {
+        tanggal = nikData['dateTime'] as DateTime;
+      }
+    }
+
+    return {
+      'tempat': tempat,
+      'tanggal': tanggal,
+    };
+  }
+
+  /// Ekstraksi Jenis Kelamin
+  static String? _extractGender(List<String> lines, String rawText, String? nik) {
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.contains('JENIS KELAMIN') || upper.contains('KELAMIN') || upper.contains('LAKI') || upper.contains('PEREMPUAN')) {
+        if (upper.contains('PEREMPUAN')) {
+          return 'Perempuan';
+        }
+        if (upper.contains('LAKI')) {
+          return 'Laki-laki';
+        }
+      }
+    }
+
+    // Fallback dari NIK (Dukcapil standard: digit tanggal > 40 untuk perempuan)
+    if (nik != null && nik.length == 16) {
+      final nikData = parseNikData(nik);
+      if (nikData != null && nikData['jenis_kelamin'] is String) {
+        return nikData['jenis_kelamin'] as String;
+      }
+    }
+
+    return null;
+  }
+
+  /// Ekstraksi Agama
+  static String? _extractReligion(List<String> lines, String rawText) {
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.contains('AGAMA') ||
+          upper.contains('ISLAM') ||
+          upper.contains('KRISTEN') ||
+          upper.contains('KATOLIK') ||
+          upper.contains('HINDU') ||
+          upper.contains('BUDHA') ||
+          upper.contains('BUDDHA') ||
+          upper.contains('KONGHUCU')) {
+        if (upper.contains('ISLAM')) return 'Islam';
+        if (upper.contains('KATOLIK')) return 'Kristen Katolik';
+        if (upper.contains('KRISTEN')) return 'Kristen Protestan';
+        if (upper.contains('HINDU')) return 'Hindu';
+        if (upper.contains('BUDDHA') || upper.contains('BUDHA')) return 'Buddha';
+        if (upper.contains('KONGHUCU') || upper.contains('KHONGHUCU')) return 'Konghucu';
+      }
+    }
+    return null;
+  }
+
+  /// Ekstraksi Pekerjaan
+  static String? _extractJob(List<String> lines, String rawText) {
+    for (final line in lines) {
+      final upper = line.toUpperCase();
+      if (upper.contains('PEKERJAAN') ||
+          upper.contains('KARYAWAN') ||
+          upper.contains('WIRASWASTA') ||
+          upper.contains('PEGAWAI') ||
+          upper.contains('PNS') ||
+          upper.contains('PETANI') ||
+          upper.contains('PEDAGANG') ||
+          upper.contains('PELAJAR') ||
+          upper.contains('BURUH')) {
+        if (upper.contains('WIRASWASTA')) return 'Wiraswasta / Pengusaha';
+        if (upper.contains('KARYAWAN') || upper.contains('SWASTA')) return 'Pegawai Swasta';
+        if (upper.contains('PNS') || upper.contains('PEGAWAI NEGERI')) return 'Pegawai Negeri Sipil (PNS) / ASN';
+        if (upper.contains('PETANI') || upper.contains('PETERNAK') || upper.contains('NELAYAN')) return 'Petani / Peternak / Nelayan';
+        if (upper.contains('PEDAGANG')) return 'Pedagang';
+        if (upper.contains('PELAJAR') || upper.contains('MAHASISWA')) return 'Pelajar / Mahasiswa';
+        if (upper.contains('BURUH')) return 'Buruh Harian / Pekerja Lepas';
+        if (upper.contains('MENGURUS RUMAH TANGGA') || upper.contains('IBU RUMAH TANGGA')) return 'Ibu Rumah Tangga';
+        if (upper.contains('TNI') || upper.contains('POLRI') || upper.contains('POLISI')) return 'TNI / Polri';
+      }
+    }
+    return null;
+  }
+
+  /// Parsing data NIK (Tanggal lahir & Jenis kelamin standar Dukcapil)
+  static Map<String, dynamic>? parseNikData(String nik) {
+    final cleaned = normalizeOcrDigits(nik);
+    if (cleaned.length != 16) return null;
+    final dayPart = int.tryParse(cleaned.substring(6, 8));
+    final monthPart = int.tryParse(cleaned.substring(8, 10));
+    final yearPart = int.tryParse(cleaned.substring(10, 12));
+    if (dayPart == null || monthPart == null || yearPart == null) return null;
+
+    String gender = 'Laki-laki';
+    int realDay = dayPart;
+    if (dayPart > 40) {
+      gender = 'Perempuan';
+      realDay = dayPart - 40;
+    }
+
+    final curYear2Digits = DateTime.now().year % 100;
+    final birthYear = (yearPart > curYear2Digits) ? (1900 + yearPart) : (2000 + yearPart);
+
+    if (realDay >= 1 && realDay <= 31 && monthPart >= 1 && monthPart <= 12) {
+      try {
+        final dt = DateTime(birthYear, monthPart, realDay);
+        return {
+          'jenis_kelamin': gender,
+          'tanggal_lahir': dt,
+          'dateTime': dt,
+        };
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static String _capitalizeWords(String input) {
+    return input
+        .toLowerCase()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
   }
 }

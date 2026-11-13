@@ -39,11 +39,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final _nameController = TextEditingController();
   final _nikController = TextEditingController();
+  final _birthPlaceController = TextEditingController();
+  final _birthDateController = TextEditingController();
+  DateTime? _selectedBirthDate;
+  String _selectedGender = 'Laki-laki';
+  String? _selectedReligion = 'Islam';
+  final _jobController = TextEditingController(text: 'Wiraswasta / Pengusaha');
+
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _addressController = TextEditingController();
+
+  static const List<String> _religionOptions = [
+    'Islam',
+    'Kristen Protestan',
+    'Kristen Katolik',
+    'Hindu',
+    'Buddha',
+    'Konghucu',
+  ];
+
+  static const List<String> _jobOptions = [
+    'Pegawai Swasta',
+    'Wiraswasta / Pengusaha',
+    'Pegawai Negeri Sipil (PNS) / ASN',
+    'TNI / Polri',
+    'Pedagang',
+    'Petani / Peternak / Nelayan',
+    'Karyawan BUMN / BUMD',
+    'Profesional / Tenaga Medis',
+    'Guru / Dosen',
+    'Buruh Harian / Pekerja Lepas',
+    'Pelajar / Mahasiswa',
+    'Ibu Rumah Tangga',
+    'Lainnya',
+  ];
 
   // State Pemilihan Cabang (Provinsi -> Cabang)
   String? _selectedProvinceCabang;
@@ -87,18 +119,328 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _loadProvinces();
+    _nikController.addListener(_onNikChanged);
   }
 
   @override
   void dispose() {
+    _nikController.removeListener(_onNikChanged);
     _nameController.dispose();
     _nikController.dispose();
+    _birthPlaceController.dispose();
+    _birthDateController.dispose();
+    _jobController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  void _onNikChanged() {
+    final nik = _nikController.text.trim();
+    if (nik.length == 16) {
+      final nikData = KtpOcrHelper.parseNikData(nik);
+      if (nikData != null) {
+        if (_selectedBirthDate == null && nikData['dateTime'] is DateTime) {
+          final dt = nikData['dateTime'] as DateTime;
+          setState(() {
+            _selectedBirthDate = dt;
+            _birthDateController.text = _formatIndonesianDate(dt);
+          });
+        }
+        if (nikData['jenis_kelamin'] is String && (_selectedGender.isEmpty || _selectedGender == 'Laki-laki')) {
+          setState(() {
+            _selectedGender = nikData['jenis_kelamin'] as String;
+          });
+        }
+      }
+    }
+  }
+
+  String _formatIndonesianDate(DateTime dt) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  String _formatBackendDate(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _selectBirthDate() async {
+    final now = DateTime.now();
+    // Syarat umum anggota: minimal 17 tahun (memiliki KTP)
+    final maxDate = DateTime(now.year - 17, now.month, now.day);
+    final initialDate = _selectedBirthDate ?? DateTime(now.year - 25, 1, 1);
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isAfter(maxDate) ? maxDate : initialDate,
+      firstDate: DateTime(1930),
+      lastDate: maxDate,
+      helpText: 'PILIH TANGGAL LAHIR',
+      confirmText: 'PILIH',
+      cancelText: 'BATAL',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0F766E),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedBirthDate = picked;
+        _birthDateController.text = _formatIndonesianDate(picked);
+      });
+    }
+  }
+
+  void _openReligionSelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Pilih Agama',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...List.generate(_religionOptions.length, (index) {
+                  final rel = _religionOptions[index];
+                  final isSelected = _selectedReligion == rel;
+                  return InkWell(
+                    onTap: () {
+                      setState(() => _selectedReligion = rel);
+                      Navigator.pop(ctx);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFF0FDF4) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFF1F5F9),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF94A3B8),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            rel,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openJobSelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          builder: (sheetCtx, scrollController) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Pilih Pekerjaan',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Pilih sesuai profesi atau pekerjaan Anda saat ini',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: _jobOptions.length,
+                        itemBuilder: (itemCtx, index) {
+                          final job = _jobOptions[index];
+                          final isSelected = _jobController.text.trim() == job;
+                          return InkWell(
+                            onTap: () {
+                              if (job == 'Lainnya') {
+                                Navigator.pop(ctx);
+                                _promptCustomJob();
+                              } else {
+                                setState(() {
+                                  _jobController.text = job;
+                                });
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                              margin: const EdgeInsets.only(bottom: 6),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFFF0FDF4) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFF1F5F9),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isSelected ? Icons.check_circle_rounded : Icons.work_outline_rounded,
+                                    color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF94A3B8),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      job,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                  ),
+                                  if (job == 'Lainnya')
+                                    const Icon(Icons.edit_note_rounded, size: 18, color: Color(0xFF64748B)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _promptCustomJob() {
+    final customCtrl = TextEditingController(text: _jobController.text == 'Lainnya' ? '' : _jobController.text);
+    showDialog(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Ketik Pekerjaan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: customCtrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Contoh: Desainer Grafis, Barista, dsb',
+            isDense: true,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F766E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              if (customCtrl.text.trim().isNotEmpty) {
+                setState(() => _jobController.text = customCtrl.text.trim());
+              }
+              Navigator.pop(dCtx);
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Memuat daftar provinsi cabang dari API
@@ -404,6 +746,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (nama != null && nama.isNotEmpty) {
         _nameController.text = nama;
       }
+      if (ocrResult.tempatLahir != null && ocrResult.tempatLahir!.isNotEmpty) {
+        _birthPlaceController.text = ocrResult.tempatLahir!;
+      }
+      if (ocrResult.tanggalLahir != null) {
+        _selectedBirthDate = ocrResult.tanggalLahir;
+        _birthDateController.text = _formatIndonesianDate(ocrResult.tanggalLahir!);
+      }
+      if (ocrResult.jenisKelamin != null && ocrResult.jenisKelamin!.isNotEmpty) {
+        _selectedGender = ocrResult.jenisKelamin!;
+      }
+      if (ocrResult.agama != null && ocrResult.agama!.isNotEmpty) {
+        _selectedReligion = ocrResult.agama;
+      }
+      if (ocrResult.pekerjaan != null && ocrResult.pekerjaan!.isNotEmpty) {
+        _jobController.text = ocrResult.pekerjaan!;
+      }
       if (alamat != null && alamat.isNotEmpty) {
         final streetParts = <String>[
           if (addrDetail?.alamat != null && addrDetail!.alamat!.isNotEmpty)
@@ -442,14 +800,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final detectedFields = <String>[
         if (nik != null && nik.isNotEmpty) 'NIK',
         if (nama != null && nama.isNotEmpty) 'Nama',
+        if (ocrResult.tempatLahir != null && ocrResult.tempatLahir!.isNotEmpty) 'Tempat Lahir',
+        if (ocrResult.tanggalLahir != null) 'Tgl Lahir',
+        if (ocrResult.jenisKelamin != null) 'Jenis Kelamin',
+        if (ocrResult.agama != null) 'Agama',
+        if (ocrResult.pekerjaan != null) 'Pekerjaan',
         if (alamat != null && alamat.isNotEmpty) 'Alamat',
       ];
 
-      if (detectedFields.length == 3) {
-        _showSuccess('KTP berhasil dipindai! NIK, Nama, dan Alamat terisi otomatis.');
+      if (detectedFields.length >= 4) {
+        _showSuccess('KTP berhasil dipindai! ${detectedFields.join(', ')} terisi otomatis.');
       } else if (detectedFields.isNotEmpty) {
         _showSuccess(
-          '${detectedFields.join(' & ')} berhasil terbaca dari KTP. Silakan periksa & lengkapi kolom yang masih kosong.',
+          '${detectedFields.join(' & ')} berhasil terbaca dari KTP. Silakan periksa & lengkapi kolom lainnya.',
         );
       } else {
         _showWarning('Foto KTP tersimpan. AI belum dapat mendeteksi data dengan jelas, mohon isi manual.');
@@ -487,6 +850,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     Future<void> _submitRegister() async {
     final name = _nameController.text.trim();
     final nik = _nikController.text.trim();
+    final tempatLahir = _birthPlaceController.text.trim();
+    final job = _jobController.text.trim();
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -500,6 +865,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (nik.isEmpty || nik.length != 16) {
       _showWarning('Nomor Induk Kependudukan (NIK) harus 16 digit angka.');
+      return;
+    }
+
+    if (_fotoWajah == null) {
+      _showWarning('Foto selfie wajah wajib diambil terlebih dahulu untuk verifikasi identitas (KYC).');
+      return;
+    }
+
+    if (tempatLahir.isEmpty) {
+      _showWarning('Silakan masukkan tempat lahir sesuai KTP.');
+      return;
+    }
+
+    if (_selectedBirthDate == null) {
+      _showWarning('Silakan pilih tanggal lahir Anda.');
+      return;
+    }
+
+    if (_selectedGender.isEmpty) {
+      _showWarning('Silakan pilih jenis kelamin Anda.');
+      return;
+    }
+
+    if (_selectedReligion == null || _selectedReligion!.isEmpty) {
+      _showWarning('Silakan pilih agama Anda.');
+      return;
+    }
+
+    if (job.isEmpty) {
+      _showWarning('Silakan masukkan atau pilih pekerjaan Anda.');
       return;
     }
 
@@ -552,6 +947,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       nik: nik,
       noHp: phone,
       alamat: address,
+      tempatLahir: tempatLahir,
+      tanggalLahir: _formatBackendDate(_selectedBirthDate!),
+      jenisKelamin: _selectedGender,
+      agama: _selectedReligion,
+      pekerjaan: job,
       provinsi: _alamatProvinsi,
       kabupatenKota: _alamatKabupatenKota,
       kecamatan: _alamatKecamatan,
@@ -572,13 +972,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         buttonText: 'Masuk Beranda',
         barrierDismissible: false,
       );
-      if (!mounted) return;
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNavScreen()),
-        (route) => false,
-      );
+      // Aktifkan sesi login dan arahkan langsung ke Beranda
+      authProvider.setAuthenticated();
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainNavScreen()),
+          (route) => false,
+        );
+      }
     } else {
       _showError(authProvider.errorMessage ?? 'Pendaftaran gagal. Silakan coba lagi.');
     }
@@ -1402,8 +1804,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           Expanded(
                             child: _buildPhotoUploadCard(
-                              title: 'Foto Wajah',
-                              subtitle: 'Ambil Selfie',
+                              title: 'Foto Selfie *',
+                              subtitle: 'Ambil Selfie (Wajib)',
                               file: _fotoWajah,
                               bytes: _fotoWajahBytes,
                               onTap: _pickWajah,
@@ -1428,8 +1830,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ]),
                     const SizedBox(height: 24),
 
-                    // Section 2: Data Pribadi & Akun
-                    _buildSectionHeader('Data Pribadi & Keamanan Akun', Icons.security_rounded),
+                    // Section 2: Data Pribadi Sesuai KTP
+                    _buildSectionHeader('Data Pribadi (Sesuai KTP)', Icons.badge_outlined),
                     const SizedBox(height: 12),
                     _buildInputCard([
                       _buildTextField(
@@ -1444,7 +1846,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         label: 'Nomor Induk Kependudukan (NIK 16 Digit) *',
                         controller: _nikController,
                         hint: '3301xxxxxxxxxxxx',
-                        icon: Icons.badge_outlined,
+                        icon: Icons.credit_card_outlined,
                         keyboardType: TextInputType.number,
                         maxLength: 16,
                         inputFormatters: [
@@ -1454,6 +1856,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         enabled: !isLoading,
                       ),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                      
+                      // Tempat & Tanggal Lahir
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              label: 'Tempat Lahir *',
+                              controller: _birthPlaceController,
+                              hint: 'Contoh: Banyumas',
+                              icon: Icons.location_city_outlined,
+                              enabled: !isLoading,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Tanggal Lahir *',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                ),
+                                const SizedBox(height: 6),
+                                InkWell(
+                                  onTap: isLoading ? null : _selectBirthDate,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    height: 48,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _selectedBirthDate != null
+                                                ? _formatIndonesianDate(_selectedBirthDate!)
+                                                : 'Pilih Tanggal',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: _selectedBirthDate != null
+                                                  ? const Color(0xFF1E293B)
+                                                  : const Color(0xFF94A3B8),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
+
+                      // Jenis Kelamin
+                      _buildGenderSelector(isLoading),
+                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
+
+                      // Agama
+                      _buildDropdownSelector(
+                        label: 'Agama *',
+                        value: _selectedReligion ?? 'Pilih Agama',
+                        hasValue: _selectedReligion != null,
+                        icon: Icons.account_balance_outlined,
+                        enabled: !isLoading,
+                        onTap: _openReligionSelector,
+                      ),
+                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
+
+                      // Pekerjaan / Profesi
+                      _buildJobField(isLoading),
+                    ]),
+                    const SizedBox(height: 24),
+
+                    // Section 3: Keamanan Akun & Kontak
+                    _buildSectionHeader('Keamanan Akun & Kontak', Icons.security_rounded),
+                    const SizedBox(height: 12),
+                    _buildInputCard([
                       _buildTextField(
                         label: 'Nomor Handphone / WhatsApp *',
                         controller: _phoneController,
@@ -1513,7 +2004,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ]),
                     const SizedBox(height: 24),
 
-                    // Section 3: Domisili & Pilihan Kantor Cabang
+                    // Section 4: Domisili & Pilihan Kantor Cabang
                     _buildSectionHeader('Domisili & Kantor Cabang KSPPS', Icons.location_city_rounded),
                     const SizedBox(height: 12),
                     _buildInputCard([
@@ -1845,6 +2336,153 @@ class _RegisterScreenState extends State<RegisterScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenderSelector(bool isLoading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Jenis Kelamin *',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildGenderCard(
+                label: 'Laki-laki',
+                icon: Icons.male_rounded,
+                isSelected: _selectedGender == 'Laki-laki',
+                onTap: isLoading ? null : () => setState(() => _selectedGender = 'Laki-laki'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildGenderCard(
+                label: 'Perempuan',
+                icon: Icons.female_rounded,
+                isSelected: _selectedGender == 'Perempuan',
+                onTap: isLoading ? null : () => setState(() => _selectedGender = 'Perempuan'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenderCard({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobField(bool isLoading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Pekerjaan / Profesi *',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+            ),
+            InkWell(
+              onTap: isLoading ? null : _openJobSelector,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  children: [
+                    Icon(Icons.list_alt_rounded, size: 14, color: Color(0xFF0F766E)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Pilih Daftar',
+                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: isLoading ? null : _openJobSelector,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.work_outline_rounded, color: Color(0xFF94A3B8), size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _jobController.text.trim().isNotEmpty
+                        ? _jobController.text.trim()
+                        : 'Pilih atau ketik pekerjaan Anda',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: _jobController.text.trim().isNotEmpty
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFF94A3B8),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF94A3B8), size: 22),
+              ],
             ),
           ),
         ),

@@ -18,6 +18,7 @@ class DashboardAlertBanner extends StatelessWidget {
   final VoidCallback onActionTap;
   final VoidCallback? onCardTap;
   final EdgeInsetsGeometry margin;
+  final int? maxSubtitleLines;
 
   const DashboardAlertBanner({
     super.key,
@@ -35,6 +36,7 @@ class DashboardAlertBanner extends StatelessWidget {
     this.buttonColor,
     this.onCardTap,
     this.margin = const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    this.maxSubtitleLines,
   });
 
   /// Preset amber untuk Menunggu Pembayaran & Perhatian Status Menunggak
@@ -48,6 +50,7 @@ class DashboardAlertBanner extends StatelessWidget {
     VoidCallback? onCardTap,
     Color? buttonColor,
     EdgeInsetsGeometry margin = const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    int? maxSubtitleLines,
   }) {
     return DashboardAlertBanner(
       key: key,
@@ -65,6 +68,7 @@ class DashboardAlertBanner extends StatelessWidget {
       onActionTap: onActionTap,
       onCardTap: onCardTap ?? onActionTap,
       margin: margin,
+      maxSubtitleLines: maxSubtitleLines,
     );
   }
 
@@ -79,6 +83,7 @@ class DashboardAlertBanner extends StatelessWidget {
     VoidCallback? onCardTap,
     Color? buttonColor,
     EdgeInsetsGeometry margin = const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    int? maxSubtitleLines,
   }) {
     return DashboardAlertBanner(
       key: key,
@@ -96,6 +101,7 @@ class DashboardAlertBanner extends StatelessWidget {
       onActionTap: onActionTap,
       onCardTap: onCardTap ?? onActionTap,
       margin: margin,
+      maxSubtitleLines: maxSubtitleLines,
     );
   }
 
@@ -150,11 +156,12 @@ class DashboardAlertBanner extends StatelessWidget {
                           fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: maxSubtitleLines,
+                        overflow: maxSubtitleLines != null ? TextOverflow.ellipsis : TextOverflow.visible,
+                        softWrap: true,
                         style: TextStyle(
                           color: subtitleColor,
                           fontSize: 11.5,
