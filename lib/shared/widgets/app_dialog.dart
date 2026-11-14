@@ -16,6 +16,8 @@ class AppDialog {
     String? secondaryButtonText,
     VoidCallback? onSecondaryPressed,
     bool barrierDismissible = true,
+    bool showCloseButton = false,
+    VoidCallback? onClose,
   }) {
     // User request: Jangan munculkan pesan error timeout
     if (message.trim().isEmpty || message.toLowerCase().contains('timeout')) {
@@ -34,6 +36,8 @@ class AppDialog {
         primaryButtonText: buttonText,
         primaryButtonColor: const Color(0xFFDC2626),
         secondaryButtonText: secondaryButtonText,
+        showCloseButton: showCloseButton,
+        onClose: onClose,
         onPrimaryPressed: () {
           final nav = Navigator.maybeOf(context, rootNavigator: true);
           if (nav != null && nav.canPop()) nav.pop();
@@ -60,6 +64,8 @@ class AppDialog {
     String? secondaryButtonText,
     VoidCallback? onSecondaryPressed,
     bool barrierDismissible = true,
+    bool showCloseButton = false,
+    VoidCallback? onClose,
   }) {
     if (message.trim().isEmpty || message.toLowerCase().contains('timeout')) {
       return Future.value(null);
@@ -77,6 +83,8 @@ class AppDialog {
         primaryButtonText: buttonText,
         primaryButtonColor: const Color(0xFFD97706),
         secondaryButtonText: secondaryButtonText,
+        showCloseButton: showCloseButton,
+        onClose: onClose,
         onPrimaryPressed: () {
           final nav = Navigator.maybeOf(context, rootNavigator: true);
           if (nav != null && nav.canPop()) nav.pop();

@@ -273,7 +273,8 @@ class _LoginScreenState extends State<LoginScreen> {
           title: 'Status Keanggotaan Keluar',
           message: errorMsg,
           buttonText: 'Daftar Ulang Sekarang',
-          secondaryButtonText: 'Tutup',
+          showCloseButton: true,
+          barrierDismissible: true,
           onConfirm: () {
             _switchTab(false);
           },
