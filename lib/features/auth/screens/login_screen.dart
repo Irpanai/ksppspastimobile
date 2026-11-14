@@ -267,11 +267,24 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       final errorMsg = authProvider.errorMessage ?? 'Gagal login. Silakan periksa kembali email & password Anda.';
-      AppDialog.showError(
-        context,
-        title: 'Gagal Masuk',
-        message: errorMsg,
-      );
+      if (errorMsg.toLowerCase().contains('keluar') || errorMsg.toLowerCase().contains('daftar ulang')) {
+        AppDialog.showWarning(
+          context,
+          title: 'Status Keanggotaan Keluar',
+          message: errorMsg,
+          buttonText: 'Daftar Ulang Sekarang',
+          secondaryButtonText: 'Tutup',
+          onConfirm: () {
+            _switchTab(false);
+          },
+        );
+      } else {
+        AppDialog.showError(
+          context,
+          title: 'Gagal Masuk',
+          message: errorMsg,
+        );
+      }
     }
   }
 
