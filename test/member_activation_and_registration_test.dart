@@ -22,7 +22,6 @@ import 'package:digital_coop/features/home/widgets/wajib_simpanan_modal_dialog.d
 import 'package:digital_coop/features/payment/models/payment_model.dart';
 import 'package:digital_coop/shared/widgets/dashboard_alert_banner.dart';
 import 'package:digital_coop/core/utils/member_activation_guard.dart';
-import 'package:digital_coop/shared/widgets/app_dialog.dart';
 
 void main() {
   group('MemberStatusResolver & status sync', () {

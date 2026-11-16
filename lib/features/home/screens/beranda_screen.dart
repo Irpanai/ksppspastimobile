@@ -128,15 +128,16 @@ class _BerandaScreenState extends State<BerandaScreen> {
     }
 
     final statusInfo = _resolveCurrentMemberStatus(context);
+    final isKeluar = statusInfo.displayStatus == 'KELUAR';
 
-    // Nasabah baru / anggota belum aktif (belum melunasi Simpanan Pokok & Wajib)
-    if (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid) {
+    // Nasabah baru / anggota belum aktif / anggota keluar (belum melunasi Simpanan Pokok & Wajib)
+    if (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid || isKeluar) {
       if (!dashboardProvider.hasShownTunggakanDialog) {
         dashboardProvider.markTunggakanDialogShown();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            if (!statusInfo.isPokokPaid) {
-              WajibSimpananModalDialog.show(context);
+            if (!statusInfo.isPokokPaid || isKeluar) {
+              WajibSimpananModalDialog.show(context, isReactivation: isKeluar);
             } else if (dashboardAnggota != null) {
               TunggakanModalDialog.show(context, dashboardAnggota, saldoPokok);
             }
@@ -187,7 +188,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
         (anggota.isMenunggak || anggota.tunggakanWajib.isNotEmpty);
     final pendingPayments = paymentProvider.pendingPayments;
 
-    final bool shouldShowActivationBanner = (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid) &&
+    final isKeluar = statusInfo.displayStatus == 'KELUAR';
+    final bool shouldShowActivationBanner = (!statusInfo.isPokokPaid || !statusInfo.isWajibPaid || isKeluar) &&
         dashboardProvider.dashboardData != null &&
         !dashboardProvider.isLoading;
 
@@ -221,7 +223,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
                       if (pendingPayments.isNotEmpty)
                         _buildPendingPaymentBanner(context, pendingPayments),
                       if (shouldShowActivationBanner)
-                        _buildSimpananPokokBanner(context, needsPokok: !statusInfo.isPokokPaid),
+                        _buildSimpananPokokBanner(
+                          context,
+                          needsPokok: !statusInfo.isPokokPaid || isKeluar,
+                          isReactivation: isKeluar,
+                        ),
                       if (isMenunggak)
                         _buildTunggakanWarningBanner(context, anggota, saldoPokok),
                       const SizedBox(height: 24),
@@ -266,21 +272,29 @@ class _BerandaScreenState extends State<BerandaScreen> {
     );
   }
 
-  Widget _buildSimpananPokokBanner(BuildContext context, {bool needsPokok = true}) {
+  Widget _buildSimpananPokokBanner(
+    BuildContext context, {
+    bool needsPokok = true,
+    bool isReactivation = false,
+  }) {
     final targetType = needsPokok ? 'simpanan_pokok_wajib' : 'simpanan_wajib';
 
     return DashboardAlertBanner.emerald(
-      title: needsPokok
-          ? 'Bayar Simpanan Pokok & Wajib'
-          : 'Aktivasi: Bayar Simpanan Wajib',
-      subtitle: needsPokok
-          ? 'Bayar Simpanan Pokok Rp 15.000 & Wajib Rp 2.500 agar status anggota Anda Aktif.'
-          : 'Lunasi Simpanan Wajib Rp 2.500 untuk mengaktifkan status anggota Anda.',
+      title: isReactivation
+          ? 'Daftar Ulang & Aktivasi Keanggotaan'
+          : (needsPokok
+              ? 'Bayar Simpanan Pokok & Wajib'
+              : 'Aktivasi: Bayar Simpanan Wajib'),
+      subtitle: isReactivation
+          ? 'Status Anda sebelumnya Keluar. Bayar Simpanan Pokok Rp 15.000 & Wajib Rp 2.500 agar aktif kembali.'
+          : (needsPokok
+              ? 'Bayar Simpanan Pokok Rp 15.000 & Wajib Rp 2.500 agar status anggota Anda Aktif.'
+              : 'Lunasi Simpanan Wajib Rp 2.500 untuk mengaktifkan status anggota Anda.'),
       actionLabel: 'Bayar',
       icon: Icons.how_to_reg_rounded,
       onCardTap: () {
         if (needsPokok) {
-          WajibSimpananModalDialog.show(context);
+          WajibSimpananModalDialog.show(context, isReactivation: isReactivation);
         } else {
           Navigator.push(
             context,
@@ -325,6 +339,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final displayName = dashboardAnggota?.nama.isNotEmpty == true
         ? dashboardAnggota!.nama
         : (authUser?.name.isNotEmpty == true ? authUser!.name : 'Nasabah');
+
+    final callName = dashboardAnggota?.effectiveCallName ??
+        authUser?.effectiveCallName ??
+        _extractCallName(displayName);
 
     final noAnggota = dashboardAnggota?.noAnggota ?? authUser?.noAnggota ?? authUser?.anggota?.noAnggota ?? '';
     final cabang = dashboardAnggota?.cabang ?? authUser?.cabang ?? authUser?.anggota?.cabang ?? 'KSPPS PASTI';
@@ -371,7 +389,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Halo, $displayName!',
+                        'Halo, $callName!',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -461,6 +479,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         ],
       ),
     );
+  }
+
+  String _extractCallName(String fullName) {
+    final clean = fullName.trim();
+    if (clean.isEmpty) return 'Nasabah';
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'Nasabah';
+    final firstLower = parts[0].toLowerCase();
+    if (parts.length > 1 && ['muhammad', 'm.', 'moh.', 'muh.', 'h.', 'hj.'].contains(firstLower)) {
+      return parts[1];
+    }
+    return parts[0];
   }
 
   Widget _buildInitials(String name) {

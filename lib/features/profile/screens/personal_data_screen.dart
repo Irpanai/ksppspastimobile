@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
 class PersonalDataScreen extends StatefulWidget {
@@ -115,7 +116,14 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isUpdating = context.watch<ProfileProvider>().isUpdating;
+    final profileProvider = context.watch<ProfileProvider>();
+    final isUpdating = profileProvider.isUpdating;
+    final authUser = context.watch<AuthProvider>().user;
+    final anggota = profileProvider.profileData?.anggota ?? authUser?.anggota;
+    final user = profileProvider.profileData?.user ?? authUser;
+    final bool isReaktivasi = anggota?.isReaktivasi == true || user?.isReaktivasi == true;
+    final String? noAnggota = anggota?.noAnggota ?? user?.noAnggota;
+    final String? noAnggotaLama = anggota?.noAnggotaLama ?? user?.noAnggotaLama;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -134,6 +142,12 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (isReaktivasi) ...[
+                      _buildReaktivasiInfoCard(
+                        noAnggota: noAnggota ?? '-',
+                        noAnggotaLama: noAnggotaLama ?? '-',
+                      ),
+                    ],
                     _buildInfoAlert('Lengkapi data identitas (KYC) Anda untuk memenuhi standar operasional dan keamanan layanan KSPPS.'),
                     _buildSectionHeader('Data Pribadi (KYC)', Icons.assignment_ind_outlined),
                     const SizedBox(height: 12),
@@ -198,6 +212,76 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
             ),
           ),
         ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReaktivasiInfoCard({required String noAnggota, required String noAnggotaLama}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDDD6FE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.history_rounded, color: Color(0xFF7C3AED), size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Data Reaktivasi Keanggotaan',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF5B21B6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEDE9FE)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Nomor Anggota Saat Ini', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(noAnggota, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEDE9FE)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Nomor Anggota Sebelumnya', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(noAnggotaLama, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED))),
+              ],
+            ),
+          ),
         ],
       ),
     );

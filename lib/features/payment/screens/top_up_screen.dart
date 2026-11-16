@@ -5,6 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/dashboard_alert_banner.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../home/models/dashboard_model.dart';
 import '../../sijaka/screens/sijaka_submission_screen.dart';
@@ -220,8 +221,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
     _amountController.text = AppCurrency.format(total).replaceAll('Rp ', '');
   }
 
-  void _onTypeChanged(String type, bool isPokokPaid) {
-    if ((type == 'simpanan_pokok' || type == 'simpanan_pokok_wajib') && isPokokPaid) {
+  void _onTypeChanged(String type, bool isPokokPaid, {bool isKeluar = false}) {
+    if (!isKeluar && (type == 'simpanan_pokok' || type == 'simpanan_pokok_wajib') && isPokokPaid) {
       _showPokokAlreadyPaidDialog();
       return;
     }
@@ -404,7 +405,24 @@ class _TopUpScreenState extends State<TopUpScreen> {
     final dashboardData = context.watch<DashboardProvider>().dashboardData;
     final dashboard = dashboardData?.ringkasanSaldo;
     final anggota = dashboardData?.anggota;
-    final isPokokPaid = (dashboard?.saldoPokok ?? 0) >= _pokokNominal;
+
+    dynamic authUser;
+    try {
+      authUser = context.watch<AuthProvider>().user;
+    } catch (_) {
+      authUser = null;
+    }
+
+    final rawStatus = (anggota?.statusKeanggotaan ??
+            anggota?.status ??
+            authUser?.statusKeanggotaan ??
+            authUser?.anggota?.status ??
+            '')
+        .trim()
+        .toLowerCase();
+    final isKeluar = rawStatus == 'keluar';
+
+    final isPokokPaid = !isKeluar && ((dashboard?.saldoPokok ?? 0) >= _pokokNominal);
     final paymentProvider = context.watch<PaymentProvider>();
     final isCreating = paymentProvider.isCreatingToken;
 
@@ -442,14 +460,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _buildTypeSelector(isPokokPaid),
+                  _buildTypeSelector(isPokokPaid, isKeluar: isKeluar),
                   const SizedBox(height: 24),
 
                   // Content based on selected type
                   if (_selectedType == 'pembukaan_sijaka') ...[
                     _buildSijakaPromoCard(),
                   ] else if (_selectedType == 'simpanan_pokok_wajib' && !isPokokPaid) ...[
-                    _buildPokokWajibSection(),
+                    _buildPokokWajibSection(isKeluar: isKeluar),
                   ] else if (_selectedType == 'simpanan_pokok') ...[
                     _buildPokokSection(isPokokPaid),
                   ] else if (_selectedType == 'simpanan_wajib') ...[
@@ -470,7 +488,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
         ],
       ),
       bottomNavigationBar: _selectedType != 'pembukaan_sijaka'
-          ? _buildBottomBar(isCreating, isPokokPaid)
+          ? _buildBottomBar(isCreating, isPokokPaid, isKeluar: isKeluar)
           : null,
     );
   }
@@ -559,18 +577,21 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
-  Widget _buildTypeSelector(bool isPokokPaid) {
+  Widget _buildTypeSelector(bool isPokokPaid, {bool isKeluar = false}) {
     return Column(
       children: [
         if (!isPokokPaid) ...[
           _buildTypeCard(
             type: 'simpanan_pokok_wajib',
-            title: 'Aktivasi Anggota (Pokok + Wajib)',
-            subtitle: 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x biaya layanan',
-            badgeText: 'Khusus Baru',
+            title: isKeluar ? 'Daftar Ulang (Pokok + Wajib)' : 'Aktivasi Anggota (Pokok + Wajib)',
+            subtitle: isKeluar
+                ? 'Bayar Simpanan Pokok Rp 15.000 + Wajib agar status aktif kembali'
+                : 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x biaya layanan',
+            badgeText: isKeluar ? 'Daftar Ulang' : 'Khusus Baru',
             icon: Icons.how_to_reg_rounded,
             isHighlight: true,
             isSuccessBadge: true,
+            isKeluar: isKeluar,
           ),
           const SizedBox(height: 10),
         ],
@@ -580,6 +601,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           subtitle: 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
           badgeText: 'Fleksibel',
           icon: Icons.payments_outlined,
+          isKeluar: isKeluar,
         ),
         const SizedBox(height: 10),
         _buildTypeCard(
@@ -588,8 +610,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
           subtitle: 'Kewajiban rutin bulanan anggota • Rp 2.500/bulan',
           badgeText: 'Wajib Bulanan',
           icon: Icons.calendar_month_outlined,
+          isKeluar: isKeluar,
         ),
-        const SizedBox(height: 10),
         _buildTypeCard(
           type: 'simpanan_pokok',
           title: 'Simpanan Pokok',
@@ -600,6 +622,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           icon: Icons.shield_outlined,
           isLocked: isPokokPaid,
           isSuccessBadge: isPokokPaid,
+          isKeluar: isKeluar,
         ),
         const SizedBox(height: 10),
         _buildTypeCard(
@@ -609,6 +632,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           badgeText: 'Bagi Hasil',
           icon: Icons.pie_chart_outline_rounded,
           isHighlight: true,
+          isKeluar: isKeluar,
         ),
       ],
     );
@@ -623,13 +647,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
     bool isHighlight = false,
     bool isLocked = false,
     bool isSuccessBadge = false,
+    bool isKeluar = false,
   }) {
     final isSelected = _selectedType == type;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _onTypeChanged(type, isLocked),
+        onTap: () => _onTypeChanged(type, isLocked, isKeluar: isKeluar),
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1745,8 +1770,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
-  // --- 3A. PAKET AKTIVASI ANGGOTA BARU (POKOK + WAJIB SEKALIGUS) ---
-  Widget _buildPokokWajibSection() {
+  // --- 3A. PAKET AKTIVASI ANGGOTA BARU / DAFTAR ULANG (POKOK + WAJIB SEKALIGUS) ---
+  Widget _buildPokokWajibSection({bool isKeluar = false}) {
     final startMonthName = _months.firstWhere(
       (m) => m['id'] == _wajibStartMonth,
       orElse: () => {'name': 'Bulan $_wajibStartMonth'},
@@ -1760,9 +1785,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoCard(
-          title: 'Paket Aktivasi Anggota Baru (Hemat Biaya Layanan)',
-          desc:
-              'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib dalam 1 transaksi agar status keanggotaan Anda langsung Aktif tanpa bayar biaya layanan 2 kali.',
+          title: isKeluar
+              ? 'Paket Daftar Ulang & Aktivasi (Hemat Biaya Layanan)'
+              : 'Paket Aktivasi Anggota Baru (Hemat Biaya Layanan)',
+          desc: isKeluar
+              ? 'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib awal dalam 1 transaksi agar status keanggotaan Anda langsung Aktif kembali tanpa bayar biaya layanan 2 kali.'
+              : 'Gabungan Simpanan Pokok (Rp 15.000) dan Simpanan Wajib dalam 1 transaksi agar status keanggotaan Anda langsung Aktif tanpa bayar biaya layanan 2 kali.',
           icon: Icons.how_to_reg_rounded,
           iconColor: const Color(0xFF0E7955),
           bgColor: const Color(0xFFECFDF5),
@@ -3017,8 +3045,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
-  Widget _buildBottomBar(bool isCreating, bool isPokokPaid) {
-    final isDisabled = (_selectedType == 'simpanan_pokok' || _selectedType == 'simpanan_pokok_wajib') && isPokokPaid;
+  Widget _buildBottomBar(bool isCreating, bool isPokokPaid, {bool isKeluar = false}) {
+    final isDisabled = !isKeluar && (_selectedType == 'simpanan_pokok' || _selectedType == 'simpanan_pokok_wajib') && isPokokPaid;
     final channels = context.watch<PaymentProvider>().activeChannels;
     final selectedChannel = channels.where((c) => c.code == _selectedPaymentMethod).firstOrNull;
     final int adminFee = selectedChannel?.calculateFee(_parsedAmount) ?? 0;
@@ -3112,7 +3140,9 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     : Text(
-                        isDisabled ? 'Sudah Lunas' : 'Bayar Sekarang',
+                        isDisabled
+                            ? 'Sudah Lunas'
+                            : (isKeluar ? 'Bayar & Aktifkan Kembali' : 'Bayar Sekarang'),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
               ),

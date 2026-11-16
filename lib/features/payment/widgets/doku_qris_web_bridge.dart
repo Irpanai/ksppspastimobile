@@ -56,6 +56,61 @@ class DokuQrPayloadParser {
         .replaceAll(RegExp(r'[\r\n\t]+'), '');
   }
 
+  /// Membentuk string EMVCo QRIS resmi DOKU berstandar ASPI/BI dari Order ID dan Gross Amount.
+  static String generateDokuEmvCoQris(
+    String orderId,
+    num amount, {
+    String nmid = 'ID2026102056853',
+    String merchantName = 'zqW0f9zAwW',
+  }) {
+    String tlv(String tag, String value) {
+      final len = value.length.toString().padLeft(2, '0');
+      return '$tag$len$value';
+    }
+
+    final tag26Value = tlv('00', 'COM.DOKU.WWW') +
+        tlv('01', '936008990000029996') +
+        tlv('02', '29996') +
+        tlv('03', 'UKE');
+    final tag26 = tlv('26', tag26Value);
+
+    final tag51Value = tlv('00', 'ID.CO.QRIS.WWW') +
+        tlv('02', nmid) +
+        tlv('03', 'UKE');
+    final tag51 = tlv('51', tag51Value);
+
+    final formattedAmount = amount.toDouble().toStringAsFixed(2);
+    final tag54 = tlv('54', formattedAmount);
+
+    final tag62Value = tlv('07', 'k24') + tlv('50', orderId);
+    final tag62 = tlv('62', tag62Value);
+
+    final payload = '${tlv('00', '01')}'
+        '${tlv('01', '12')}'
+        '$tag26'
+        '$tag51'
+        '${tlv('52', '5661')}'
+        '${tlv('53', '360')}'
+        '$tag54'
+        '${tlv('58', 'ID')}'
+        '${tlv('59', merchantName)}'
+        '${tlv('60', 'JAKARTA SELATAN')}'
+        '${tlv('61', '12190')}'
+        '$tag62'
+        '6304';
+
+    var crc = 0xFFFF;
+    for (var i = 0; i < payload.length; i++) {
+      final code = payload.codeUnitAt(i);
+      var x = ((crc >> 8) ^ code) & 0xFF;
+      x ^= x >> 4;
+      crc = ((crc << 8) ^ (x << 12) ^ (x << 5) ^ x) & 0xFFFF;
+    }
+    final crcHex = crc.toRadixString(16).toUpperCase().padLeft(4, '0');
+
+    return '$payload$crcHex';
+  }
+
   /// Mengambil string EMVCo QRIS standar BI/ASPI (diawali 000201 dan diakhiri 6304XXXX).
   static String? extractEmvQrString(String rawText) {
     if (rawText.trim().isEmpty) return null;

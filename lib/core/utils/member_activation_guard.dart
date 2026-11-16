@@ -52,7 +52,30 @@ class MemberActivationGuard {
   /// popup modal aktivasi akun (Simpanan Pokok + Wajib) dan mengembalikan false.
   static bool checkAndRequireActivation(BuildContext context) {
     if (!isActivated(context)) {
-      WajibSimpananModalDialog.show(context);
+      DashboardProvider? dashboardProvider;
+      try {
+        dashboardProvider = context.read<DashboardProvider>();
+      } catch (_) {
+        dashboardProvider = null;
+      }
+
+      AuthProvider? authProvider;
+      try {
+        authProvider = context.read<AuthProvider>();
+      } catch (_) {
+        authProvider = null;
+      }
+
+      final rawStatus = (dashboardProvider?.dashboardData?.anggota?.statusKeanggotaan ??
+              dashboardProvider?.dashboardData?.anggota?.status ??
+              authProvider?.user?.statusKeanggotaan ??
+              authProvider?.user?.anggota?.status ??
+              '')
+          .trim()
+          .toLowerCase();
+      final isKeluar = rawStatus == 'keluar';
+
+      WajibSimpananModalDialog.show(context, isReactivation: isKeluar);
       return false;
     }
     return true;

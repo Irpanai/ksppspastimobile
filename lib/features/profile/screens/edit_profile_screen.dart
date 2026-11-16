@@ -19,6 +19,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
+  late TextEditingController _nicknameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _nikController;
@@ -36,6 +37,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final anggota = profileProvider.profileData?.anggota;
 
     _nameController = TextEditingController(text: profileProvider.profileData?.user.name ?? authUser?.name ?? '');
+    _nicknameController = TextEditingController(
+      text: profileProvider.profileData?.user.namaPanggilan ?? authUser?.namaPanggilan ?? '',
+    );
     _emailController = TextEditingController(text: profileProvider.profileData?.user.email ?? authUser?.email ?? '');
     _phoneController = TextEditingController(text: anggota?.noHp ?? anggota?.noTelpon ?? authUser?.anggota?.noHp ?? '');
     _nikController = TextEditingController(text: anggota?.nik ?? anggota?.noKtp ?? authUser?.anggota?.nik ?? '');
@@ -46,6 +50,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nicknameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _nikController.dispose();
@@ -56,6 +61,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _submitUpdate() async {
     final name = _nameController.text.trim();
+    final nickname = _nicknameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
     final nik = _nikController.text.trim();
@@ -67,6 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final updateData = <String, dynamic>{
       'name': name,
+      'nama_panggilan': nickname,
       if (email.isNotEmpty) 'email': email,
       if (phone.isNotEmpty) ...{
         'no_hp': phone,
@@ -172,7 +179,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
     final isUpdating = profileProvider.isUpdating;
-    final user = profileProvider.profileData?.user ?? context.watch<AuthProvider>().user;
+    final authUser = context.watch<AuthProvider>().user;
+    final user = profileProvider.profileData?.user ?? authUser;
+    final anggota = profileProvider.profileData?.anggota ?? authUser?.anggota;
+    final bool isReaktivasi = anggota?.isReaktivasi == true || user?.isReaktivasi == true;
+    final String? noAnggotaLama = anggota?.noAnggotaLama ?? user?.noAnggotaLama;
     final photoUrl = user?.fullProfilePhotoUrl ?? ApiConstants.resolveImageUrl(user?.profilePhotoUrl);
     final userName = user?.name ?? 'Nasabah';
 
@@ -273,6 +284,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _buildInputCard([
                       _buildTextField('Nama Lengkap', Icons.person_outline, _nameController, enabled: !isUpdating),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                      _buildTextField(
+                        'Nama Panggilan',
+                        Icons.face_rounded,
+                        _nicknameController,
+                        hint: 'Contoh: Irfan (Sapaan di Beranda)',
+                        enabled: !isUpdating,
+                      ),
+                      const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField('Email', Icons.email_outlined, _emailController, keyboardType: TextInputType.emailAddress, enabled: !isUpdating),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField(
@@ -300,6 +319,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ],
                         enabled: !isUpdating,
                       ),
+                      if (isReaktivasi && noAnggotaLama != null && noAnggotaLama.isNotEmpty) ...[
+                        const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                        _buildTextField(
+                          'Nomor Anggota Sebelumnya (Eks)',
+                          Icons.history_rounded,
+                          TextEditingController(text: noAnggotaLama),
+                          enabled: false,
+                        ),
+                      ],
                     ]),
                     const SizedBox(height: 24),
 

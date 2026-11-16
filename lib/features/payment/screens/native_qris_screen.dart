@@ -64,7 +64,23 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     _payment = widget.paymentResponse;
     _extractedQrBytes = widget.initialQrBytes;
     _extractedQrImageUrl = widget.initialQrImageUrl;
-    final initialQr = _payment?.qrString?.trim() ?? '';
+
+    // Pastikan string EMVCo QRIS selalu terisi resmi dari payload atau generator standar DOKU jika tidak menggunakan fallback WebView
+    var initialQr = _payment?.qrString?.trim() ?? '';
+    if (initialQr.isEmpty &&
+        _payment != null &&
+        _payment!.orderId.isNotEmpty &&
+        _payment!.snapRedirectUrl.trim().isEmpty &&
+        _extractedQrBytes == null &&
+        _extractedQrImageUrl == null) {
+      initialQr = DokuQrPayloadParser.generateDokuEmvCoQris(
+        _payment!.orderId,
+        _payment!.grossAmount > 0 ? _payment!.grossAmount : _payment!.nominal,
+        nmid: (_payment!.nmid?.isNotEmpty == true) ? _payment!.nmid! : 'ID2026102056853',
+      );
+      _payment = _payment!.copyWithQr(qrString: initialQr);
+    }
+
     final preloaded = widget.preloadedWebController;
 
     if (preloaded != null && !preloaded.isDisposed && preloaded.webViewController != null) {
@@ -86,14 +102,15 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
     final hasPreloadedContent = initialQr.isNotEmpty ||
         _extractedQrBytes != null ||
         _extractedQrImageUrl != null ||
-        _inlineDokuController != null;
+        _inlineDokuController != null ||
+        (_payment != null && _payment!.snapRedirectUrl.trim().isNotEmpty);
 
     if (_payment != null && hasPreloadedContent) {
       _isLoadingQris = false;
       _initCountdown();
       _startAutoPolling();
     } else {
-      // Tampilkan skeleton loading terlebih dahulu sampai generate/fetch QRIS selesai
+      // Tampilkan skeleton loading jika transaksi memang belum dibuat sama sekali
       _isLoadingQris = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadOrGenerateQris();
@@ -209,6 +226,14 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
   Future<void> _loadOrGenerateQris() async {
     if (!mounted) return;
+
+    if (_payment != null && (_payment!.qrString?.trim().isNotEmpty ?? false)) {
+      if (_countdownTimer == null) _initCountdown();
+      _startAutoPolling();
+      setState(() => _isLoadingQris = false);
+      return;
+    }
+
     final generatedFresh = _payment == null && widget.onGeneratePayment != null;
     _disposeWebControllers();
     setState(() {
@@ -234,9 +259,21 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
           return;
         }
 
-        _payment = created;
+        var qr = created.qrString?.trim() ?? '';
+        if (qr.isEmpty && created.orderId.isNotEmpty) {
+          qr = DokuQrPayloadParser.generateDokuEmvCoQris(
+            created.orderId,
+            created.grossAmount > 0 ? created.grossAmount : created.nominal,
+            nmid: (created.nmid?.isNotEmpty == true) ? created.nmid! : 'ID2026102056853',
+          );
+          _payment = created.copyWithQr(qrString: qr);
+        } else {
+          _payment = created;
+        }
         _initCountdown();
         _startAutoPolling();
+        setState(() => _isLoadingQris = false);
+        return;
       } catch (e) {
         if (!mounted) return;
         setState(() {
@@ -252,40 +289,20 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
 
     final active = _payment;
     if (active != null && (active.qrString == null || active.qrString!.trim().isEmpty)) {
-      if (!generatedFresh || active.snapRedirectUrl.trim().isEmpty) {
-        try {
-          final status = await paymentProvider
-              .checkStatus(active.orderId)
-              .timeout(const Duration(seconds: 18));
-          if (!mounted) return;
-
-          if (status != null && status.isSettlement) {
-            _hasSettled = true;
-            _autoCheckTimer?.cancel();
-            _refreshGlobalProviders();
-            setState(() => _isLoadingQris = false);
-            _showSuccessDialog(status);
-            return;
-          }
-
-          final fetchedQr = status?.qrString?.trim() ?? '';
-          if (fetchedQr.isNotEmpty) {
-            final updated = active.copyWithQr(
-              qrString: fetchedQr,
-              nmid: status?.nmid ?? active.nmid,
-              expiredDate: status?.expiredDate ?? active.expiredDate,
-            );
-            _payment = updated;
-            await paymentProvider.updatePendingPayment(updated);
-          }
-        } catch (_) {}
-      }
-
-      final current = _payment;
-      if (current != null &&
-          (current.qrString == null || current.qrString!.trim().isEmpty) &&
-          current.snapRedirectUrl.trim().isNotEmpty) {
-        _activateInlineDokuFallback(current.snapRedirectUrl);
+      if (active.snapRedirectUrl.trim().isNotEmpty && _extractedQrBytes == null && _extractedQrImageUrl == null) {
+        _activateInlineDokuFallback(active.snapRedirectUrl);
+      } else if (active.orderId.isNotEmpty) {
+        final generatedQr = DokuQrPayloadParser.generateDokuEmvCoQris(
+          active.orderId,
+          active.grossAmount > 0 ? active.grossAmount : active.nominal,
+          nmid: (active.nmid?.isNotEmpty == true) ? active.nmid! : 'ID2026102056853',
+        );
+        final updated = active.copyWithQr(qrString: generatedQr);
+        _payment = updated;
+        await paymentProvider.updatePendingPayment(updated);
+        if (!mounted) return;
+        setState(() => _isLoadingQris = false);
+        return;
       }
     }
 
@@ -560,8 +577,17 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   @override
   Widget build(BuildContext context) {
     final res = _payment;
-    final qrData = res?.qrString?.trim() ?? '';
-    final nmid = res?.nmid ?? 'ID2026102056853';
+    final rawQr = res?.qrString?.trim() ?? '';
+    final qrData = rawQr.isNotEmpty
+        ? rawQr
+        : (res != null && res.orderId.isNotEmpty && res.snapRedirectUrl.trim().isEmpty && _extractedQrBytes == null && _extractedQrImageUrl == null
+            ? DokuQrPayloadParser.generateDokuEmvCoQris(
+                res.orderId,
+                res.grossAmount > 0 ? res.grossAmount : res.nominal,
+                nmid: (res.nmid?.isNotEmpty == true) ? res.nmid! : 'ID2026102056853',
+              )
+            : '');
+    final nmid = (res?.nmid?.isNotEmpty == true) ? res!.nmid! : 'ID2026102056853';
     final hasQrImage = qrData.isNotEmpty || _extractedQrBytes != null || _extractedQrImageUrl != null;
     final hasCopyableQr = qrData.isNotEmpty;
 
@@ -1092,6 +1118,20 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
             ? (constraints.maxWidth - 48).clamp(195.0, 248.0)
             : 230.0;
 
+        if (_extractedQrBytes != null) {
+          return Center(
+            child: framedQrBox(
+              Image.memory(
+                _extractedQrBytes!,
+                width: qrSize,
+                height: qrSize,
+                fit: BoxFit.contain,
+                gaplessPlayback: true,
+              ),
+            ),
+          );
+        }
+
         if (qrData.isNotEmpty) {
           return Center(
             child: framedQrBox(
@@ -1102,20 +1142,6 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
                 padding: EdgeInsets.zero,
                 backgroundColor: Colors.white,
                 errorCorrectionLevel: QrErrorCorrectLevel.M,
-              ),
-            ),
-          );
-        }
-
-        if (_extractedQrBytes != null) {
-          return Center(
-            child: framedQrBox(
-              Image.memory(
-                _extractedQrBytes!,
-                width: qrSize,
-                height: qrSize,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
               ),
             ),
           );

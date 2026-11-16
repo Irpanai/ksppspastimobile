@@ -198,6 +198,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final String displayStatus = statusInfo.displayStatus;
     final bool isMemberActive = statusInfo.isActive;
+    final bool isReaktivasi = anggota?.isReaktivasi == true ||
+        user?.isReaktivasi == true ||
+        dashboardProvider.dashboardData?.anggota?.isReaktivasi == true;
+    final String? noAnggotaLama = anggota?.noAnggotaLama ??
+        user?.noAnggotaLama ??
+        dashboardProvider.dashboardData?.anggota?.noAnggotaLama;
     final photoUrl = user?.fullProfilePhotoUrl ?? anggota?.fullFotoUrl ?? ApiConstants.resolveImageUrl(user?.profilePhotoUrl ?? anggota?.foto);
 
     return Scaffold(
@@ -460,6 +466,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: Column(
                               children: [
+                                _buildMenuRow(
+                                  Icons.badge_outlined,
+                                  'Informasi Keanggotaan',
+                                  subtitle: isReaktivasi && noAnggotaLama != null && noAnggotaLama.isNotEmpty
+                                      ? 'Reaktivasi • Eks: $noAnggotaLama'
+                                      : 'No. Anggota: $noAnggota',
+                                  onTap: () => _showMembershipInfoModal(
+                                    context,
+                                    noAnggota: noAnggota,
+                                    displayStatus: displayStatus,
+                                    isMemberActive: isMemberActive,
+                                    cabang: cabang,
+                                    isReaktivasi: isReaktivasi,
+                                    noAnggotaLama: noAnggotaLama,
+                                  ),
+                                ),
+                                const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
                                   Icons.assignment_ind_outlined, 
                                   'Data Pribadi (KYC)', 
@@ -808,6 +831,164 @@ class _ProfileScreenState extends State<ProfileScreen> {
             letterSpacing: 1.5,
           ),
         ),
+      ),
+    );
+  }
+
+  void _showMembershipInfoModal(
+    BuildContext context, {
+    required String noAnggota,
+    required String displayStatus,
+    required bool isMemberActive,
+    required String cabang,
+    required bool isReaktivasi,
+    required String? noAnggotaLama,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.badge_outlined, color: Theme.of(context).colorScheme.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Informasi Keanggotaan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        SizedBox(height: 2),
+                        Text('Detail status & nomor identitas koperasi', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildModalInfoRow('Nomor Anggota', noAnggota.isNotEmpty ? noAnggota : '-', isHighlight: true),
+                    const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                    _buildModalInfoRow('Status Keanggotaan', 'Anggota $displayStatus',
+                        valueColor: isMemberActive ? const Color(0xFF16A34A) : const Color(0xFFD97706)),
+                    const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                    if (isReaktivasi) ...[
+                      _buildModalInfoRow(
+                        'Jenis Pendaftaran',
+                        'Reaktivasi (Nasabah Lama)',
+                        valueColor: const Color(0xFF7C3AED),
+                      ),
+                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                      _buildModalInfoRow(
+                        'Nomor Anggota Sebelumnya',
+                        noAnggotaLama != null && noAnggotaLama.isNotEmpty ? noAnggotaLama : '-',
+                      ),
+                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                    ],
+                    _buildModalInfoRow('Kantor Cabang', cabang.isNotEmpty ? cabang : '-'),
+                  ],
+                ),
+              ),
+              if (isReaktivasi) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F3FF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDDD6FE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.history_rounded, color: Color(0xFF7C3AED), size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Akun Anda terverifikasi sebagai anggota aktif melalui proses reaktivasi resmi KSPPS PASTI.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF5B21B6), height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModalInfoRow(String label, String value, {Color? valueColor, bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isHighlight ? FontWeight.bold : FontWeight.w600,
+                color: valueColor ?? const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

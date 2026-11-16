@@ -14,9 +14,9 @@ class ApiConstants {
   static const String androidEmulatorUrl = 'https://demo.ksppspasti.com/api';
 
   // App Release Version (Single Source of Truth)
-  static const String appVersion = '1.0.14';
-  static const String appBuildNumber = '15';
-  static const String appVersionFormatted = 'Versi 1.0.14 (Build 15)';
+  static const String appVersion = '1.0.15';
+  static const String appBuildNumber = '16';
+  static const String appVersionFormatted = 'Versi 1.0.15 (Build 16)';
 
   // Active Base URL
   static String get baseUrl {

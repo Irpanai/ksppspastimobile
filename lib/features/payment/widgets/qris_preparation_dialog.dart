@@ -216,7 +216,18 @@ class _QrisPreparationDialogState extends State<_QrisPreparationDialog> {
 
     if (_cancelled || !mounted || payment == null) return;
 
-    // Jika qr_string EMVCo sudah langsung tersedia dari backend, langsung masuk ke NativeQrisScreen
+    // Jika qr_string EMVCo belum tersedia, pastikan terisi dengan EMVCo standar resmi DOKU (instan & scannable)
+    if ((payment.qrString == null || payment.qrString!.trim().isEmpty) && payment.orderId.isNotEmpty) {
+      final generatedQr = DokuQrPayloadParser.generateDokuEmvCoQris(
+        payment.orderId,
+        payment.grossAmount > 0 ? payment.grossAmount : payment.nominal,
+        nmid: (payment.nmid?.isNotEmpty == true) ? payment.nmid! : 'ID2026102056853',
+      );
+      payment = payment.copyWithQr(qrString: generatedQr);
+      await widget.paymentProvider.updatePendingPayment(payment);
+    }
+
+    // Jika qr_string EMVCo sudah langsung tersedia, langsung masuk ke NativeQrisScreen
     if (payment.qrString != null && payment.qrString!.trim().isNotEmpty) {
       Navigator.of(context).pop(QrisPreparationResult(payment: payment));
       return;

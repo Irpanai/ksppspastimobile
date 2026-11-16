@@ -35,6 +35,10 @@ class AnggotaModel {
   final bool? isMemberActive;
   final String? tglBergabung;
   final String? foto;
+  final bool isReaktivasi;
+  final String? noAnggotaLama;
+  final String? tanggalPertamaGabung;
+  final String? namaPanggilan;
 
   AnggotaModel({
     required this.id,
@@ -71,6 +75,10 @@ class AnggotaModel {
     this.isMemberActive,
     this.tglBergabung,
     this.foto,
+    this.isReaktivasi = false,
+    this.noAnggotaLama,
+    this.tanggalPertamaGabung,
+    this.namaPanggilan,
   });
 
   String get effectiveNik => nik ?? noKtp ?? '-';
@@ -118,6 +126,13 @@ class AnggotaModel {
           json['foto_url']?.toString() ??
           json['foto_wajah']?.toString() ??
           json['foto_wajah_url']?.toString(),
+      isReaktivasi: json['is_reaktivasi'] == true ||
+          json['is_reaktivasi'] == 1 ||
+          json['is_reaktivasi'] == '1' ||
+          json['is_reaktivasi'] == 'true',
+      noAnggotaLama: json['no_anggota_lama']?.toString(),
+      tanggalPertamaGabung: json['tanggal_pertama_gabung']?.toString(),
+      namaPanggilan: json['nama_panggilan']?.toString(),
     );
   }
 
@@ -157,6 +172,10 @@ class AnggotaModel {
       'is_member_active': isMemberActive,
       'tgl_bergabung': tglBergabung,
       'foto': foto,
+      'is_reaktivasi': isReaktivasi,
+      'no_anggota_lama': noAnggotaLama,
+      'tanggal_pertama_gabung': tanggalPertamaGabung,
+      'nama_panggilan': namaPanggilan,
     };
   }
 }
@@ -164,6 +183,8 @@ class AnggotaModel {
 class UserModel {
   final int id;
   final String name;
+  final String? namaPanggilan;
+  final String? callName;
   final String email;
   final String? noAnggota;
   final String? statusKeanggotaan;
@@ -175,10 +196,15 @@ class UserModel {
   final bool hasPin;
   final List<String> roles;
   final AnggotaModel? anggota;
+  final bool isReaktivasi;
+  final String? noAnggotaLama;
+  final String? tanggalPertamaGabung;
 
   UserModel({
     required this.id,
     required this.name,
+    this.namaPanggilan,
+    this.callName,
     required this.email,
     this.noAnggota,
     this.statusKeanggotaan,
@@ -190,7 +216,29 @@ class UserModel {
     this.hasPin = false,
     this.roles = const [],
     this.anggota,
+    this.isReaktivasi = false,
+    this.noAnggotaLama,
+    this.tanggalPertamaGabung,
   });
+
+  /// Nama sapaan panggilan ramah dan ringkas untuk UI
+  String get effectiveCallName {
+    if (callName != null && callName!.trim().isNotEmpty) {
+      return callName!.trim();
+    }
+    if (namaPanggilan != null && namaPanggilan!.trim().isNotEmpty) {
+      return namaPanggilan!.trim();
+    }
+    final clean = name.trim();
+    if (clean.isEmpty) return 'Nasabah';
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'Nasabah';
+    final firstLower = parts[0].toLowerCase();
+    if (parts.length > 1 && ['muhammad', 'm.', 'moh.', 'muh.', 'h.', 'hj.'].contains(firstLower)) {
+      return parts[1];
+    }
+    return parts[0];
+  }
 
   /// Resolves profile image to absolute URL whether it's full URL or relative storage path
   String? get fullProfilePhotoUrl {
@@ -201,6 +249,8 @@ class UserModel {
   UserModel copyWith({
     int? id,
     String? name,
+    String? namaPanggilan,
+    String? callName,
     String? email,
     String? noAnggota,
     String? statusKeanggotaan,
@@ -212,10 +262,15 @@ class UserModel {
     bool? hasPin,
     List<String>? roles,
     AnggotaModel? anggota,
+    bool? isReaktivasi,
+    String? noAnggotaLama,
+    String? tanggalPertamaGabung,
   }) {
     return UserModel(
       id: id ?? this.id,
       name: name ?? this.name,
+      namaPanggilan: namaPanggilan ?? this.namaPanggilan,
+      callName: callName ?? this.callName,
       email: email ?? this.email,
       noAnggota: noAnggota ?? this.noAnggota,
       statusKeanggotaan: statusKeanggotaan ?? this.statusKeanggotaan,
@@ -227,6 +282,9 @@ class UserModel {
       hasPin: hasPin ?? this.hasPin,
       roles: roles ?? this.roles,
       anggota: anggota ?? this.anggota,
+      isReaktivasi: isReaktivasi ?? this.isReaktivasi,
+      noAnggotaLama: noAnggotaLama ?? this.noAnggotaLama,
+      tanggalPertamaGabung: tanggalPertamaGabung ?? this.tanggalPertamaGabung,
     );
   }
 
@@ -255,9 +313,17 @@ class UserModel {
         json['has_pin'] == '1' ||
         json['has_pin'] == 'true';
 
+    final bool parsedIsReaktivasi = json['is_reaktivasi'] == true ||
+        json['is_reaktivasi'] == 1 ||
+        json['is_reaktivasi'] == '1' ||
+        json['is_reaktivasi'] == 'true' ||
+        (parsedAnggota?.isReaktivasi ?? false);
+
     return UserModel(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       name: json['name']?.toString() ?? '',
+      namaPanggilan: json['nama_panggilan']?.toString() ?? parsedAnggota?.namaPanggilan,
+      callName: json['call_name']?.toString(),
       email: json['email']?.toString() ?? '',
       noAnggota: json['no_anggota']?.toString() ?? parsedAnggota?.noAnggota,
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? parsedAnggota?.status,
@@ -269,6 +335,9 @@ class UserModel {
       hasPin: parsedHasPin,
       roles: parsedRoles,
       anggota: parsedAnggota,
+      isReaktivasi: parsedIsReaktivasi,
+      noAnggotaLama: json['no_anggota_lama']?.toString() ?? parsedAnggota?.noAnggotaLama,
+      tanggalPertamaGabung: json['tanggal_pertama_gabung']?.toString() ?? parsedAnggota?.tanggalPertamaGabung,
     );
   }
 
@@ -276,6 +345,8 @@ class UserModel {
     return {
       'id': id,
       'name': name,
+      'nama_panggilan': namaPanggilan,
+      'call_name': callName,
       'email': email,
       'no_anggota': noAnggota,
       'status_keanggotaan': statusKeanggotaan,
@@ -287,6 +358,9 @@ class UserModel {
       'has_pin': hasPin,
       'roles': roles,
       'anggota': anggota?.toJson(),
+      'is_reaktivasi': isReaktivasi,
+      'no_anggota_lama': noAnggotaLama,
+      'tanggal_pertama_gabung': tanggalPertamaGabung,
     };
   }
 }

@@ -116,11 +116,18 @@ class DashboardAnggota {
   final int? bulanDaftar;
   final int? tahunDaftar;
   final List<Map<String, int>> wajibTerbayar;
+  final bool isReaktivasi;
+  final String? noAnggotaLama;
+  final DateTime? tanggalPertamaGabung;
+  final String? namaPanggilan;
+  final String? callName;
 
   DashboardAnggota({
     required this.id,
     required this.noAnggota,
     required this.nama,
+    this.namaPanggilan,
+    this.callName,
     required this.status,
     String? statusKeanggotaan,
     bool? isPokokPaid,
@@ -135,6 +142,9 @@ class DashboardAnggota {
     this.bulanDaftar,
     this.tahunDaftar,
     this.wajibTerbayar = const [],
+    this.isReaktivasi = false,
+    this.noAnggotaLama,
+    this.tanggalPertamaGabung,
   })  : statusKeanggotaan = statusKeanggotaan ?? status,
         isPokokPaid = isPokokPaid ?? (status.toLowerCase() == 'aktif'),
         isWajibPaid = isWajibPaid ?? (status.toLowerCase() == 'aktif'),
@@ -142,6 +152,25 @@ class DashboardAnggota {
             ((isPokokPaid ?? (status.toLowerCase() == 'aktif')) &&
                 (isWajibPaid ?? (status.toLowerCase() == 'aktif')) &&
                 status.toLowerCase() == 'aktif');
+
+  /// Nama sapaan panggilan ramah dan ringkas untuk UI Beranda
+  String get effectiveCallName {
+    if (callName != null && callName!.trim().isNotEmpty) {
+      return callName!.trim();
+    }
+    if (namaPanggilan != null && namaPanggilan!.trim().isNotEmpty) {
+      return namaPanggilan!.trim();
+    }
+    final clean = nama.trim();
+    if (clean.isEmpty) return 'Nasabah';
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'Nasabah';
+    final firstLower = parts[0].toLowerCase();
+    if (parts.length > 1 && ['muhammad', 'm.', 'moh.', 'muh.', 'h.', 'hj.'].contains(firstLower)) {
+      return parts[1];
+    }
+    return parts[0];
+  }
 
   /// Apakah bulan tertentu berada sebelum tanggal anggota terdaftar di KSPPS PASTI
   bool isBeforeRegistration(int bulan, int tahun) {
@@ -227,6 +256,8 @@ class DashboardAnggota {
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       noAnggota: json['no_anggota']?.toString() ?? '',
       nama: json['nama']?.toString() ?? '',
+      namaPanggilan: json['nama_panggilan']?.toString(),
+      callName: json['call_name']?.toString(),
       status: statusStr,
       statusKeanggotaan: json['status_keanggotaan']?.toString() ?? statusStr,
       isPokokPaid: parsedPokokPaid,
@@ -245,6 +276,14 @@ class DashboardAnggota {
       bulanDaftar: parsedBulanDaftar,
       tahunDaftar: parsedTahunDaftar,
       wajibTerbayar: terbayarList,
+      isReaktivasi: json['is_reaktivasi'] == true ||
+          json['is_reaktivasi'] == 1 ||
+          json['is_reaktivasi'] == '1' ||
+          json['is_reaktivasi'] == 'true',
+      noAnggotaLama: json['no_anggota_lama']?.toString(),
+      tanggalPertamaGabung: json['tanggal_pertama_gabung'] != null
+          ? DateTime.tryParse(json['tanggal_pertama_gabung'].toString())
+          : null,
     );
   }
 

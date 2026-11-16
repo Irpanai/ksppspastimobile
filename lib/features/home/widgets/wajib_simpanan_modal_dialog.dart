@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import '../../payment/screens/top_up_screen.dart';
 
 class WajibSimpananModalDialog extends StatelessWidget {
-  const WajibSimpananModalDialog({super.key});
+  final bool isReactivation;
 
-  static Future<void> show(BuildContext context) {
+  const WajibSimpananModalDialog({
+    super.key,
+    this.isReactivation = false,
+  });
+
+  static Future<void> show(BuildContext context, {bool isReactivation = false}) {
     return showDialog<void>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => const WajibSimpananModalDialog(),
+      builder: (ctx) => WajibSimpananModalDialog(isReactivation: isReactivation),
     );
   }
 
@@ -53,10 +58,10 @@ class WajibSimpananModalDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               // Title
-              const Text(
-                'Aktivasi Keanggotaan',
+              Text(
+                isReactivation ? 'Daftar Ulang & Aktivasi' : 'Aktivasi Keanggotaan',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A),
@@ -64,11 +69,13 @@ class WajibSimpananModalDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // Copywriting khusus nasabah baru setelah pendaftaran
-              const Text(
-                'Selamat bergabung! Untuk terdaftar resmi sebagai anggota dengan status Aktif, silakan selesaikan pembayaran Simpanan Pokok dan Simpanan Wajib Anda.',
+              // Copywriting khusus nasabah baru setelah pendaftaran / daftar ulang
+              Text(
+                isReactivation
+                    ? 'Status keanggotaan Anda sebelumnya telah Keluar. Untuk menjadi anggota aktif kembali, silakan selesaikan pembayaran Simpanan Pokok dan Simpanan Wajib awal.'
+                    : 'Selamat bergabung! Untuk terdaftar resmi sebagai anggota dengan status Aktif, silakan selesaikan pembayaran Simpanan Pokok dan Simpanan Wajib Anda.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13.5,
                   color: Color(0xFF64748B),
                   height: 1.5,
@@ -180,9 +187,9 @@ class WajibSimpananModalDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    'Bayar Sekarang',
-                    style: TextStyle(
+                  child: Text(
+                    isReactivation ? 'Bayar & Aktifkan Kembali' : 'Bayar Sekarang',
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
