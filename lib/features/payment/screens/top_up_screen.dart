@@ -113,15 +113,26 @@ class _TopUpScreenState extends State<TopUpScreen> {
     });
 
     final init = widget.initialType?.toLowerCase();
+    final initRawStatus = (dashboardAnggota?.statusKeanggotaan ??
+            dashboardAnggota?.status ??
+            '')
+        .trim()
+        .toLowerCase();
+    final isInitKeluar = initRawStatus == 'keluar';
+
     if (init == 'simpanan_pokok_wajib' || init == 'pokok_wajib' || init == 'registrasi' || init == 'aktivasi') {
+      _selectedType = 'simpanan_pokok_wajib';
+      _updateActivationAmount();
+    } else if (init == 'pokok' || init == 'simpanan_pokok') {
+      _selectedType = 'simpanan_pokok';
+      _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
+    } else if (isInitKeluar) {
+      // Anggota berstatus keluar hanya boleh membayar Daftar Ulang (Pokok + Wajib) atau Simpanan Pokok terlebih dahulu
       _selectedType = 'simpanan_pokok_wajib';
       _updateActivationAmount();
     } else if (init == 'wajib' || init == 'simpanan_wajib') {
       _selectedType = 'simpanan_wajib';
       _updateWajibAmount();
-    } else if (init == 'pokok' || init == 'simpanan_pokok') {
-      _selectedType = 'simpanan_pokok';
-      _amountController.text = AppCurrency.format(_pokokNominal).replaceAll('Rp ', '');
     } else if (init == 'sijaka' || init == 'pembukaan_sijaka') {
       _selectedType = 'pembukaan_sijaka';
       _amountController.text = AppCurrency.format(1000000).replaceAll('Rp ', '');
@@ -222,6 +233,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
   }
 
   void _onTypeChanged(String type, bool isPokokPaid, {bool isKeluar = false}) {
+    if (isKeluar && type != 'simpanan_pokok_wajib' && type != 'simpanan_pokok') {
+      _showKeluarMustReactivateDialog();
+      return;
+    }
+
     if (!isKeluar && (type == 'simpanan_pokok' || type == 'simpanan_pokok_wajib') && isPokokPaid) {
       _showPokokAlreadyPaidDialog();
       return;
@@ -284,7 +300,27 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
+  void _showKeluarMustReactivateDialog() {
+    AppDialog.showWarning(
+      context,
+      title: 'Perlu Daftar Ulang Terlebih Dahulu',
+      message:
+          'Status keanggotaan Anda saat ini Keluar. Silakan selesaikan pembayaran Daftar Ulang (Simpanan Pokok + Wajib) atau Simpanan Pokok terlebih dahulu untuk mengaktifkan kembali keanggotaan Anda.',
+    );
+  }
+
   Future<void> _handleProceedPayment() async {
+    final currentAnggota = context.read<DashboardProvider>().dashboardData?.anggota;
+    final currentStatus = (currentAnggota?.statusKeanggotaan ?? currentAnggota?.status ?? '')
+        .trim()
+        .toLowerCase();
+    if (currentStatus == 'keluar' &&
+        _selectedType != 'simpanan_pokok_wajib' &&
+        _selectedType != 'simpanan_pokok') {
+      _showKeluarMustReactivateDialog();
+      return;
+    }
+
     final amount = _parsedAmount;
     if (amount < 1000) {
       AppDialog.showWarning(
@@ -598,20 +634,27 @@ class _TopUpScreenState extends State<TopUpScreen> {
         _buildTypeCard(
           type: 'simpanan_sukarela',
           title: 'Sirela (Simpanan Sukarela)',
-          subtitle: 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
-          badgeText: 'Fleksibel',
+          subtitle: isKeluar
+              ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
+              : 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
+          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Fleksibel',
           icon: Icons.payments_outlined,
+          isLocked: isKeluar,
           isKeluar: isKeluar,
         ),
         const SizedBox(height: 10),
         _buildTypeCard(
           type: 'simpanan_wajib',
           title: 'Simpanan Wajib',
-          subtitle: 'Kewajiban rutin bulanan anggota • Rp 2.500/bulan',
-          badgeText: 'Wajib Bulanan',
+          subtitle: isKeluar
+              ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
+              : 'Kewajiban rutin bulanan anggota • Rp 2.500/bulan',
+          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Wajib Bulanan',
           icon: Icons.calendar_month_outlined,
+          isLocked: isKeluar,
           isKeluar: isKeluar,
         ),
+        const SizedBox(height: 10),
         _buildTypeCard(
           type: 'simpanan_pokok',
           title: 'Simpanan Pokok',
@@ -628,10 +671,13 @@ class _TopUpScreenState extends State<TopUpScreen> {
         _buildTypeCard(
           type: 'pembukaan_sijaka',
           title: 'Sijaka (Simpanan Berjangka)',
-          subtitle: 'Investasi deposito syariah dengan bagi hasil bulanan',
-          badgeText: 'Bagi Hasil',
+          subtitle: isKeluar
+              ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
+              : 'Investasi deposito syariah dengan bagi hasil bulanan',
+          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Bagi Hasil',
           icon: Icons.pie_chart_outline_rounded,
-          isHighlight: true,
+          isHighlight: !isKeluar,
+          isLocked: isKeluar,
           isKeluar: isKeluar,
         ),
       ],
@@ -690,10 +736,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  isSuccessBadge ? Icons.check_circle_rounded : icon,
+                  isSuccessBadge
+                      ? Icons.check_circle_rounded
+                      : (isLocked ? Icons.lock_outline_rounded : icon),
                   color: isSelected
                       ? Colors.white
-                      : (isLocked ? const Color(0xFF16A34A) : const Color(0xFF64748B)),
+                      : (isSuccessBadge
+                          ? const Color(0xFF16A34A)
+                          : (isLocked ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
                   size: 22,
                 ),
               ),
