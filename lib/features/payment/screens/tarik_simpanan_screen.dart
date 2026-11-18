@@ -41,7 +41,10 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
 
   // Riwayat State
   List<PenarikanItemModel> _riwayatList = [];
-  PenarikanItemModel? _activePendingPengajuan;
+  Map<String, PenarikanItemModel> _activePendingsByJenis = {};
+  String get _currentJenisSimpanan => _selectedSumber == 'saldo_sijaka' ? 'bagihasil_sijaka' : 'sukarela';
+  String get _currentJenisLabel => _selectedSumber == 'saldo_sijaka' ? 'Bagi Hasil Sijaka' : 'Simpanan Sukarela';
+  PenarikanItemModel? get _activePendingPengajuan => _activePendingsByJenis[_currentJenisSimpanan];
   bool get _hasActivePending => _activePendingPengajuan != null;
   bool _isLoadingRiwayat = false;
   String? _riwayatError;
@@ -209,17 +212,19 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       if (mounted) {
         setState(() {
           _riwayatList = result.items;
-          PenarikanItemModel? pending;
-          if (result.activePending != null) {
-            pending = result.activePending;
-          } else {
-            try {
-              pending = _riwayatList.firstWhere((it) => it.isPending);
-            } catch (_) {
-              pending = null;
+          final Map<String, PenarikanItemModel> pendingsByJenis = Map.from(result.activePendings);
+          if (pendingsByJenis.isEmpty) {
+            for (final it in _riwayatList) {
+              if (it.isPending && !pendingsByJenis.containsKey(it.jenisSimpanan)) {
+                pendingsByJenis[it.jenisSimpanan] = it;
+              }
+            }
+            if (result.activePending != null &&
+                !pendingsByJenis.containsKey(result.activePending!.jenisSimpanan)) {
+              pendingsByJenis[result.activePending!.jenisSimpanan] = result.activePending!;
             }
           }
-          _activePendingPengajuan = pending;
+          _activePendingsByJenis = pendingsByJenis;
           _isLoadingRiwayat = false;
         });
       }
@@ -244,12 +249,12 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
       return;
     }
 
-    // 1. Cek apakah ada pengajuan aktif yang masih pending
+    // 1. Cek apakah ada pengajuan aktif yang masih pending untuk jenis simpanan terpilih
     if (_hasActivePending) {
       AppDialog.showWarning(
         context,
-        title: 'Pengajuan Masih Berjalan',
-        message: 'Anda masih memiliki pengajuan penarikan sebesar ${_activePendingPengajuan!.nominalFormat} yang sedang Menunggu Transfer. Mohon tunggu proses pencairan selesai.',
+        title: 'Pengajuan $_currentJenisLabel Masih Berjalan',
+        message: 'Anda masih memiliki pengajuan penarikan $_currentJenisLabel sebesar ${_activePendingPengajuan!.nominalFormat} yang sedang Menunggu Transfer. Mohon tunggu proses pencairan selesai sebelum mengajukan penarikan $_currentJenisLabel kembali.',
       );
       return;
     }
@@ -1418,16 +1423,16 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                 child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFD97706), size: 22),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pengajuan Sedang Diproses',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF92400E)),
+                      'Penarikan $_currentJenisLabel Diproses',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF92400E)),
                     ),
-                    SizedBox(height: 2),
-                    Text(
+                    const SizedBox(height: 2),
+                    const Text(
                       'Menunggu proses transfer',
                       style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
                     ),
@@ -1444,7 +1449,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Anda memiliki permohonan penarikan aktif sebesar ${pending.nominalFormat} (Kode: ${pending.kodeTransaksi}). Dana sedang dalam antrean transfer. Anda baru dapat mengajukan penarikan kembali setelah proses pencairan sebelumnya selesai.',
+              'Anda memiliki permohonan penarikan $_currentJenisLabel aktif sebesar ${pending.nominalFormat} (Kode: ${pending.kodeTransaksi}). Dana sedang dalam antrean transfer. Anda masih dapat mengajukan penarikan untuk jenis simpanan lainnya.',
               style: const TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.4),
             ),
           ),

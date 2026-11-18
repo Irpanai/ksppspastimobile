@@ -66,6 +66,7 @@ class PenarikanPaginationModel {
   final int total;
   final bool hasPending;
   final PenarikanItemModel? activePending;
+  final Map<String, PenarikanItemModel> activePendings;
   final Map<String, dynamic>? ringkasanSaldoTarik;
 
   PenarikanPaginationModel({
@@ -76,8 +77,13 @@ class PenarikanPaginationModel {
     required this.total,
     this.hasPending = false,
     this.activePending,
+    this.activePendings = const {},
     this.ringkasanSaldoTarik,
   });
+
+  PenarikanItemModel? activePendingFor(String jenisSimpanan) {
+    return activePendings[jenisSimpanan];
+  }
 
   factory PenarikanPaginationModel.fromJson(Map<String, dynamic> json) {
     var rawItems = json['items'];
@@ -97,14 +103,35 @@ class PenarikanPaginationModel {
       }
     }
 
+    final Map<String, PenarikanItemModel> pendingsByJenis = {};
+    if (json['active_pendings'] is Map) {
+      final rawMap = json['active_pendings'] as Map;
+      rawMap.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          pendingsByJenis[key.toString()] = PenarikanItemModel.fromJson(value);
+        }
+      });
+    } else {
+      // Fallback untuk backend lama: kumpulkan pending berdasarkan jenis_simpanan dari items & active_pending
+      for (final item in parsedItems) {
+        if (item.isPending && !pendingsByJenis.containsKey(item.jenisSimpanan)) {
+          pendingsByJenis[item.jenisSimpanan] = item;
+        }
+      }
+      if (active != null && !pendingsByJenis.containsKey(active.jenisSimpanan)) {
+        pendingsByJenis[active.jenisSimpanan] = active;
+      }
+    }
+
     return PenarikanPaginationModel(
       items: parsedItems,
       currentPage: json['current_page'] is int ? json['current_page'] : 1,
       lastPage: json['last_page'] is int ? json['last_page'] : 1,
       perPage: json['per_page'] is int ? json['per_page'] : 15,
       total: json['total'] is int ? json['total'] : parsedItems.length,
-      hasPending: json['has_pending'] == true || active != null,
+      hasPending: json['has_pending'] == true || active != null || pendingsByJenis.isNotEmpty,
       activePending: active,
+      activePendings: pendingsByJenis,
       ringkasanSaldoTarik: json['ringkasan_saldo_tarik'] as Map<String, dynamic>?,
     );
   }
