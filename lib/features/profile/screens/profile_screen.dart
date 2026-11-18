@@ -25,6 +25,7 @@ import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
 import '../../auth/screens/forgot_password_screen.dart';
+import '../../auth/screens/login_screen.dart';
 import '../../auth/models/cabang_model.dart';
 import '../../auth/services/cabang_service.dart';
 import '../../auth/widgets/cabang_map_modal.dart';
@@ -804,6 +805,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } catch (_) {}
 
       await context.read<AuthProvider>().logout();
+
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
     }
   }
 
