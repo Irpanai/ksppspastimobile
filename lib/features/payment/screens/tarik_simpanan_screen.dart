@@ -12,6 +12,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/pin_verification_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
+import '../../main_nav/screens/main_nav_screen.dart';
 
 class TarikSimpananScreen extends StatefulWidget {
   const TarikSimpananScreen({super.key});
@@ -394,6 +395,18 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
         children: [
           PremiumHeader(
             title: 'Penarikan Simpanan',
+            showBackButton: true,
+            onBackPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainNavScreen()),
+                  (route) => false,
+                );
+              }
+            },
             actions: _tabController.index == 1
                 ? [
                     IconButton(
@@ -475,27 +488,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                 _buildBalanceBanner(dashboard),
                 const SizedBox(height: 20),
 
-                const Text('PILIH SUMBER DANA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-                const SizedBox(height: 10),
-                Column(
-                  children: [
-                    _buildTypeCard(
-                      type: 'simpanan_sukarela',
-                      title: 'Sirela (Simpanan Sukarela)',
-                      subtitle: 'Simpanan sukarela bebas ditarik sewaktu-waktu sesuai saldo Anda',
-                      icon: Icons.payments_outlined,
-                      badgeText: 'Bebas Tarik',
-                    ),
-                    const SizedBox(height: 10),
-                    _buildTypeCard(
-                      type: 'saldo_sijaka',
-                      title: 'Bagi Hasil Sijaka',
-                      subtitle: 'Nisbah bagi hasil deposito berjangka yang siap untuk dicairkan',
-                      icon: Icons.monetization_on_outlined,
-                      badgeText: 'Nisbah Sijaka',
-                    ),
-                  ],
-                ),
+                _buildSumberDanaSelector(),
                 const SizedBox(height: 16),
 
                 // Input Nominal
@@ -1588,28 +1581,341 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     );
   }
 
-  Widget _buildTypeCard({
+  Map<String, dynamic> _getSumberDanaData(String type) {
+    if (type == 'saldo_sijaka') {
+      return {
+        'type': 'saldo_sijaka',
+        'title': 'Bagi Hasil Sijaka',
+        'subtitle': 'Nisbah bagi hasil deposito berjangka yang siap untuk dicairkan',
+        'badgeText': 'Nisbah Sijaka',
+        'icon': Icons.monetization_on_outlined,
+        'color': const Color(0xFF0E7955),
+      };
+    }
+    return {
+      'type': 'simpanan_sukarela',
+      'title': 'Sirela (Simpanan Sukarela)',
+      'subtitle': 'Simpanan sukarela bebas ditarik sewaktu-waktu sesuai saldo Anda',
+      'badgeText': 'Bebas Tarik',
+      'icon': Icons.payments_outlined,
+      'color': const Color(0xFF0E7955),
+    };
+  }
+
+  Widget _buildSumberDanaSelector() {
+    final activeData = _getSumberDanaData(_selectedSumber);
+    const themeColor = Color(0xFF0E7955);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 3.5,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: themeColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'PILIH SUMBER DANA',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF475569),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () => _showSumberDanaSelectorModal(context),
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Pilih Sumber Lain',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: themeColor,
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 11,
+                      color: themeColor,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Selected Source Card (Compact, Modern, Tap-to-Open Modal)
+        InkWell(
+          onTap: () => _showSumberDanaSelectorModal(context),
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: themeColor,
+                width: 1.6,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    activeData['icon'] as IconData,
+                    color: themeColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              activeData['title'] as String,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                                color: Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFA7F3D0)),
+                            ),
+                            child: Text(
+                              activeData['badgeText'] as String,
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF065F46),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        activeData['subtitle'] as String,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Ubah',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: themeColor,
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: themeColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showSumberDanaSelectorModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final sources = [
+          _getSumberDanaData('simpanan_sukarela'),
+          _getSumberDanaData('saldo_sijaka'),
+        ];
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top drag bar & Header
+                Container(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Pilih Sumber Dana',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Pilih saldo simpanan yang ingin Anda tarik dananya',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(ctx),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+                // Wrap-content list of sources - Ukuran pas sesuai 2 item tanpa space kosong!
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: sources.map((item) {
+                      final itemType = item['type'] as String;
+                      final isSelected = _selectedSumber == itemType;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildBottomSheetSumberTile(
+                          ctx: ctx,
+                          type: itemType,
+                          title: item['title'] as String,
+                          subtitle: item['subtitle'] as String,
+                          icon: item['icon'] as IconData,
+                          badgeText: item['badgeText'] as String,
+                          isSelected: isSelected,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetSumberTile({
+    required BuildContext ctx,
     required String type,
     required String title,
     required String subtitle,
     required IconData icon,
-    String? badgeText,
+    required String badgeText,
+    required bool isSelected,
   }) {
-    final isSelected = _selectedSumber == type;
+    const themeColor = Color(0xFF0E7955);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => setState(() => _selectedSumber = type),
+        onTap: () {
+          Navigator.pop(ctx);
+          setState(() => _selectedSumber = type);
+        },
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0E7955).withValues(alpha: 0.08) : Colors.white,
+            color: isSelected ? themeColor.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFE2E8F0),
+              color: isSelected ? themeColor : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1,
             ),
             boxShadow: [
@@ -1626,7 +1932,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFF1F5F9),
+                  color: isSelected ? themeColor : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: isSelected ? Colors.white : const Color(0xFF64748B), size: 22),
@@ -1644,31 +1950,29 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF1E293B),
+                              color: isSelected ? themeColor : const Color(0xFF1E293B),
                             ),
                           ),
                         ),
-                        if (badgeText != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            child: Text(
-                              badgeText,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF64748B),
-                              ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFFECFDF5) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
                             ),
                           ),
-                        ],
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? const Color(0xFF0E7955) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 3),
@@ -1686,7 +1990,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF0E7955) : const Color(0xFFCBD5E1),
+                    color: isSelected ? themeColor : const Color(0xFFCBD5E1),
                     width: isSelected ? 6 : 2,
                   ),
                 ),

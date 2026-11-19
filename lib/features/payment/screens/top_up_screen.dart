@@ -18,6 +18,7 @@ import '../widgets/payment_preparation_dialog.dart';
 import '../widgets/qris_preparation_dialog.dart';
 import '../widgets/pending_payments_modal.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../main_nav/screens/main_nav_screen.dart';
 
 class TopUpScreen extends StatefulWidget {
   final String? initialType; // 'sukarela', 'wajib', 'simpanan_wajib', 'pokok', 'sijaka'
@@ -471,9 +472,20 @@ class _TopUpScreenState extends State<TopUpScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const PremiumHeader(
+          PremiumHeader(
             title: 'Setor & Top Up Simpanan',
             showBackButton: true,
+            onBackPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainNavScreen()),
+                  (route) => false,
+                );
+              }
+            },
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -491,16 +503,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   const SizedBox(height: 24),
 
                   // Jenis Simpanan Selector
-                  const Text(
-                    'PILIH JENIS SIMPANAN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF64748B),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   _buildTypeSelector(isPokokPaid, isKeluar: isKeluar),
                   const SizedBox(height: 24),
 
@@ -618,106 +620,399 @@ class _TopUpScreenState extends State<TopUpScreen> {
     );
   }
 
-  Widget _buildTypeSelector(bool isPokokPaid, {bool isKeluar = false}) {
-    return Column(
-      children: [
-        if (!isPokokPaid) ...[
-          _buildTypeCard(
-            type: 'simpanan_pokok_wajib',
-            title: isKeluar ? 'Daftar Ulang (Pokok + Wajib)' : 'Aktivasi Anggota (Pokok + Wajib)',
-            subtitle: isKeluar
-                ? 'Bayar Simpanan Pokok Rp 15.000 + Wajib agar status aktif kembali'
-                : 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x biaya layanan',
-            badgeText: isKeluar ? 'Daftar Ulang' : 'Khusus Baru',
-            icon: Icons.how_to_reg_rounded,
-            isHighlight: true,
-            isSuccessBadge: true,
-            isKeluar: isKeluar,
-          ),
-          const SizedBox(height: 10),
-        ],
-        _buildTypeCard(
-          type: 'simpanan_sukarela',
-          title: 'Sirela (Simpanan Sukarela)',
-          subtitle: isKeluar
-              ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
-              : 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
-          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Fleksibel',
-          icon: Icons.payments_outlined,
-          isLocked: isKeluar,
-          isKeluar: isKeluar,
-        ),
-        const SizedBox(height: 10),
-        _buildTypeCard(
-          type: 'simpanan_wajib',
-          title: 'Simpanan Wajib',
-          subtitle: isKeluar
+  Map<String, dynamic> _getTypeCardData(String type, bool isPokokPaid, {bool isKeluar = false}) {
+    switch (type) {
+      case 'simpanan_pokok_wajib':
+        return {
+          'type': 'simpanan_pokok_wajib',
+          'title': isKeluar ? 'Daftar Ulang (Pokok + Wajib)' : 'Aktivasi Anggota (Pokok + Wajib)',
+          'subtitle': isKeluar
+              ? 'Bayar Simpanan Pokok Rp 15.000 + Wajib agar status aktif kembali'
+              : 'Bayar Simpanan Pokok Rp 15.000 + Wajib sekaligus • 1x biaya layanan',
+          'badgeText': isKeluar ? 'Daftar Ulang' : 'Khusus Baru',
+          'icon': Icons.how_to_reg_rounded,
+          'color': const Color(0xFF0F766E),
+          'isLocked': false,
+          'isSuccessBadge': true,
+        };
+      case 'simpanan_wajib':
+        return {
+          'type': 'simpanan_wajib',
+          'title': 'Simpanan Wajib',
+          'subtitle': isKeluar
               ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
               : 'Kewajiban rutin bulanan anggota • Rp 2.500/bulan',
-          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Wajib Bulanan',
-          icon: Icons.calendar_month_outlined,
-          isLocked: isKeluar,
-          isKeluar: isKeluar,
-        ),
-        const SizedBox(height: 10),
-        _buildTypeCard(
-          type: 'simpanan_pokok',
-          title: 'Simpanan Pokok',
-          subtitle: isPokokPaid
+          'badgeText': isKeluar ? 'Perlu Aktivasi' : 'Wajib Bulanan',
+          'icon': Icons.calendar_month_outlined,
+          'color': const Color(0xFF16A34A),
+          'isLocked': isKeluar,
+          'isSuccessBadge': false,
+        };
+      case 'simpanan_pokok':
+        return {
+          'type': 'simpanan_pokok',
+          'title': 'Simpanan Pokok',
+          'subtitle': isPokokPaid
               ? 'Simpanan pokok awal keanggotaan telah lunas'
               : 'Kewajiban awal keanggotaan • Rp 15.000 (1x bayar)',
-          badgeText: isPokokPaid ? 'Sudah Lunas' : 'Wajib Awal',
-          icon: Icons.shield_outlined,
-          isLocked: isPokokPaid,
-          isSuccessBadge: isPokokPaid,
-          isKeluar: isKeluar,
-        ),
-        const SizedBox(height: 10),
-        _buildTypeCard(
-          type: 'pembukaan_sijaka',
-          title: 'Sijaka (Simpanan Berjangka)',
-          subtitle: isKeluar
+          'badgeText': isPokokPaid ? 'Sudah Lunas' : 'Wajib Awal',
+          'icon': Icons.shield_outlined,
+          'color': const Color(0xFF0284C7),
+          'isLocked': isPokokPaid,
+          'isSuccessBadge': isPokokPaid,
+        };
+      case 'pembukaan_sijaka':
+        return {
+          'type': 'pembukaan_sijaka',
+          'title': 'Sijaka (Simpanan Berjangka)',
+          'subtitle': isKeluar
               ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
               : 'Investasi deposito syariah dengan bagi hasil bulanan',
-          badgeText: isKeluar ? 'Perlu Aktivasi' : 'Bagi Hasil',
-          icon: Icons.pie_chart_outline_rounded,
-          isHighlight: !isKeluar,
-          isLocked: isKeluar,
-          isKeluar: isKeluar,
+          'badgeText': isKeluar ? 'Perlu Aktivasi' : 'Bagi Hasil',
+          'icon': Icons.pie_chart_outline_rounded,
+          'color': const Color(0xFF7C3AED),
+          'isLocked': isKeluar,
+          'isSuccessBadge': false,
+        };
+      case 'simpanan_sukarela':
+      default:
+        return {
+          'type': 'simpanan_sukarela',
+          'title': 'Sirela (Simpanan Sukarela)',
+          'subtitle': isKeluar
+              ? 'Selesaikan Daftar Ulang / Simpanan Pokok terlebih dahulu'
+              : 'Bebas setor dan tarik kapan saja sesuai kebutuhan',
+          'badgeText': isKeluar ? 'Perlu Aktivasi' : 'Fleksibel',
+          'icon': Icons.payments_outlined,
+          'color': const Color(0xFF0F766E),
+          'isLocked': isKeluar,
+          'isSuccessBadge': false,
+        };
+    }
+  }
+
+  Widget _buildTypeSelector(bool isPokokPaid, {bool isKeluar = false}) {
+    final activeData = _getTypeCardData(_selectedType, isPokokPaid, isKeluar: isKeluar);
+    final themeColor = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 3.5,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: themeColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'PILIH JENIS SIMPANAN',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF475569),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () => _showTypeSelectorModal(context, isPokokPaid, isKeluar: isKeluar),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Pilih Lainnya',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: themeColor,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 11,
+                      color: themeColor,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Selected Type Card (Compact, Modern, Tap-to-Open Modal)
+        InkWell(
+          onTap: () => _showTypeSelectorModal(context, isPokokPaid, isKeluar: isKeluar),
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: themeColor,
+                width: 1.6,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    activeData['isSuccessBadge'] == true
+                        ? Icons.check_circle_rounded
+                        : (activeData['icon'] as IconData),
+                    color: themeColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              activeData['title'] as String,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: themeColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (activeData['badgeText'] != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFA7F3D0)),
+                              ),
+                              child: Text(
+                                activeData['badgeText'] as String,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: themeColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        activeData['subtitle'] as String,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Ubah',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTypeCard({
+  void _showTypeSelectorModal(BuildContext context, bool isPokokPaid, {bool isKeluar = false}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final List<Map<String, dynamic>> availableTypes = [];
+
+        if (!isPokokPaid || isKeluar) {
+          availableTypes.add(_getTypeCardData('simpanan_pokok_wajib', isPokokPaid, isKeluar: isKeluar));
+        }
+        availableTypes.add(_getTypeCardData('simpanan_sukarela', isPokokPaid, isKeluar: isKeluar));
+        availableTypes.add(_getTypeCardData('simpanan_wajib', isPokokPaid, isKeluar: isKeluar));
+        availableTypes.add(_getTypeCardData('simpanan_pokok', isPokokPaid, isKeluar: isKeluar));
+        availableTypes.add(_getTypeCardData('pembukaan_sijaka', isPokokPaid, isKeluar: isKeluar));
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top drag bar & Header
+                Container(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Pilih Jenis Simpanan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Pilih produk simpanan yang ingin disetor atau dibuka',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        onPressed: () => Navigator.pop(ctx),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+                // Wrap-content list of types - strictly hugs the cards!
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: availableTypes.map((item) {
+                      final itemType = item['type'] as String;
+                      final isSelected = _selectedType == itemType;
+                      final isLocked = item['isLocked'] as bool? ?? false;
+                      final isSuccessBadge = item['isSuccessBadge'] as bool? ?? false;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildBottomSheetTypeTile(
+                          ctx: ctx,
+                          type: itemType,
+                          title: item['title'] as String,
+                          subtitle: item['subtitle'] as String,
+                          icon: item['icon'] as IconData,
+                          badgeText: item['badgeText'] as String?,
+                          isSelected: isSelected,
+                          isLocked: isLocked,
+                          isSuccessBadge: isSuccessBadge,
+                          isKeluar: isKeluar,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetTypeTile({
+    required BuildContext ctx,
     required String type,
     required String title,
     required String subtitle,
     required IconData icon,
     String? badgeText,
-    bool isHighlight = false,
-    bool isLocked = false,
-    bool isSuccessBadge = false,
-    bool isKeluar = false,
+    required bool isSelected,
+    required bool isLocked,
+    required bool isSuccessBadge,
+    required bool isKeluar,
   }) {
-    final isSelected = _selectedType == type;
+    final themeColor = Theme.of(context).colorScheme.primary;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _onTypeChanged(type, isLocked, isKeluar: isKeluar),
+        onTap: () {
+          Navigator.pop(ctx);
+          _onTypeChanged(type, isLocked, isKeluar: isKeluar);
+        },
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: isSelected
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
+                ? themeColor.withValues(alpha: 0.08)
                 : (isLocked ? const Color(0xFFF8FAFC) : Colors.white),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
-                  ? Theme.of(context).colorScheme.primary
+                  ? themeColor
                   : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1,
             ),
@@ -736,7 +1031,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Theme.of(context).colorScheme.primary
+                      ? themeColor
                       : (isLocked ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -766,7 +1061,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
                               color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
+                                  ? themeColor
                                   : const Color(0xFF1E293B),
                             ),
                           ),
@@ -825,7 +1120,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSelected
-                        ? Theme.of(context).colorScheme.primary
+                        ? themeColor
                         : const Color(0xFFCBD5E1),
                     width: isSelected ? 6 : 2,
                   ),

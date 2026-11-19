@@ -137,6 +137,48 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
     }
   }
 
+  String _formatPaymentChannel(String? rawChannel) {
+    if (rawChannel == null || rawChannel.trim().isEmpty) {
+      final bank = widget.paymentResponse.bank;
+      if (bank != null && bank.trim().isNotEmpty && bank.toLowerCase() != 'qris') {
+        return 'VA ${bank.trim().toUpperCase()}';
+      }
+      return 'Virtual Account';
+    }
+
+    final upper = rawChannel.toUpperCase().trim();
+    if (upper.contains('SYARIAH_MANDIRI') || upper.contains('BSI')) {
+      return 'VA BSI';
+    } else if (upper.contains('BCA')) {
+      return 'VA BCA';
+    } else if (upper.contains('BRI')) {
+      return 'VA BRI';
+    } else if (upper.contains('BNI')) {
+      return 'VA BNI';
+    } else if (upper.contains('MANDIRI')) {
+      return 'VA Mandiri';
+    } else if (upper.contains('PERMATA')) {
+      return 'VA Permata';
+    } else if (upper.contains('CIMB')) {
+      return 'VA CIMB';
+    } else if (upper.contains('DANAMON')) {
+      return 'VA Danamon';
+    } else if (upper.contains('QRIS')) {
+      return 'QRIS';
+    }
+
+    String cleaned = upper
+        .replaceAll('VIRTUAL_ACCOUNT_', 'VA ')
+        .replaceAll('VIRTUAL_ACCOUNT', 'VA ')
+        .replaceAll('BANK_', '')
+        .replaceAll('_', ' ')
+        .trim();
+    if (cleaned.length > 20) {
+      cleaned = '${cleaned.substring(0, 18)}...';
+    }
+    return cleaned;
+  }
+
   void _showSuccessDialog(PaymentStatusResponse status) {
     AppDialog.showSuccess(
       context,
@@ -160,9 +202,13 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Total Setoran:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                Text(
-                  AppCurrency.format(status.nominal),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    AppCurrency.format(status.nominal),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+                  ),
                 ),
               ],
             ),
@@ -171,9 +217,15 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                Text(
-                  (status.paymentChannel ?? 'Virtual Account').toUpperCase(),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _formatPaymentChannel(status.paymentChannel),
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  ),
                 ),
               ],
             ),

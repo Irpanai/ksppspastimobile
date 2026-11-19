@@ -177,6 +177,27 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
     }
   }
 
+  String _formatChannel(String raw) {
+    final upper = raw.toUpperCase().trim();
+    if (upper.contains('SYARIAH_MANDIRI') || upper.contains('BSI')) return 'VA BSI';
+    if (upper.contains('BCA')) return 'VA BCA';
+    if (upper.contains('BRI')) return 'VA BRI';
+    if (upper.contains('BNI')) return 'VA BNI';
+    if (upper.contains('MANDIRI')) return 'VA Mandiri';
+    if (upper.contains('PERMATA')) return 'VA Permata';
+    if (upper.contains('CIMB')) return 'VA CIMB';
+    if (upper.contains('DANAMON')) return 'VA Danamon';
+    if (upper.contains('QRIS')) return 'QRIS';
+    String cleaned = upper
+        .replaceAll('VIRTUAL_ACCOUNT_', 'VA ')
+        .replaceAll('VIRTUAL_ACCOUNT', 'VA ')
+        .replaceAll('BANK_', '')
+        .replaceAll('_', ' ')
+        .trim();
+    if (cleaned.length > 20) cleaned = '${cleaned.substring(0, 18)}...';
+    return cleaned;
+  }
+
   void _showStatusResultDialog(PaymentStatusResponse status) {
     final isSuccess = status.isSettlement;
     final isPending = status.isPending;
@@ -232,9 +253,13 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Nominal:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                Text(
-                  AppCurrency.format(status.nominal),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    AppCurrency.format(status.nominal),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
+                  ),
                 ),
               ],
             ),
@@ -243,23 +268,32 @@ class _DokuWebViewScreenState extends State<DokuWebViewScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Order ID:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                Text(
-                  status.orderId.length > 20
-                      ? '${status.orderId.substring(0, 20)}...'
-                      : status.orderId,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B), fontFamily: 'monospace'),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    status.orderId,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B), fontFamily: 'monospace'),
+                  ),
                 ),
               ],
             ),
-            if (status.paymentChannel != null) ...[
+            if (status.paymentChannel != null && status.paymentChannel!.isNotEmpty) ...[
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Channel:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                  Text(
-                    status.paymentChannel!.toUpperCase(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
+                  const Text('Metode:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _formatChannel(status.paymentChannel!),
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF388E3C)),
+                    ),
                   ),
                 ],
               ),
