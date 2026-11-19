@@ -234,7 +234,6 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
       return;
     }
 
-    final generatedFresh = _payment == null && widget.onGeneratePayment != null;
     _disposeWebControllers();
     setState(() {
       _isLoadingQris = true;
@@ -334,14 +333,22 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
         });
       } else {
         timer.cancel();
+        _autoCheckTimer?.cancel();
+        setState(() {});
       }
     });
   }
 
   void _startAutoPolling() {
     _autoCheckTimer?.cancel();
+    if (_timeLeft.inSeconds <= 0) return;
+
     // Polling setiap 7 detik untuk mendeteksi pembayaran QRIS realtime
     _autoCheckTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+      if (_timeLeft.inSeconds <= 0) {
+        _autoCheckTimer?.cancel();
+        return;
+      }
       if (mounted && !_isLoadingQris && !_isChecking && !_hasSettled && _payment != null) {
         _checkStatus(silent: true);
       }
@@ -351,6 +358,10 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   Future<void> _checkStatus({bool silent = false}) async {
     final active = _payment;
     if (_hasSettled || active == null) return;
+    if (silent && _timeLeft.inSeconds <= 0) {
+      _autoCheckTimer?.cancel();
+      return;
+    }
 
     if (!silent) {
       setState(() => _isChecking = true);

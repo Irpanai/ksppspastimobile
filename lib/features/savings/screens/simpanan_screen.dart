@@ -5,6 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../payment/screens/top_up_screen.dart';
+import '../../payment/screens/tarik_simpanan_screen.dart';
 import '../../../../shared/widgets/app_skeleton.dart';
 import '../models/simpanan_riwayat_model.dart';
 import '../providers/savings_provider.dart';
@@ -56,7 +57,7 @@ class SimpananScreen extends StatelessWidget {
             ),
             const Expanded(
               child: TabBarView(
-                physics: const ClampingScrollPhysics(),
+                physics: ClampingScrollPhysics(),
                 children: [
                   _SimpananTabView(
                     jenis: 'pokok',
@@ -297,55 +298,104 @@ class _SimpananTabViewState extends State<_SimpananTabView> {
             ),
           ),
           Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 24),
               ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TopUpScreen(initialType: widget.jenis),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TopUpScreen(initialType: widget.jenis),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_card_rounded, size: 13, color: widget.gradientColors[0]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Setor',
+                            style: TextStyle(
+                              color: widget.gradientColors[0],
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_card_rounded, size: 14, color: widget.gradientColors[0]),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Setor',
-                        style: TextStyle(
-                          color: widget.gradientColors[0],
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  if (widget.jenis == 'sukarela') ...[
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TarikSimpananScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.outbox_rounded, size: 13, color: widget.gradientColors[0]),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tarik',
+                              style: TextStyle(
+                                color: widget.gradientColors[0],
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

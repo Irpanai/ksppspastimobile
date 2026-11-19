@@ -47,6 +47,7 @@ class SavingsService {
   /// Pengajuan Penarikan Dana Simpanan
   Future<bool> ajukanPenarikan({
     required int nominal,
+    required String pin,
     String jenisSimpanan = 'sukarela',
     required String namaBank,
     required String noRekening,
@@ -57,6 +58,7 @@ class SavingsService {
       ApiConstants.simpananTarik,
       body: {
         'nominal': nominal,
+        'pin': pin,
         'jenis_simpanan': jenisSimpanan,
         'nama_bank': namaBank,
         'no_rekening': noRekening,

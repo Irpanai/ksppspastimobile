@@ -312,19 +312,20 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     }
 
     // Verifikasi PIN Transaksi 6 Digit
-    final isPinValid = await PinVerificationDialog.show(
+    final verifiedPin = await PinVerificationDialog.showForPin(
       context,
       title: 'Konfirmasi Penarikan',
       subtitle: 'Masukkan 6 digit PIN untuk mengajukan penarikan dana ${AppCurrency.format(amount)}',
     );
 
-    if (!isPinValid) return;
+    if (verifiedPin == null || verifiedPin.isEmpty) return;
 
     setState(() => _isLoading = true);
 
     try {
       await _savingsService.ajukanPenarikan(
         nominal: amount,
+        pin: verifiedPin,
         jenisSimpanan: _selectedSumber == 'saldo_sijaka' ? 'bagihasil_sijaka' : 'sukarela',
         namaBank: finalBank,
         noRekening: _accountNoController.text.trim(),

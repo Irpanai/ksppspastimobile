@@ -88,7 +88,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
     final dashboardAnggota = context.read<DashboardProvider>().dashboardData?.anggota;
     if (dashboardAnggota != null && dashboardAnggota.tunggakanWajib.isNotEmpty) {
       final firstT = dashboardAnggota.tunggakanWajib.first;
-      final lastT = dashboardAnggota.tunggakanWajib.last;
+      final sameYearTunggakan = dashboardAnggota.tunggakanWajib.where((t) => t.tahun == firstT.tahun).toList();
+      final lastT = sameYearTunggakan.isNotEmpty ? sameYearTunggakan.last : firstT;
       _wajibStartMonth = widget.initialStartMonth ?? firstT.bulan;
       _wajibEndMonth = widget.initialEndMonth ?? lastT.bulan;
       _wajibYear = widget.initialYear ?? firstT.tahun;
@@ -164,7 +165,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
       if (dashboardAnggota != null) {
         if (dashboardAnggota.tunggakanWajib.isNotEmpty) {
           final firstT = dashboardAnggota.tunggakanWajib.first;
-          final lastT = dashboardAnggota.tunggakanWajib.last;
+          final sameYearTunggakan = dashboardAnggota.tunggakanWajib.where((t) => t.tahun == firstT.tahun).toList();
+          final lastT = sameYearTunggakan.isNotEmpty ? sameYearTunggakan.last : firstT;
           _wajibStartMonth = firstT.bulan;
           _wajibEndMonth = lastT.bulan;
           _wajibYear = firstT.tahun;
@@ -250,9 +252,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
       } else if (type == 'simpanan_wajib') {
         final anggota = context.read<DashboardProvider>().dashboardData?.anggota;
         if (anggota != null && anggota.tunggakanWajib.isNotEmpty && widget.initialStartMonth == null) {
-          _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-          _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-          _wajibYear = anggota.tunggakanWajib.first.tahun;
+          final firstT = anggota.tunggakanWajib.first;
+          final sameYearTunggakan = anggota.tunggakanWajib.where((t) => t.tahun == firstT.tahun).toList();
+          final lastT = sameYearTunggakan.isNotEmpty ? sameYearTunggakan.last : firstT;
+          _wajibStartMonth = firstT.bulan;
+          _wajibEndMonth = lastT.bulan;
+          _wajibYear = firstT.tahun;
         }
         _updateWajibAmount();
       } else if (type == 'simpanan_pokok_wajib') {
@@ -884,9 +889,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
             onActionTap: () {
               setState(() {
                 _isBatchWajib = true;
-                _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-                _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-                _wajibYear = anggota.tunggakanWajib.first.tahun;
+                final firstT = anggota.tunggakanWajib.first;
+                final sameYearTunggakan = anggota.tunggakanWajib.where((t) => t.tahun == firstT.tahun).toList();
+                final lastT = sameYearTunggakan.isNotEmpty ? sameYearTunggakan.last : firstT;
+                _wajibStartMonth = firstT.bulan;
+                _wajibEndMonth = lastT.bulan;
+                _wajibYear = firstT.tahun;
                 _updateWajibAmount();
               });
               AppDialog.showInfo(
@@ -962,9 +970,12 @@ class _TopUpScreenState extends State<TopUpScreen> {
                     setState(() {
                       _isBatchWajib = true;
                       if (anggota != null && anggota.tunggakanWajib.isNotEmpty) {
-                        _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-                        _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-                        _wajibYear = anggota.tunggakanWajib.first.tahun;
+                        final firstT = anggota.tunggakanWajib.first;
+                        final sameYearTunggakan = anggota.tunggakanWajib.where((t) => t.tahun == firstT.tahun).toList();
+                        final lastT = sameYearTunggakan.isNotEmpty ? sameYearTunggakan.last : firstT;
+                        _wajibStartMonth = firstT.bulan;
+                        _wajibEndMonth = lastT.bulan;
+                        _wajibYear = firstT.tahun;
                       } else {
                         if (anggota != null &&
                             (anggota.isBeforeRegistration(_wajibStartMonth, _wajibYear) ||
@@ -1441,37 +1452,41 @@ class _TopUpScreenState extends State<TopUpScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildQuickFilterChip(
-                          label: 'Awal Tunggakan (${_months[anggota.tunggakanWajib.first.bulan - 1]['name']})',
-                          onTap: () {
-                            setState(() {
-                              if (isStart || !_isBatchWajib) {
-                                _wajibStartMonth = anggota.tunggakanWajib.first.bulan;
-                                if (_wajibEndMonth < _wajibStartMonth) _wajibEndMonth = _wajibStartMonth;
-                              } else {
-                                _wajibEndMonth = anggota.tunggakanWajib.first.bulan;
-                              }
-                              _updateWajibAmount();
-                            });
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildQuickFilterChip(
-                          label: 'Akhir Tunggakan (${_months[anggota.tunggakanWajib.last.bulan - 1]['name']})',
-                          onTap: () {
-                            setState(() {
-                              if (isStart || !_isBatchWajib) {
-                                _wajibStartMonth = anggota.tunggakanWajib.last.bulan;
-                              } else {
-                                _wajibEndMonth = anggota.tunggakanWajib.last.bulan;
-                              }
-                              _updateWajibAmount();
-                            });
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                        const SizedBox(width: 8),
+                        if (anggota.tunggakanWajib.where((t) => t.tahun == _wajibYear).isNotEmpty) ...[
+                          _buildQuickFilterChip(
+                            label: 'Awal Tunggakan (${_months[anggota.tunggakanWajib.where((t) => t.tahun == _wajibYear).first.bulan - 1]['name']})',
+                            onTap: () {
+                              final firstInYear = anggota.tunggakanWajib.where((t) => t.tahun == _wajibYear).first;
+                              setState(() {
+                                if (isStart || !_isBatchWajib) {
+                                  _wajibStartMonth = firstInYear.bulan;
+                                  if (_wajibEndMonth < _wajibStartMonth) _wajibEndMonth = _wajibStartMonth;
+                                } else {
+                                  _wajibEndMonth = firstInYear.bulan;
+                                }
+                                _updateWajibAmount();
+                              });
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _buildQuickFilterChip(
+                            label: 'Akhir Tunggakan (${_months[anggota.tunggakanWajib.where((t) => t.tahun == _wajibYear).last.bulan - 1]['name']})',
+                            onTap: () {
+                              final lastInYear = anggota.tunggakanWajib.where((t) => t.tahun == _wajibYear).last;
+                              setState(() {
+                                if (isStart || !_isBatchWajib) {
+                                  _wajibStartMonth = lastInYear.bulan;
+                                } else {
+                                  _wajibEndMonth = lastInYear.bulan;
+                                }
+                                _updateWajibAmount();
+                              });
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         _buildQuickFilterChip(
                           label: 'Desember',
                           onTap: () {
