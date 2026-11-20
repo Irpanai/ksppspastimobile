@@ -700,7 +700,6 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
 
     return Container(
       width: double.infinity,
-      color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       decoration: const BoxDecoration(
         color: Colors.white,
