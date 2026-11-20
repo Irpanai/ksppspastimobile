@@ -667,7 +667,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                     child: SingleChildScrollView(
                       controller: _scrollController,
                       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
                       child: Form(
                         key: _formKey,
                         child: AnimatedSwitcher(
@@ -692,22 +692,29 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   }
 
   // ==========================================
-  // TOP STEP PROGRESS BAR & TABS
+  // TOP STEP PROGRESS BAR & TABS (FLOATING MINIMALIST)
   // ==========================================
   Widget _buildStepProgressBar() {
     final progressValue = (_currentStep + 1) / 4;
     final progressPercent = (progressValue * 100).toInt();
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-      decoration: const BoxDecoration(
+      margin: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -715,33 +722,40 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               Text(
                 'Progres Pengajuan • Bagian ${_currentStep + 1} dari 4',
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF334155),
+                  color: Color(0xFF475569),
                   letterSpacing: -0.2,
                 ),
               ),
-              Text(
-                '$progressPercent%',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF166534),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$progressPercent%',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF166534),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progressValue,
-              backgroundColor: const Color(0xFFE2E8F0),
+              backgroundColor: const Color(0xFFF1F5F9),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF166534)),
-              minHeight: 5,
+              minHeight: 4,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               _buildTabItem(
@@ -792,16 +806,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             _goToStep(3);
           }
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           decoration: BoxDecoration(
             color: isActive ? const Color(0xFFF0FDF4) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: isActive
-                ? Border.all(color: const Color(0xFFBBF7D0), width: 1)
-                : null,
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -812,7 +823,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                 children: [
                   Icon(
                     icon,
-                    size: 18,
+                    size: 17,
                     color: isActive
                         ? const Color(0xFF166534)
                         : (isCompleted
@@ -820,7 +831,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                             : const Color(0xFF94A3B8)),
                   ),
                   if (isCompleted) ...[
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     const Icon(
                       Icons.check_circle_rounded,
                       size: 13,
@@ -829,9 +840,11 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   ],
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
@@ -842,6 +855,17 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                           : const Color(0xFF94A3B8)),
                 ),
               ),
+              if (isActive) ...[
+                const SizedBox(height: 3),
+                Container(
+                  width: 14,
+                  height: 2.5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF166534),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -937,7 +961,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                             boxShadow: !_isRekeningBaru
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
+                                      color: Colors.black.withValues(alpha: 0.04),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     )
@@ -977,7 +1001,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                             boxShadow: _isRekeningBaru
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
+                                      color: Colors.black.withValues(alpha: 0.04),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     )
@@ -1143,63 +1167,65 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   ),
                 ),
               ] else ...[
-                // New Account Form with bank choices & logos
+                // Dropdown Pilihan Bank dengan Logo
                 const Text(
-                  'Pilih Bank Pencairan:',
+                  'Pilih Bank Pencairan',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF475569),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _bankList.map((bank) {
-                    final isSelected = _selectedBankCode == bank.code;
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedBankCode = bank.code;
-                          if (bank.code != 'LAINNYA') {
-                            _bankController.text = bank.name;
-                          }
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFF0FDF4) : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF166534) : const Color(0xFFE2E8F0),
-                            width: isSelected ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildBankLogoBadge(bank.name, size: 28, fontSize: 7.5),
-                            const SizedBox(width: 8),
-                            Text(
-                              bank.shortName,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? const Color(0xFF166534) : const Color(0xFF1E293B),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedBankCode,
+                      isExpanded: true,
+                      dropdownColor: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+                      items: _bankList.map((bank) {
+                        return DropdownMenuItem<String>(
+                          value: bank.code,
+                          child: Row(
+                            children: [
+                              _buildBankLogoBadge(bank.name, size: 28, fontSize: 8),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  bank.name,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF1E293B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            if (isSelected) ...[
-                              const SizedBox(width: 4),
-                              const Icon(Icons.check_rounded, size: 14, color: Color(0xFF166534)),
                             ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedBankCode = val;
+                            final bank = _bankList.firstWhere((b) => b.code == val);
+                            if (val != 'LAINNYA') {
+                              _bankController.text = bank.name;
+                            }
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
                 if (_selectedBankCode == 'LAINNYA') ...[
                   const SizedBox(height: 14),
@@ -1491,7 +1517,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1610,7 +1636,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -1688,40 +1714,64 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   // ==========================================
   Widget _buildBankLogoBadge(String bankName, {double size = 42, double fontSize = 11}) {
     final bank = _findBankInfo(bankName);
+    final isCompact = size <= 34;
+
     return Container(
       width: size,
       height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bank.badgeBg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
         border: Border.all(
-          color: bank.primaryColor.withOpacity(0.35),
+          color: bank.primaryColor.withValues(alpha: 0.35),
           width: 1.2,
         ),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              bank.icon,
-              size: size * 0.42,
-              color: bank.primaryColor,
-            ),
-            const SizedBox(height: 1),
-            Text(
-              bank.code.length > 5 ? bank.code.substring(0, 5) : bank.code,
-              style: TextStyle(
-                color: bank.primaryColor,
-                fontWeight: FontWeight.w900,
-                fontSize: fontSize,
-                letterSpacing: -0.3,
-                height: 1.0,
+      child: isCompact
+          ? Padding(
+              padding: const EdgeInsets.all(2.5),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  bank.shortName,
+                  style: TextStyle(
+                    color: bank.primaryColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: fontSize,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 3.0),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      bank.icon,
+                      size: size * 0.38,
+                      color: bank.primaryColor,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      bank.shortName,
+                      style: TextStyle(
+                        color: bank.primaryColor,
+                        fontWeight: FontWeight.w900,
+                        fontSize: fontSize,
+                        letterSpacing: -0.3,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1741,7 +1791,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF166534).withOpacity(0.2),
+            color: const Color(0xFF166534).withValues(alpha: 0.2),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1752,7 +1802,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
@@ -1825,7 +1875,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF166534).withOpacity(0.08),
+                            color: const Color(0xFF166534).withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           )
@@ -2155,7 +2205,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF166534).withOpacity(0.25),
+            color: const Color(0xFF166534).withValues(alpha: 0.25),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -2169,7 +2219,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -2193,9 +2243,9 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -2518,7 +2568,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
