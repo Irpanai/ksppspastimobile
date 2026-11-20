@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/pin_service.dart';
 import '../providers/profile_provider.dart';
+import 'reset_pin_otp_screen.dart';
 
 enum PinFlowMode { setup, change }
 
@@ -28,6 +29,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
   String _confirmPin = '';
 
   bool _isError = false;
+  bool _isLocked = false;
   String _errorMessage = '';
   bool _isLoading = false;
 
@@ -52,7 +54,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
   int get _totalSteps => _mode == PinFlowMode.setup ? 2 : 3;
 
   void _onKeyPress(String key) {
-    if (_isLoading) return;
+    if (_isLoading || _isLocked) return;
 
     setState(() {
       _isError = false;
@@ -99,7 +101,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
   }
 
   void _onDeletePress() {
-    if (_isLoading) return;
+    if (_isLoading || _isLocked) return;
 
     setState(() {
       _isError = false;
@@ -132,18 +134,23 @@ class _SetPinScreenState extends State<SetPinScreen> {
         setState(() {
           _isLoading = false;
           _isError = false;
+          _isLocked = false;
           _errorMessage = '';
           _currentStep = 1;
         });
       }
     } on ApiException catch (e) {
       if (mounted) {
+        final isLocked = e.statusCode == 423 ||
+            (e.errors is Map && (e.errors['pin_locked'] == true || e.errors['requires_reset'] == true)) ||
+            e.message.toLowerCase().contains('diblokir');
         final msg = (e.message.isNotEmpty && e.message.toLowerCase() != 'false')
             ? e.message
             : 'PIN lama yang Anda masukkan salah.';
         setState(() {
           _isLoading = false;
           _isError = true;
+          _isLocked = isLocked;
           _errorMessage = msg;
           _oldPin = '';
         });
@@ -157,6 +164,19 @@ class _SetPinScreenState extends State<SetPinScreen> {
           _oldPin = '';
         });
       }
+    }
+  }
+
+  Future<void> _handleForgotPin() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ResetPinOtpScreen(autoSendOtp: true),
+      ),
+    );
+
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
     }
   }
 
@@ -453,7 +473,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
 
                             const SizedBox(height: 16),
 
-                            // Loading / Error
+                            // Loading / Error / Locked State
                             if (_isLoading)
                               const Center(
                                 child: SizedBox(
@@ -462,7 +482,53 @@ class _SetPinScreenState extends State<SetPinScreen> {
                                   child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0E7955)),
                                 ),
                               )
-                            else if (_isError)
+                            else if (_isLocked)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFFECACA)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.lock_person_rounded, color: Colors.red, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _errorMessage.isNotEmpty
+                                                ? _errorMessage
+                                                : 'PIN transaksi Anda telah diblokir. Silakan verifikasi dan buat PIN baru melalui OTP Email.',
+                                            style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: _handleForgotPin,
+                                        icon: const Icon(Icons.mark_email_read_rounded, size: 16),
+                                        label: const Text(
+                                          'Kirim OTP untuk Reset PIN',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF0E7955),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 11),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          elevation: 0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else if (_isError) ...[
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
@@ -484,8 +550,32 @@ class _SetPinScreenState extends State<SetPinScreen> {
                                     ),
                                   ],
                                 ),
-                              )
-                            else
+                              ),
+                              if (_mode == PinFlowMode.change && _currentStep == 0) ...[
+                                const SizedBox(height: 10),
+                                InkWell(
+                                  onTap: _handleForgotPin,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    child: Text(
+                                      'Lupa PIN Lama? Kirim OTP Reset PIN',
+                                      style: TextStyle(fontSize: 12.5, color: Color(0xFF0E7955), fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ] else if (_mode == PinFlowMode.change && _currentStep == 0) ...[
+                              InkWell(
+                                onTap: _handleForgotPin,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                  child: Text(
+                                    'Lupa PIN Lama? Kirim OTP Reset PIN',
+                                    style: TextStyle(fontSize: 12.5, color: Color(0xFF0E7955), fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                            ] else
                               const SizedBox(height: 24),
 
                             const SizedBox(height: 8),

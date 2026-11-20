@@ -24,6 +24,7 @@ import 'about_app_screen.dart';
 import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
+import 'reset_pin_otp_screen.dart';
 import '../../auth/screens/forgot_password_screen.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/models/cabang_model.dart';
@@ -588,6 +589,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   },
                                 ),
+                                if (user?.hasPin == true) ...[
+                                  const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                                  _buildMenuRow(
+                                    Icons.lock_reset_rounded,
+                                    'Reset PIN Transaksi (Lupa PIN)',
+                                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
+                                    onTap: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const ResetPinOtpScreen(),
+                                        ),
+                                      );
+                                      if (result == true) {
+                                        _refreshAll();
+                                      }
+                                    },
+                                  ),
+                                ],
                                 const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
                                 _buildMenuRow(
                                   Icons.fingerprint_rounded,
