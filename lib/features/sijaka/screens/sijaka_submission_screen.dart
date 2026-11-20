@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -20,6 +21,7 @@ class BankInfo {
   final String shortName;
   final Color primaryColor;
   final Color badgeBg;
+  final String? svgAsset;
   final IconData icon;
 
   const BankInfo({
@@ -28,6 +30,7 @@ class BankInfo {
     required this.shortName,
     required this.primaryColor,
     required this.badgeBg,
+    this.svgAsset,
     this.icon = Icons.account_balance_rounded,
   });
 }
@@ -107,6 +110,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'BSI',
       primaryColor: Color(0xFF00A39D),
       badgeBg: Color(0xFFE0F7F6),
+      svgAsset: 'assets/banks/bsi.svg',
     ),
     BankInfo(
       code: 'BCA',
@@ -114,6 +118,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'BCA',
       primaryColor: Color(0xFF005BAC),
       badgeBg: Color(0xFFE6F0FA),
+      svgAsset: 'assets/banks/bca.svg',
     ),
     BankInfo(
       code: 'MANDIRI',
@@ -121,6 +126,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'Mandiri',
       primaryColor: Color(0xFF003D79),
       badgeBg: Color(0xFFE8EEF5),
+      svgAsset: 'assets/banks/mandiri.svg',
     ),
     BankInfo(
       code: 'BRI',
@@ -128,6 +134,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'BRI',
       primaryColor: Color(0xFF00529C),
       badgeBg: Color(0xFFE6EEF7),
+      svgAsset: 'assets/banks/bri.svg',
     ),
     BankInfo(
       code: 'BNI',
@@ -135,6 +142,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'BNI',
       primaryColor: Color(0xFFE55300),
       badgeBg: Color(0xFFFDEEE6),
+      svgAsset: 'assets/banks/bni.svg',
     ),
     BankInfo(
       code: 'MUAMALAT',
@@ -149,6 +157,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'CIMB Niaga',
       primaryColor: Color(0xFFED1B24),
       badgeBg: Color(0xFFFDE8E9),
+      svgAsset: 'assets/banks/cimb.svg',
     ),
     BankInfo(
       code: 'DANAMON',
@@ -156,6 +165,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       shortName: 'Danamon',
       primaryColor: Color(0xFFFF5A00),
       badgeBg: Color(0xFFFFF0E6),
+      svgAsset: 'assets/banks/danamon.svg',
     ),
     BankInfo(
       code: 'PERMATA',
@@ -1716,62 +1726,97 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     final bank = _findBankInfo(bankName);
     final isCompact = size <= 34;
 
+    Widget badgeContent;
+    if (bank.svgAsset != null) {
+      badgeContent = Padding(
+        padding: EdgeInsets.all(isCompact ? 3.0 : 4.0),
+        child: SvgPicture.asset(
+          bank.svgAsset!,
+          fit: BoxFit.contain,
+          placeholderBuilder: (_) => FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              bank.shortName,
+              style: TextStyle(
+                color: bank.primaryColor,
+                fontWeight: FontWeight.w900,
+                fontSize: fontSize,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else if (isCompact) {
+      badgeContent = Padding(
+        padding: const EdgeInsets.all(2.5),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            bank.shortName,
+            style: TextStyle(
+              color: bank.primaryColor,
+              fontWeight: FontWeight.w900,
+              fontSize: fontSize,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+      );
+    } else {
+      badgeContent = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 3.0),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                bank.icon,
+                size: size * 0.38,
+                color: bank.primaryColor,
+              ),
+              const SizedBox(height: 1),
+              Text(
+                bank.shortName,
+                style: TextStyle(
+                  color: bank.primaryColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: fontSize,
+                  letterSpacing: -0.3,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
-      width: size,
+      width: bank.svgAsset != null ? size * 1.2 : size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: bank.badgeBg,
+        color: bank.svgAsset != null ? Colors.white : bank.badgeBg,
         borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
         border: Border.all(
-          color: bank.primaryColor.withValues(alpha: 0.35),
+          color: bank.svgAsset != null
+              ? const Color(0xFFE2E8F0)
+              : bank.primaryColor.withValues(alpha: 0.35),
           width: 1.2,
         ),
+        boxShadow: bank.svgAsset != null
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : null,
       ),
-      child: isCompact
-          ? Padding(
-              padding: const EdgeInsets.all(2.5),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  bank.shortName,
-                  style: TextStyle(
-                    color: bank.primaryColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: fontSize,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-            )
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 3.0),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      bank.icon,
-                      size: size * 0.38,
-                      color: bank.primaryColor,
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      bank.shortName,
-                      style: TextStyle(
-                        color: bank.primaryColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: fontSize,
-                        letterSpacing: -0.3,
-                        height: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      child: badgeContent,
     );
   }
 

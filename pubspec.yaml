@@ -54,6 +54,7 @@ dependencies:
   share_plus: ^13.3.1
   local_auth: ^3.0.2
   package_info_plus: ^10.2.2
+  flutter_svg: ^2.5.0
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
     - web/
     - assets/images/
     - assets/videos/
+    - assets/banks/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
