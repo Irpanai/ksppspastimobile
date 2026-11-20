@@ -128,6 +128,8 @@ class ApiConstants {
   static const String pinSetup = '/member/pin/setup';
   static const String pinVerify = '/member/pin/verify';
   static const String pinChange = '/member/pin/change';
+  static const String pinForgotOtp = '/member/pin/forgot-otp';
+  static const String pinResetOtp = '/member/pin/reset-otp';
 
   // Payment Gateway Endpoints (DOKU Checkout & Midtrans)
   static const String paymentChannels = '/payment/channels';

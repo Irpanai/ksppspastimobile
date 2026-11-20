@@ -5,6 +5,7 @@ import '../../core/network/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/services/pin_service.dart';
 import '../../features/profile/screens/set_pin_screen.dart';
+import '../../features/profile/screens/reset_pin_otp_screen.dart';
 
 class PinVerificationDialog extends StatefulWidget {
   final String title;
@@ -120,11 +121,12 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
   final PinService _pinService = PinService();
   String _pin = '';
   bool _isError = false;
+  bool _isLocked = false;
   String _errorMessage = '';
   bool _isLoading = false;
 
   void _onKeyPress(String key) {
-    if (_isLoading) return;
+    if (_isLoading || _isLocked) return;
     if (_pin.length < 6) {
       setState(() {
         _pin += key;
@@ -138,7 +140,7 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
   }
 
   void _onDeletePress() {
-    if (_isLoading) return;
+    if (_isLoading || _isLocked) return;
     if (_pin.isNotEmpty) {
       setState(() {
         _pin = _pin.substring(0, _pin.length - 1);
@@ -162,8 +164,12 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
       }
     } on ApiException catch (e) {
       if (mounted) {
+        final isLocked = e.statusCode == 423 ||
+            (e.errors is Map && (e.errors['pin_locked'] == true || e.errors['requires_reset'] == true)) ||
+            e.message.toLowerCase().contains('diblokir');
         setState(() {
           _isError = true;
+          _isLocked = isLocked;
           _errorMessage = e.message;
           _pin = '';
           _isLoading = false;
@@ -178,6 +184,24 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _openResetPinScreen() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ResetPinOtpScreen(autoSendOtp: true),
+      ),
+    );
+
+    if (result == true && mounted) {
+      setState(() {
+        _isLocked = false;
+        _isError = false;
+        _errorMessage = '';
+        _pin = '';
+      });
     }
   }
 
@@ -251,17 +275,88 @@ class _PinVerificationDialogState extends State<PinVerificationDialog> {
                 width: 20,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0E7955)),
               ),
+              const SizedBox(height: 12),
+            ] else if (_isLocked) ...[
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.lock_person_rounded, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage.isNotEmpty
+                                ? _errorMessage
+                                : 'PIN transaksi Anda terblokir. Silakan verifikasi dan buat PIN baru melalui OTP Email.',
+                            style: const TextStyle(color: Color(0xFFDC2626), fontSize: 11.5, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _openResetPinScreen,
+                        icon: const Icon(Icons.mark_email_read_rounded, size: 16),
+                        label: const Text(
+                          'Kirim OTP untuk Reset PIN',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0E7955),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
             ] else if (_isError) ...[
               Text(
                 _errorMessage.isNotEmpty ? _errorMessage : 'PIN yang Anda masukkan salah.',
                 style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: _openResetPinScreen,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Text(
+                    'Lupa PIN? Kirim OTP Reset PIN',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF0E7955), fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
             ] else ...[
-              const SizedBox(height: 20),
+              InkWell(
+                onTap: _openResetPinScreen,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Text(
+                    'Lupa PIN? Reset via OTP Email',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
             ],
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             // Keypad
             GridView.builder(
