@@ -562,6 +562,8 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       final snapResponse = await paymentProvider.createPayment(
         type: 'pembukaan_sijaka',
         nominal: _rawNominal,
+        bank: 'bsi',
+        paymentMethod: 'bsi',
         sijakaProdukId: _selectedProduct!.id,
         namaAhliWaris: _ahliWarisNamaController.text.trim().isNotEmpty
             ? _ahliWarisNamaController.text.trim()
@@ -1501,6 +1503,136 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               _buildReviewRow('Alamat', _alamatController.text),
           ],
         ),
+        const SizedBox(height: 14),
+
+        // 5. Metode Pembayaran Setoran (Khusus VA BSI)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF00A39D), width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00A39D).withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F7F6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_rounded,
+                          size: 16,
+                          color: Color(0xFF00A39D),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Metode Pembayaran Setoran',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F7F6),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF80DFDA)),
+                    ),
+                    child: const Text(
+                      'Khusus BSI',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00A39D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 18, thickness: 0.8),
+              Row(
+                children: [
+                  _buildBankLogoBadge('BSI', size: 36, fontSize: 9),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Virtual Account BSI',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Bank Syariah Indonesia • Verifikasi Otomatis 24 Jam',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF00A39D),
+                    size: 20,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.lock_outline_rounded, size: 14, color: Color(0xFF166534)),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Pembayaran setoran awal Sijaka khusus dilayani melalui Virtual Account Bank Syariah Indonesia (BSI).',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF166534),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 18),
 
         // Persetujuan Akad
@@ -1697,7 +1829,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          isFinalStep ? 'Lanjut Pembayaran' : 'Lanjutkan',
+                          isFinalStep ? 'Bayar via VA BSI' : 'Lanjutkan',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13.5,
