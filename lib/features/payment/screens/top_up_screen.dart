@@ -776,75 +776,74 @@ class _TopUpScreenState extends State<TopUpScreen> {
               ],
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: themeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     activeData['isSuccessBadge'] == true
                         ? Icons.check_circle_rounded
                         : (activeData['icon'] as IconData),
                     color: themeColor,
-                    size: 24,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Expanded(
-                            child: Text(
-                              activeData['title'] as String,
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.bold,
-                                color: themeColor,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            activeData['title'] as String,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: themeColor,
                             ),
                           ),
-                          if (activeData['badgeText'] != null) ...[
-                            const SizedBox(width: 6),
+                          if (activeData['badgeText'] != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFECFDF5),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(6),
                                 border: Border.all(color: const Color(0xFFA7F3D0)),
                               ),
                               child: Text(
                                 activeData['badgeText'] as String,
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
                                   color: themeColor,
                                 ),
                               ),
                             ),
-                          ],
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         activeData['subtitle'] as String,
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF64748B),
+                          height: 1.35,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -912,31 +911,38 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Pilih Jenis Simpanan',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Pilih Jenis Simpanan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Pilih produk simpanan yang ingin disetor atau dibuka',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFF64748B),
+                            SizedBox(height: 2),
+                            Text(
+                              'Pilih produk simpanan yang ingin disetor atau dibuka',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF64748B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
                         onPressed: () => Navigator.pop(ctx),
                         splashRadius: 20,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
@@ -3024,31 +3030,38 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Pilih Metode Pembayaran',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Pilih Metode Pembayaran',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Verifikasi instan otomatis 24 jam tanpa antre',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: Color(0xFF64748B),
+                          SizedBox(height: 2),
+                          Text(
+                            'Verifikasi instan otomatis 24 jam tanpa antre',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
                       onPressed: () => Navigator.pop(ctx),
                       splashRadius: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
@@ -3429,7 +3442,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
         child: Row(
           children: [
             Expanded(
-              flex: 5,
+              flex: 4,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3481,7 +3494,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              flex: 5,
+              flex: 6,
               child: ElevatedButton(
                 onPressed: (isCreating || isDisabled)
                     ? (isDisabled ? () => _showPokokAlreadyPaidDialog() : null)
@@ -3489,7 +3502,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isDisabled ? const Color(0xFF94A3B8) : Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: isDisabled ? 0 : 2,
                 ),
@@ -3499,11 +3512,20 @@ class _TopUpScreenState extends State<TopUpScreen> {
                         width: 20,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : Text(
-                        isDisabled
-                            ? 'Sudah Lunas'
-                            : (isKeluar ? 'Bayar & Aktifkan Kembali' : 'Bayar Sekarang'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isDisabled
+                              ? 'Sudah Lunas'
+                              : (isKeluar ? 'Bayar & Aktifkan Kembali' : 'Bayar Sekarang'),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.5,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
                       ),
               ),
             ),
