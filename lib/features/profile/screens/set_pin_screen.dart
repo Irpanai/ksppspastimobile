@@ -39,6 +39,29 @@ class _SetPinScreenState extends State<SetPinScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final hasPin = authProvider.user?.hasPin ?? false;
     _mode = widget.mode ?? (hasPin ? PinFlowMode.change : PinFlowMode.setup);
+
+    // Sinkronisasi status PIN langsung dari DB server (Ticket 19112617)
+    // Jika user sudah membuat PIN di Device A, Device B otomatis switch ke mode change
+    if (_mode == PinFlowMode.setup && widget.mode == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final status = await _pinService.getPinStatus();
+          if (status != null && status.hasPin && mounted) {
+            Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+            try {
+              Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+            } catch (_) {}
+            setState(() {
+              _mode = PinFlowMode.change;
+              _currentStep = 0;
+              _oldPin = '';
+              _newPin = '';
+              _confirmPin = '';
+            });
+          }
+        } catch (_) {}
+      });
+    }
   }
 
   String get _currentPinInput {
@@ -206,6 +229,25 @@ class _SetPinScreenState extends State<SetPinScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
+        // Jika server menginfokan bahwa PIN sudah aktif dari device lain (Ticket 19112617)
+        if (e.statusCode == 400 && (e.message.toLowerCase().contains('sudah memiliki') || e.message.toLowerCase().contains('aktif'))) {
+          Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+          try {
+            Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+          } catch (_) {}
+          setState(() {
+            _mode = PinFlowMode.change;
+            _currentStep = 0;
+            _oldPin = '';
+            _newPin = '';
+            _confirmPin = '';
+            _isError = true;
+            _errorMessage = 'Akun Anda sudah memiliki PIN aktif dari perangkat lain. Silakan masukkan PIN lama Anda jika ingin mengubahnya.';
+            _isLoading = false;
+          });
+          return;
+        }
+
         setState(() {
           _isError = true;
           _errorMessage = e.message;

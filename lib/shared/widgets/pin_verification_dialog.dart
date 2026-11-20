@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/services/pin_service.dart';
+import '../../features/profile/providers/profile_provider.dart';
 import '../../features/profile/screens/set_pin_screen.dart';
 import '../../features/profile/screens/reset_pin_otp_screen.dart';
 
@@ -26,9 +27,28 @@ class PinVerificationDialog extends StatefulWidget {
     String subtitle = 'Masukkan 6 digit PIN keamanan akun Anda',
   }) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
+    var user = authProvider.user;
 
-    // Jika user belum mengatur PIN, arahkan ke pembuatan PIN terlebih dahulu
+    // Sinkronisasi status PIN dari DB server jika di local cache bernilai false (Ticket 19112617)
+    // Memastikan PIN yang sudah dibuat di Device A langsung aktif dan dikenali di Device B
+    if (user != null && !user.hasPin) {
+      try {
+        final status = await PinService().getPinStatus();
+        if (status != null && status.hasPin) {
+          authProvider.updateHasPin(true);
+          if (context.mounted) {
+            try {
+              Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+            } catch (_) {}
+          }
+          user = authProvider.user;
+        }
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return false;
+
+    // Jika user memang benar-benar belum mengatur PIN di DB, arahkan ke pembuatan PIN terlebih dahulu
     if (user != null && !user.hasPin) {
       final shouldCreate = await AppDialog.showConfirmation(
         context,
@@ -72,9 +92,28 @@ class PinVerificationDialog extends StatefulWidget {
     String subtitle = 'Masukkan 6 digit PIN keamanan akun Anda',
   }) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
+    var user = authProvider.user;
 
-    // Jika user belum mengatur PIN, arahkan ke pembuatan PIN terlebih dahulu
+    // Sinkronisasi status PIN dari DB server jika di local cache bernilai false (Ticket 19112617)
+    // Memastikan PIN yang sudah dibuat di Device A langsung aktif dan dikenali di Device B
+    if (user != null && !user.hasPin) {
+      try {
+        final status = await PinService().getPinStatus();
+        if (status != null && status.hasPin) {
+          authProvider.updateHasPin(true);
+          if (context.mounted) {
+            try {
+              Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+            } catch (_) {}
+          }
+          user = authProvider.user;
+        }
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return null;
+
+    // Jika user memang benar-benar belum mengatur PIN di DB, arahkan ke pembuatan PIN terlebih dahulu
     if (user != null && !user.hasPin) {
       final shouldCreate = await AppDialog.showConfirmation(
         context,

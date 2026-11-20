@@ -4,6 +4,10 @@ class PenarikanItemModel {
   final String jenisSimpanan;
   final int nominal;
   final String nominalFormat;
+  final int biayaAdmin;
+  final String biayaAdminFormat;
+  final int nominalTransfer;
+  final String nominalTransferFormat;
   final String metodePenarikan;
   final String namaBank;
   final String noRekening;
@@ -21,6 +25,10 @@ class PenarikanItemModel {
     required this.jenisSimpanan,
     required this.nominal,
     required this.nominalFormat,
+    this.biayaAdmin = 0,
+    this.biayaAdminFormat = 'Rp 0',
+    this.nominalTransfer = 0,
+    this.nominalTransferFormat = '',
     required this.metodePenarikan,
     required this.namaBank,
     required this.noRekening,
@@ -37,13 +45,28 @@ class PenarikanItemModel {
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
 
+  bool get isBsi {
+    final lower = namaBank.trim().toLowerCase();
+    return lower.contains('bsi') || lower.contains('syariah indonesia');
+  }
+
   factory PenarikanItemModel.fromJson(Map<String, dynamic> json) {
+    final int parsedNominal = json['nominal'] is int ? json['nominal'] : int.tryParse(json['nominal']?.toString() ?? '0') ?? 0;
+    final int parsedBiaya = json['biaya_admin'] is int ? json['biaya_admin'] : int.tryParse(json['biaya_admin']?.toString() ?? '0') ?? 0;
+    final int parsedTransfer = json['nominal_transfer'] is int 
+        ? json['nominal_transfer'] 
+        : int.tryParse(json['nominal_transfer']?.toString() ?? '0') ?? (parsedNominal > parsedBiaya ? parsedNominal - parsedBiaya : 0);
+
     return PenarikanItemModel(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       kodeTransaksi: json['kode_transaksi']?.toString() ?? '-',
       jenisSimpanan: json['jenis_simpanan']?.toString() ?? 'sukarela',
-      nominal: json['nominal'] is int ? json['nominal'] : int.tryParse(json['nominal']?.toString() ?? '0') ?? 0,
-      nominalFormat: json['nominal_format']?.toString() ?? '',
+      nominal: parsedNominal,
+      nominalFormat: json['nominal_format']?.toString() ?? 'Rp $parsedNominal',
+      biayaAdmin: parsedBiaya,
+      biayaAdminFormat: json['biaya_admin_format']?.toString() ?? 'Rp $parsedBiaya',
+      nominalTransfer: parsedTransfer,
+      nominalTransferFormat: json['nominal_transfer_format']?.toString() ?? 'Rp $parsedTransfer',
       metodePenarikan: json['metode_penarikan']?.toString() ?? 'transfer_bank',
       namaBank: json['nama_bank']?.toString() ?? '',
       noRekening: json['no_rekening']?.toString() ?? '',

@@ -37,6 +37,19 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     return _bankNameController.text.trim();
   }
 
+  bool get _isBsiBank {
+    final lower = _finalBankName.toLowerCase();
+    return lower.contains('bsi') || lower.contains('syariah indonesia');
+  }
+
+  int get _biayaTransfer => _isBsiBank ? 0 : 2500;
+  int get _minWithdrawal => _isBsiBank ? 1000 : 5000;
+  int get _netReceivedAmount {
+    final amount = _parsedAmount;
+    if (amount <= 0) return 0;
+    return amount > _biayaTransfer ? amount - _biayaTransfer : 0;
+  }
+
   String _selectedSumber = 'simpanan_sukarela';
   bool _isLoading = false;
 
@@ -54,12 +67,12 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   DateTime? _filterEndDate;
 
   final List<int> _presetNominals = [
+    10000,
+    25000,
     50000,
     100000,
     250000,
     500000,
-    1000000,
-    2000000,
   ];
 
   final List<String> _bankOptions = [
@@ -241,11 +254,13 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
 
   void _submitTarik() async {
     final amount = _parsedAmount;
-    if (amount < 50000) {
+    if (amount < _minWithdrawal) {
       AppDialog.showWarning(
         context,
         title: 'Nominal Penarikan',
-        message: 'Minimal penarikan saldo adalah Rp 50.000.',
+        message: _isBsiBank
+            ? 'Minimal penarikan saldo untuk Bank BSI adalah Rp 1.000.'
+            : 'Minimal penarikan saldo untuk bank selain BSI adalah Rp 5.000 (dikenakan potongan transfer Rp 2.500).',
       );
       return;
     }
@@ -316,7 +331,9 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
     final verifiedPin = await PinVerificationDialog.showForPin(
       context,
       title: 'Konfirmasi Penarikan',
-      subtitle: 'Masukkan 6 digit PIN untuk mengajukan penarikan dana ${AppCurrency.format(amount)}',
+      subtitle: _isBsiBank
+          ? 'Masukkan 6 digit PIN untuk mengajukan penarikan dana ${AppCurrency.format(amount)}'
+          : 'Masukkan 6 digit PIN untuk penarikan ${AppCurrency.format(amount)} (Potongan Non-BSI: Rp 2.500, Diterima: ${AppCurrency.format(_netReceivedAmount)})',
     );
 
     if (verifiedPin == null || verifiedPin.isEmpty) return;
@@ -364,11 +381,14 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
   }
 
   void _showSuccessDialog() {
+    final infoPotongan = !_isBsiBank 
+        ? ' (Dikenakan potongan transfer non-BSI Rp 2.500, estimasi dana diterima ${AppCurrency.format(_netReceivedAmount)})' 
+        : ' (Bebas biaya transfer BSI)';
     AppDialog.showSuccess(
       context,
       title: 'Pengajuan Berhasil Dikirim',
       message:
-          'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)} berhasil diajukan. Dana akan ditransfer ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
+          'Permohonan penarikan dana ${AppCurrency.format(_parsedAmount)}$infoPotongan berhasil diajukan. Dana akan ditransfer ke rekening $_finalBankName (${_accountNoController.text}) Anda.',
       buttonText: 'Selesai',
       secondaryButtonText: 'Lihat Riwayat',
       barrierDismissible: false,
@@ -540,8 +560,30 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                     ],
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Text('*Minimum penarikan Rp 50.000', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _isBsiBank ? Icons.check_circle_outline_rounded : Icons.info_outline_rounded,
+                      size: 14,
+                      color: _isBsiBank ? const Color(0xFF0E7955) : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        _isBsiBank
+                            ? 'Bebas biaya transfer untuk Bank BSI (Minimal Rp 1.000)'
+                            : 'Dikenakan potongan transfer Rp 2.500 untuk bank selain BSI (Minimal Rp 5.000)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _isBsiBank ? const Color(0xFF0E7955) : const Color(0xFFD97706),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 14),
 
                 // Pilihan Cepat
@@ -575,6 +617,61 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                     );
                   }).toList(),
                 ),
+
+                if (_parsedAmount > 0) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Nominal Ditarik', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                            Text(AppCurrency.format(_parsedAmount), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _isBsiBank ? 'Biaya Transfer Bank (BSI)' : 'Potongan Transfer (Non-BSI)',
+                              style: TextStyle(fontSize: 12, color: _isBsiBank ? const Color(0xFF0E7955) : const Color(0xFFD97706)),
+                            ),
+                            Text(
+                              _isBsiBank ? 'Gratis (Rp 0)' : '-Rp 2.500',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _isBsiBank ? const Color(0xFF0E7955) : const Color(0xFFD97706),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6),
+                          child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Estimasi Dana Diterima', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                            Text(
+                              AppCurrency.format(_netReceivedAmount),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0E7955)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // Metode Transfer Bank
@@ -783,12 +880,17 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                       AppCurrency.format(_parsedAmount),
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
                     ),
+                    if (!_isBsiBank && _parsedAmount > 0)
+                      Text(
+                        'Diterima: ${AppCurrency.format(_netReceivedAmount)}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFD97706)),
+                      ),
                   ],
                 ),
               ),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _isLoading || _parsedAmount < 50000 || _hasActivePending ? null : _submitTarik,
+                  onPressed: _isLoading || _parsedAmount < _minWithdrawal || _hasActivePending ? null : _submitTarik,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _hasActivePending ? const Color(0xFF94A3B8) : const Color(0xFF0E7955),
                     foregroundColor: Colors.white,
@@ -1226,7 +1328,7 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredList.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final item = filteredList[index];
 
@@ -1287,6 +1389,13 @@ class _TarikSimpananScreenState extends State<TarikSimpananScreen> with SingleTi
                                         item.nominalFormat,
                                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                       ),
+                                      if (item.biayaAdmin > 0) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Potongan: -${item.biayaAdminFormat} (Transfer: ${item.nominalTransferFormat})',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),

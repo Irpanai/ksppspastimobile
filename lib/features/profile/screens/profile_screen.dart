@@ -25,6 +25,7 @@ import 'pengunduran_diri_screen.dart';
 import 'change_password_screen.dart';
 import 'set_pin_screen.dart';
 import 'reset_pin_otp_screen.dart';
+import '../../auth/services/pin_service.dart';
 import '../../auth/screens/forgot_password_screen.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/models/cabang_model.dart';
@@ -576,11 +577,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ],
                                   ),
                                   onTap: () async {
+                                    bool hasPinActive = user?.hasPin == true;
+                                    if (!hasPinActive) {
+                                      final status = await PinService().getPinStatus();
+                                      if (status != null && status.hasPin) {
+                                        hasPinActive = true;
+                                        if (context.mounted) {
+                                          Provider.of<AuthProvider>(context, listen: false).updateHasPin(true);
+                                          Provider.of<ProfileProvider>(context, listen: false).updateHasPin(true);
+                                        }
+                                      }
+                                    }
+                                    if (!context.mounted) return;
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => SetPinScreen(
-                                          mode: user?.hasPin == true ? PinFlowMode.change : PinFlowMode.setup,
+                                          mode: hasPinActive ? PinFlowMode.change : PinFlowMode.setup,
                                         ),
                                       ),
                                     );

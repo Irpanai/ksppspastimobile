@@ -417,15 +417,24 @@ class DashboardData {
   final DashboardAnggota? anggota;
   final RingkasanSaldo ringkasanSaldo;
   final DashboardStatistik statistiks;
+  final bool? hasPin;
 
   DashboardData({
     this.anggota,
     required this.ringkasanSaldo,
     required this.statistiks,
+    this.hasPin,
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
+    final bool parsedHasPin = json['has_pin'] == true ||
+        json['has_pin'] == 1 ||
+        json['has_pin'] == '1' ||
+        json['has_pin'] == 'true' ||
+        (json['anggota'] is Map && (json['anggota']['has_pin'] == true || json['anggota']['has_pin'] == 1));
+
     return DashboardData(
+      hasPin: parsedHasPin,
       anggota: json['anggota'] != null ? DashboardAnggota.fromJson(json['anggota']) : null,
       ringkasanSaldo: json['ringkasan_saldo'] != null
           ? RingkasanSaldo.fromJson(json['ringkasan_saldo'])
@@ -445,6 +454,7 @@ class DashboardData {
 
   Map<String, dynamic> toJson() {
     return {
+      'has_pin': hasPin,
       'anggota': anggota?.toJson(),
       'ringkasan_saldo': ringkasanSaldo.toJson(),
       'statistiks': statistiks.toJson(),

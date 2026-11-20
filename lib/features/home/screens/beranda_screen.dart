@@ -47,6 +47,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final dashboardProvider = context.read<DashboardProvider>();
     await dashboardProvider.fetchDashboard();
     if (!mounted) return;
+    if (dashboardProvider.dashboardData?.hasPin != null) {
+      context.read<AuthProvider>().updateHasPin(dashboardProvider.dashboardData!.hasPin!);
+    }
     _checkDashboardErrorModal();
     _checkAndShowTunggakanPopup();
   }
@@ -169,6 +172,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
       context.read<NotificationProvider>().fetchNotifications(refresh: true),
     ]);
     if (mounted) {
+      final dbData = context.read<DashboardProvider>().dashboardData;
+      if (dbData?.hasPin != null) {
+        context.read<AuthProvider>().updateHasPin(dbData!.hasPin!);
+      }
       _checkDashboardErrorModal();
       _checkAndShowTunggakanPopup();
     }
