@@ -818,7 +818,7 @@ class _PengunduranDiriScreenState extends State<PengunduranDiriScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Pengajuan pengunduran diri Anda pada tanggal ${pending?.createdAt ?? '-'} saat ini sedang dalam proses verifikasi oleh tim Customer Service / Finance KSPPS.',
+            'Pengajuan pengunduran diri Anda pada tanggal ${pending?.createdAt ?? '-'} saat ini sedang dalam proses verifikasi.',
             style: const TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.5),
           ),
           if (pending?.catatan != null && pending!.catatan!.isNotEmpty) ...[
