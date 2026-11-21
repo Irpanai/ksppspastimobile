@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/premium_header.dart';
@@ -83,6 +84,16 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
         context,
         title: 'Hubungan Diperlukan',
         message: 'Silakan sebutkan hubungan keluarga ahli waris Anda.',
+      );
+      return;
+    }
+
+    final nik = _ktpController.text.trim();
+    if (nik.isNotEmpty && nik.length != 16) {
+      AppDialog.showWarning(
+        context,
+        title: 'NIK Tidak Valid',
+        message: 'Nomor identitas (NIK) Ahli Waris harus terdiri dari 16 digit angka.',
       );
       return;
     }
@@ -180,7 +191,21 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
                         ),
                       ],
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                      _buildTextField('No. KTP / Passport', Icons.badge_outlined, _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true, isRequired: false),
+                      _buildTextField(
+                        'No. KTP / NIK Ahli Waris',
+                        Icons.badge_outlined,
+                        _ktpController,
+                        hint: '16 digit nomor NIK ahli waris',
+                        isNumber: true,
+                        isRequired: false,
+                        maxLength: 16,
+                        validator: (value) {
+                          if (value != null && value.trim().isNotEmpty && value.trim().length != 16) {
+                            return 'NIK Ahli Waris harus 16 digit angka';
+                          }
+                          return null;
+                        },
+                      ),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField('No. HP Ahli Waris', Icons.phone_android_rounded, _hpController, hint: 'Contoh: 08123456789', isNumber: true),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
@@ -277,7 +302,7 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -298,6 +323,9 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
     bool isNumber = false,
     bool isRequired = true,
     int maxLines = 1,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,10 +338,13 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          maxLength: maxLength,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          validator: isRequired ? (value) => value == null || value.trim().isEmpty ? 'Harap diisi' : null : null,
+          inputFormatters: inputFormatters ?? (isNumber ? [FilteringTextInputFormatter.digitsOnly] : null),
+          validator: validator ?? (isRequired ? (value) => value == null || value.trim().isEmpty ? 'Harap diisi' : null : null),
           style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
           decoration: InputDecoration(
+            counterText: '',
             isDense: true,
             hintText: hint ?? 'Masukkan $label',
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),

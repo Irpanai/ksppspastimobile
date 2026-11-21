@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -89,6 +90,7 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
 
   // Multi-step state: 0: Produk, 1: Rekening, 2: Lainnya, 3: Review
   int _currentStep = 0;
+  int _maxStepReached = 0;
 
   SijakaProdukItem? _selectedProduct;
   String _selectedMetodeBagiHasil = 'Setiap Bulan';
@@ -237,16 +239,16 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     _nominalController.text = formatter.format(value).trim();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool force = false}) async {
     await Future.wait([
-      _loadProducts(),
-      _loadProfileData(),
+      _loadProducts(refresh: force),
+      _loadProfileData(refresh: force),
     ]);
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool refresh = false}) async {
     final provider = context.read<SijakaProvider>();
-    await provider.fetchProdukList();
+    await provider.fetchProdukList(refresh: refresh);
 
     final activeList = provider.activeProdukList;
     if (mounted && activeList.isNotEmpty) {
@@ -264,10 +266,10 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     }
   }
 
-  Future<void> _loadProfileData() async {
+  Future<void> _loadProfileData({bool refresh = false}) async {
     final profileProvider = context.read<ProfileProvider>();
-    if (profileProvider.profileData == null) {
-      await profileProvider.fetchProfileDetail();
+    if (refresh || profileProvider.profileData == null) {
+      await profileProvider.fetchProfileDetail(refresh: refresh);
     }
     final anggota = profileProvider.profileData?.anggota;
     final user = profileProvider.profileData?.user;
@@ -410,6 +412,9 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   void _goToStep(int step) {
     setState(() {
       _currentStep = step;
+      if (step > _maxStepReached) {
+        _maxStepReached = step;
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -420,6 +425,31 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         );
       }
     });
+  }
+
+  bool _isStepCompleted(int index) {
+    if (index == 0) {
+      return _maxStepReached >= 1 ||
+          (_selectedProduct != null &&
+              _rawNominal >= _selectedProduct!.minimalSetoran);
+    }
+    if (index == 1) {
+      return _maxStepReached >= 2 ||
+          (_bankController.text.trim().isNotEmpty &&
+              _noRekController.text.trim().isNotEmpty &&
+              _atasNamaController.text.trim().isNotEmpty);
+    }
+    if (index == 2) {
+      final nik = _ktpController.text.trim();
+      return _maxStepReached >= 3 ||
+          (_ahliWarisNamaController.text.trim().isNotEmpty &&
+              _hpController.text.trim().isNotEmpty &&
+              (nik.isEmpty || nik.length == 16));
+    }
+    if (index == 3) {
+      return _agreed;
+    }
+    return false;
   }
 
   bool _validateStep0() {
@@ -525,6 +555,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         context,
         title: 'Nomor HP Diperlukan',
         message: 'Silakan masukkan nomor handphone ahli waris yang dapat dihubungi.',
+      );
+      return false;
+    }
+    final nik = _ktpController.text.trim();
+    if (nik.isNotEmpty && nik.length != 16) {
+      AppDialog.showWarning(
+        context,
+        title: 'NIK Ahli Waris Tidak Valid',
+        message: 'Nomor identitas (NIK) Ahli Waris harus tepat 16 digit angka.',
       );
       return false;
     }
@@ -676,6 +715,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   Navigator.of(context).pop();
                 }
               },
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                  tooltip: 'Muat Ulang Data',
+                  onPressed: () => _loadData(force: true),
+                ),
+              ],
             ),
             _buildStepProgressBar(),
             Expanded(
@@ -704,15 +750,36 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                   return SafeArea(
                     top: false,
                     bottom: true,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
-                      child: Form(
-                        key: _formKey,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: _buildCurrentStepContent(activeProdukList),
+                    child: RefreshIndicator(
+                      color: const Color(0xFF166534),
+                      onRefresh: () => _loadData(force: true),
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
+                        child: Form(
+                          key: _formKey,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 280),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.04, 0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: KeyedSubtree(
+                              key: ValueKey<int>(_currentStep),
+                              child: _buildCurrentStepContent(activeProdukList),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -735,7 +802,8 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
   // TOP STEP PROGRESS BAR & TABS (FLOATING MINIMALIST)
   // ==========================================
   Widget _buildStepProgressBar() {
-    final progressValue = (_currentStep + 1) / 4;
+    final highestStep = max(_maxStepReached, _currentStep);
+    final progressValue = ((highestStep + 1) / 4).clamp(0.25, 1.0);
     final progressPercent = (progressValue * 100).toInt();
 
     return Container(
@@ -786,14 +854,21 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progressValue,
-              backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF166534)),
-              minHeight: 4,
-            ),
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+            tween: Tween<double>(begin: 0.25, end: progressValue),
+            builder: (context, animatedValue, _) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: animatedValue,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF166534)),
+                  minHeight: 5,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 10),
           Row(
@@ -831,12 +906,12 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     required IconData icon,
   }) {
     final isActive = _currentStep == stepIndex;
-    final isCompleted = _currentStep > stepIndex;
+    final isCompleted = _isStepCompleted(stepIndex);
 
     return Expanded(
       child: InkWell(
         onTap: () {
-          if (stepIndex <= _currentStep) {
+          if (stepIndex <= _maxStepReached) {
             _goToStep(stepIndex);
           } else if (stepIndex == 1 && _validateStep0()) {
             _goToStep(1);
@@ -848,11 +923,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         },
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           decoration: BoxDecoration(
             color: isActive ? const Color(0xFFF0FDF4) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isActive ? const Color(0xFF86EFAC) : Colors.transparent,
+              width: 1,
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1577,47 +1656,26 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE0F7F6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.account_balance_rounded,
-                          size: 16,
-                          color: Color(0xFF00A39D),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Metode Pembayaran Setoran',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.5,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
-                  ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE0F7F6),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF80DFDA)),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Khusus BSI',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF00A39D),
-                      ),
+                    child: const Icon(
+                      Icons.account_balance_rounded,
+                      size: 16,
+                      color: Color(0xFF00A39D),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Metode Pembayaran Setoran',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                 ],
@@ -1840,7 +1898,6 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         children: [
           if (_currentStep > 0) ...[
             Expanded(
-              flex: 4,
               child: OutlinedButton.icon(
                 onPressed: isLoading ? null : _onPrevStep,
                 icon: const Icon(Icons.arrow_back_rounded, size: 18),
@@ -1856,7 +1913,6 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             const SizedBox(width: 12),
           ],
           Expanded(
-            flex: 6,
             child: ElevatedButton(
               onPressed: isLoading
                   ? null
@@ -1881,17 +1937,17 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          isFinalStep ? 'Bayar via VA BSI' : 'Lanjutkan',
+                          isFinalStep ? 'Ajukan Sijaka' : 'Lanjutkan',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 13.5,
+                            fontSize: 14,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Icon(
-                          isFinalStep ? Icons.lock_outline_rounded : Icons.arrow_forward_rounded,
-                          size: 16,
+                          isFinalStep ? Icons.check_circle_outline_rounded : Icons.arrow_forward_rounded,
+                          size: 17,
                           color: Colors.white,
                         ),
                       ],
@@ -2691,7 +2747,13 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             _buildSijakaTextField('Sebutkan hubungan', _ahliWarisHubunganCustomController, hint: 'Misal: Paman/Bibi'),
           ],
           const SizedBox(height: 14),
-          _buildSijakaTextField('No. KTP / Passport', _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true),
+          _buildSijakaTextField(
+            'No. KTP / NIK Ahli Waris',
+            _ktpController,
+            hint: '16 digit NIK ahli waris',
+            isNumber: true,
+            maxLength: 16,
+          ),
           const SizedBox(height: 14),
           _buildSijakaTextField('No. HP Ahli Waris', _hpController, hint: 'Contoh: 08123456789', isNumber: true),
           const SizedBox(height: 14),
@@ -2737,18 +2799,270 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(
+                  value: _agreed,
+                  onChanged: (val) => setState(() => _agreed = val ?? false),
+                  activeColor: const Color(0xFF166534),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Persetujuan Akad & Ketentuan Sijaka',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Saya menyetujui syarat & ketentuan pembukaan rekening Simpanan Berjangka (Sijaka) KSPPS PASTI dengan akad Mudharabah Mutlaqah dan bersedia mematuhi seluruh AD/ART Koperasi.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, thickness: 0.6, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: _showTermsAndConditionsModal,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.description_outlined, size: 15, color: Color(0xFF166534)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Lihat Syarat & Ketentuan Sijaka',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF166534),
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF166534)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsAndConditionsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Header Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.verified_user_rounded,
+                        color: Color(0xFF166534),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Syarat & Ketentuan Sijaka',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            'Akad Mudharabah Mutlaqah • KSPPS PASTI',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              // Content List
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSKItem(
+                        number: '1',
+                        title: 'Prinsip Akad Mudharabah Mutlaqah',
+                        desc:
+                            'Simpanan Berjangka (Sijaka) dikelola dengan akad Mudharabah Mutlaqah. Anggota bertindak sebagai Shahibul Maal (pemilik dana) dan Koperasi bertindak sebagai Mudharib (pengelola dana). Modal disalurkan pada pembiayaan sektor produktif dan halal sesuai syariat Islam.',
+                      ),
+                      _buildSKItem(
+                        number: '2',
+                        title: 'Nisbah & Penyaluran Bagi Hasil',
+                        desc:
+                            'Bagi hasil dihitung dari pendapatan riil usaha koperasi dan dibagikan secara adil berdasarkan porsi nisbah yang tertera pada bilyet. Penyaluran bagi hasil dilakukan setiap bulan langsung ke rekening bank atau saldo Sirela yang didaftarkan.',
+                      ),
+                      _buildSKItem(
+                        number: '3',
+                        title: 'Jangka Waktu (Tenor) & ARO',
+                        desc:
+                            'Penempatan dana simpanan berjangka dilakukan sesuai tenor yang disepakati (misal 1, 6, atau 12 bulan). Apabila fitur Perpanjangan Otomatis (ARO) dipilih, maka bilyet akan otomatis diperpanjang dengan nisbah yang berlaku saat jatuh tempo.',
+                      ),
+                      _buildSKItem(
+                        number: '4',
+                        title: 'Penarikan Pokok & Bebas Riba',
+                        desc:
+                            'Dana pokok simpanan dikembalikan penuh pada saat bilyet jatuh tempo. KSPPS PASTI tidak mengenakan sistem denda penalti bunga/riba atas penarikan karena alasan uzur syar\'i atau keperluan darurat anggota.',
+                      ),
+                      _buildSKItem(
+                        number: '5',
+                        title: 'Penetapan Ahli Waris',
+                        desc:
+                            'Data ahli waris yang dicantumkan bersifat sah dan mengikat untuk menerima hak simpanan dan bagi hasil apabila anggota yang bersangkutan wafat atau berhalangan tetap sesuai hukum waris syariah dan AD/ART Koperasi.',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+              // Bottom Action Button
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  MediaQuery.of(context).padding.bottom + 12,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() => _agreed = true);
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF166534),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Saya Mengerti & Setuju',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSKItem({
+    required String number,
+    required String title,
+    required String desc,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 24,
+          Container(
             width: 24,
-            child: Checkbox(
-              value: _agreed,
-              onChanged: (val) => setState(() => _agreed = val ?? false),
-              activeColor: const Color(0xFF166534),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+            height: 24,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFDCFCE7),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF166534),
               ),
             ),
           ),
@@ -2756,22 +3070,22 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Persetujuan Akad & Ketentuan Sijaka',
-                  style: TextStyle(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
                     color: Color(0xFF1E293B),
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Saya menyetujui syarat & ketentuan pembukaan rekening Simpanan Berjangka (Sijaka) KSPPS PASTI dengan akad Mudharabah Mutlaqah dan bersedia mematuhi seluruh AD/ART Koperasi.',
-                  style: TextStyle(
-                    fontSize: 11,
+                  desc,
+                  style: const TextStyle(
+                    fontSize: 11.5,
                     color: Color(0xFF64748B),
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
               ],
@@ -2864,6 +3178,9 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
     String? hint,
     bool isNumber = false,
     int maxLines = 1,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2880,11 +3197,14 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          maxLength: maxLength,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
+          inputFormatters: inputFormatters ?? (isNumber ? [FilteringTextInputFormatter.digitsOnly] : null),
           textCapitalization: maxLines > 1 ? TextCapitalization.sentences : TextCapitalization.words,
+          validator: validator,
           style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
           decoration: InputDecoration(
+            counterText: '',
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             filled: true,
