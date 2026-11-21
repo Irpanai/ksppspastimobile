@@ -8,6 +8,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
+import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
 
@@ -180,14 +181,30 @@ class _NativePaymentDetailScreenState extends State<NativePaymentDetailScreen>
   }
 
   void _showSuccessDialog(PaymentStatusResponse status) {
+    final isSijaka = widget.paymentResponse.orderId.toLowerCase().startsWith('sijaka') ||
+        status.type == 'pembukaan_sijaka';
+
     AppDialog.showSuccess(
       context,
-      title: 'Pembayaran Berhasil!',
-      message: 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
-      buttonText: 'Kembali ke Dashboard',
+      title: isSijaka ? 'Pembukaan Sijaka Berhasil!' : 'Pembayaran Berhasil!',
+      message: isSijaka
+          ? 'Pembayaran Anda telah diverifikasi oleh sistem KSPPS PASTI dan Bilyet Sijaka Anda telah berhasil diterbitkan.'
+          : 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
+      buttonText: isSijaka ? 'Lihat Portofolio Bilyet' : 'Kembali ke Dashboard',
       barrierDismissible: false,
       onConfirm: () {
-        if (mounted) Navigator.pop(context, true);
+        if (!mounted) return;
+        if (isSijaka) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SijakaPortfolioScreen(showBackButton: true),
+            ),
+            (route) => route.isFirst,
+          );
+        } else {
+          Navigator.pop(context, true);
+        }
       },
       customContent: Container(
         padding: const EdgeInsets.all(14),

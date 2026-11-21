@@ -1098,6 +1098,7 @@ class _FakePaymentProvider extends PaymentProvider {
     String? noRekening,
     String? atasNamaRekening,
     String? metodePenyerahanBagihasil,
+    bool? simpanRekening,
   }) async {
     if (_onCreatePayment != null) {
       return _onCreatePayment();

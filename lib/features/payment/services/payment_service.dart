@@ -21,6 +21,7 @@ class PaymentService {
     String? noRekening,
     String? atasNamaRekening,
     String? metodePenyerahanBagihasil,
+    bool? simpanRekening,
   }) async {
     final body = <String, dynamic>{
       'type': type,
@@ -59,6 +60,9 @@ class PaymentService {
       }
       if (metodePenyerahanBagihasil != null && metodePenyerahanBagihasil.isNotEmpty) {
         body['metode_penyerahan_bagihasil'] = metodePenyerahanBagihasil;
+      }
+      if (simpanRekening != null) {
+        body['simpan_rekening'] = simpanRekening;
       }
     }
 

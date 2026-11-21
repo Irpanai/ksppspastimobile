@@ -3456,7 +3456,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Investasi amanah dengan bagi hasil kompetitif setiap bulan. Pilihan tenor 1, 6, dan 12 bulan.',
+            'Investasi amanah dengan bagi hasil kompetitif setiap bulan.',
             style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 20),

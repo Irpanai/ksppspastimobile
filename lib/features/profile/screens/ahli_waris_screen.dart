@@ -18,6 +18,7 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
   final TextEditingController _hpController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _alamatController = TextEditingController();
+  final TextEditingController _customHubunganController = TextEditingController();
   String _selectedHubungan = 'Pasangan (Suami/Istri)';
   bool _isInitialized = false;
 
@@ -33,8 +34,17 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initFormValues();
+      _loadProfile();
     });
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      await context.read<ProfileProvider>().fetchProfileDetail(refresh: true);
+    } catch (_) {}
+    if (mounted) {
+      _initFormValues();
+    }
   }
 
   void _initFormValues() {
@@ -49,12 +59,14 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
       _emailController.text = anggota.emailAhliWaris ?? '';
       _alamatController.text = anggota.alamatAhliWaris ?? '';
 
-      if (anggota.hubunganAhliWaris != null &&
-          anggota.hubunganAhliWaris!.isNotEmpty) {
-        if (_hubunganOptions.contains(anggota.hubunganAhliWaris)) {
-          _selectedHubungan = anggota.hubunganAhliWaris!;
+      final hub = anggota.hubunganAhliWaris;
+      if (hub != null && hub.isNotEmpty) {
+        if (_hubunganOptions.sublist(0, 4).contains(hub)) {
+          _selectedHubungan = hub;
+          _customHubunganController.clear();
         } else {
           _selectedHubungan = 'Keluarga Lainnya';
+          _customHubunganController.text = (hub == 'Keluarga Lainnya') ? '' : hub;
         }
       }
       setState(() {
@@ -66,10 +78,23 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
   Future<void> _saveData() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedHubungan == 'Keluarga Lainnya' && _customHubunganController.text.trim().isEmpty) {
+      AppDialog.showWarning(
+        context,
+        title: 'Hubungan Diperlukan',
+        message: 'Silakan sebutkan hubungan keluarga ahli waris Anda.',
+      );
+      return;
+    }
+
+    final hubunganToSave = _selectedHubungan == 'Keluarga Lainnya'
+        ? (_customHubunganController.text.trim().isNotEmpty ? _customHubunganController.text.trim() : 'Keluarga Lainnya')
+        : _selectedHubungan;
+
     final profileProvider = context.read<ProfileProvider>();
     final updateData = <String, dynamic>{
       'nama_ahli_waris': _namaController.text.trim(),
-      'hubungan_ahli_waris': _selectedHubungan,
+      'hubungan_ahli_waris': hubunganToSave,
       'nik_ahli_waris': _ktpController.text.trim(),
       'no_ktp_ahli_waris': _ktpController.text.trim(),
       'no_hp_ahli_waris': _hpController.text.trim(),
@@ -108,6 +133,7 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
     _hpController.dispose();
     _emailController.dispose();
     _alamatController.dispose();
+    _customHubunganController.dispose();
     super.dispose();
   }
 
@@ -144,6 +170,15 @@ class _AhliWarisScreenState extends State<AhliWarisScreen> {
                           if (val != null) setState(() => _selectedHubungan = val);
                         },
                       ),
+                      if (_selectedHubungan == 'Keluarga Lainnya') ...[
+                        const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                        _buildTextField(
+                          'Sebutkan Hubungan Ahli Waris',
+                          Icons.edit_note_rounded,
+                          _customHubunganController,
+                          hint: 'Contoh: Paman / Bibi / Keponakan',
+                        ),
+                      ],
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),
                       _buildTextField('No. KTP / Passport', Icons.badge_outlined, _ktpController, hint: 'Nomor identitas ahli waris', isNumber: true, isRequired: false),
                       const Divider(height: 24, color: Color(0xFFF1F5F9)),

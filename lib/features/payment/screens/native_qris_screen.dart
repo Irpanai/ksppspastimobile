@@ -14,6 +14,7 @@ import '../../../../shared/widgets/premium_header.dart';
 import '../../home/providers/dashboard_provider.dart';
 import '../../savings/providers/savings_provider.dart';
 import '../../sijaka/providers/sijaka_provider.dart';
+import '../../sijaka/screens/sijaka_portfolio_screen.dart';
 import '../models/payment_model.dart';
 import '../providers/payment_provider.dart';
 import '../widgets/doku_qris_web_bridge.dart';
@@ -419,14 +420,31 @@ class _NativeQrisScreenState extends State<NativeQrisScreen> {
   }
 
   void _showSuccessDialog(PaymentStatusResponse status) {
+    final orderId = widget.paymentResponse?.orderId ?? status.orderId;
+    final isSijaka = orderId.toLowerCase().startsWith('sijaka') ||
+        status.type == 'pembukaan_sijaka';
+
     AppDialog.showSuccess(
       context,
-      title: 'Pembayaran QRIS Berhasil!',
-      message: 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
-      buttonText: 'Selesai & Kembali',
+      title: isSijaka ? 'Pembukaan Sijaka Berhasil!' : 'Pembayaran QRIS Berhasil!',
+      message: isSijaka
+          ? 'Pembayaran Anda telah diverifikasi oleh sistem KSPPS PASTI dan Bilyet Sijaka Anda telah berhasil diterbitkan.'
+          : 'Setoran Anda telah diverifikasi oleh sistem KSPPS PASTI dan saldo simpanan telah bertambah.',
+      buttonText: isSijaka ? 'Lihat Portofolio Bilyet' : 'Selesai & Kembali',
       barrierDismissible: false,
       onConfirm: () {
-        if (mounted) Navigator.pop(context, true);
+        if (!mounted) return;
+        if (isSijaka) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SijakaPortfolioScreen(showBackButton: true),
+            ),
+            (route) => route.isFirst,
+          );
+        } else {
+          Navigator.pop(context, true);
+        }
       },
       customContent: Container(
         padding: const EdgeInsets.all(14),

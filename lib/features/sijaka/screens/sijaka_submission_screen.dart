@@ -14,6 +14,7 @@ import '../../payment/widgets/qris_preparation_dialog.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../models/sijaka_model.dart';
 import '../providers/sijaka_provider.dart';
+import 'sijaka_portfolio_screen.dart';
 
 class BankInfo {
   final String code;
@@ -290,11 +291,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
           _alamatController.text = anggota.alamatAhliWaris!;
         }
         if (anggota.hubunganAhliWaris != null && anggota.hubunganAhliWaris!.isNotEmpty) {
-          if (_hubunganOptions.contains(anggota.hubunganAhliWaris)) {
+          if (_hubunganOptions.sublist(0, 4).contains(anggota.hubunganAhliWaris)) {
             _selectedHubungan = anggota.hubunganAhliWaris!;
+            _ahliWarisHubunganCustomController.clear();
           } else {
             _selectedHubungan = 'Keluarga Lainnya';
-            _ahliWarisHubunganCustomController.text = anggota.hubunganAhliWaris!;
+            _ahliWarisHubunganCustomController.text =
+                (anggota.hubunganAhliWaris == 'Keluarga Lainnya')
+                    ? ''
+                    : anggota.hubunganAhliWaris!;
           }
         }
 
@@ -506,6 +511,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
       );
       return false;
     }
+    if (_selectedHubungan == 'Keluarga Lainnya' &&
+        _ahliWarisHubunganCustomController.text.trim().isEmpty) {
+      AppDialog.showWarning(
+        context,
+        title: 'Hubungan Diperlukan',
+        message: 'Silakan sebutkan hubungan keluarga ahli waris Anda.',
+      );
+      return false;
+    }
     if (_hpController.text.trim().isEmpty) {
       AppDialog.showWarning(
         context,
@@ -584,13 +598,15 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
             ? _atasNamaController.text.trim()
             : null,
         metodePenyerahanBagihasil: _selectedMetodeBagiHasil,
+        simpanRekening: _isRekeningBaru ? _saveNewAccount : false,
       );
 
       if (!mounted) return;
 
       if (snapResponse != null) {
+        bool? paymentSuccess;
         if (snapResponse.isDirectQris) {
-          await QrisPreparationHelper.open(
+          paymentSuccess = await QrisPreparationHelper.open(
             context,
             existingPayment: snapResponse,
             forceStatusCheckForExisting: false,
@@ -600,10 +616,22 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
               ? NativePaymentDetailScreen(paymentResponse: snapResponse)
               : DokuWebViewScreen(paymentResponse: snapResponse);
 
-          Navigator.push(
+          paymentSuccess = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (_) => targetScreen,
+            ),
+          );
+        }
+
+        if (paymentSuccess == true && mounted) {
+          if (_isRekeningBaru && _saveNewAccount) {
+            context.read<ProfileProvider>().fetchProfileDetail(refresh: true);
+          }
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SijakaPortfolioScreen(showBackButton: true),
             ),
           );
         }
@@ -1276,12 +1304,36 @@ class _SijakaSubmissionScreenState extends State<SijakaSubmissionScreen> {
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'Simpan rekening ini di daftar Rekening Tersimpan',
-                        style: TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+                        'Simpan rekening ini sebagai Rekening Utama di profil Anda',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                       ),
                     ),
                   ],
                 ),
+                if (_saveNewAccount && _savedAccounts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFCD34D)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFB45309)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Perhatian: Rekening baru ini akan tersimpan dan menggantikan rekening utama Anda sebelumnya (${_savedAccounts.first.bankName} - ${_savedAccounts.first.noRekening}).',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ],
           ),

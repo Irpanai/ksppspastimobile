@@ -140,6 +140,7 @@ class PaymentProvider extends ChangeNotifier {
     String? noRekening,
     String? atasNamaRekening,
     String? metodePenyerahanBagihasil,
+    bool? simpanRekening,
   }) async {
     _isCreatingToken = true;
     _errorMessage = null;
@@ -162,6 +163,7 @@ class PaymentProvider extends ChangeNotifier {
         noRekening: noRekening,
         atasNamaRekening: atasNamaRekening,
         metodePenyerahanBagihasil: metodePenyerahanBagihasil,
+        simpanRekening: simpanRekening,
       );
 
       // Simpan ke daftar antrean pending transaksi
